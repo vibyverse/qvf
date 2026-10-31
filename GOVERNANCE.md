@@ -35,12 +35,12 @@ As independent adopters ship QVF, stewardship is intended to broaden — see
 ### QVF in the vibe-qc family
 
 Within the family of programs the steward maintains — vibe-qc (the
-calculations), vibe-view (the viewer), vibe-sketch (the structure and reaction
-sketcher), vibe-queue (the job queue) and this toolkit — **QVF is the standard
+calculations), vibe-viewer (the viewer), vibe-sketcher (the structure and reaction
+sketcher), vibe-scheduler (the job queue) and this toolkit — **QVF is the standard
 format**. Each program reads and writes it natively, and the programs exchange
 data through it: what one saves, the others open, each for what it does.
-vibe-view shows what vibe-sketch and vibe-qc save, and vibe-sketch draws the
-molecules of a vibe-view or vibe-qc archive. Other formats (XYZ, PDB, CIF,
+vibe-viewer shows what vibe-sketcher and vibe-qc save, and vibe-sketcher draws the
+molecules of a vibe-viewer or vibe-qc archive. Other formats (XYZ, PDB, CIF,
 SDF, cube, Molden, KET, program inputs and outputs) remain welcome as imports
 and exports beside it, never as the format the programs hand each other.
 

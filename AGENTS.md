@@ -87,7 +87,7 @@ do not prevent the daily candidate build; never report unverified science as PAS
   Report consumer-specific defects in the consumer's tracker.
 - This repository is the single source of the format: the specification,
   schema, registry and reference validators change only here. A family
-  program (vibe-qc, vibe-view, vibe-sketch, vibe-queue) pins one qvf release
+  program (vibe-qc, vibe-viewer, vibe-sketcher, vibe-scheduler) pins one qvf release
   tag, vendors only byte-identical copies of that tag's files (checked in its
   CI), keeps no derived or edited schema (no v2 schema: spec § 3.1 is the
   rule), and gets a field it needs proposed and released here before it

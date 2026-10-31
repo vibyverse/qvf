@@ -1,8 +1,8 @@
 # A QVF job across the vibe family
 
 Use one `.qvf` archive to carry a calculation request, send it to a managed
-vibe-qc runtime with vibe-queue, and open the resulting structure and supported
-results in vibe-view. A sketch document is another use of the same format;
+vibe-qc runtime with vibe-scheduler, and open the resulting structure and supported
+results in vibe-viewer. A sketch document is another use of the same format;
 its export is not automatically a runnable calculation.
 
 This workflow uses the QVF **v0.6.0 toolkit** and **format version 1**. The
@@ -53,13 +53,13 @@ python -m pip install './python[numpy,validate]'
 The example uses the legacy NumPy array API. The `validate` extra adds JSON Schema checks to the
 reference validator. This source installation does not depend on the release
 already being available on a package index or mirror. Use your normal managed
-installation for vibe-qc, and install/configure vibe-queue on the submission
+installation for vibe-qc, and install/configure vibe-scheduler on the submission
 host. The queue's `--program NAME` must name a registered vibe-qc runtime;
 `NAME` and `HOST` below are placeholders for that configuration.
 
-vibe-view's core installation can inspect QVF metadata and structures. The
+vibe-viewer's core installation can inspect QVF metadata and structures. The
 interactive `vibe-view open` command also needs its `viewer` extra. Sketch
-import needs vibe-sketch's chemistry dependencies and `qvf-writer` in its own
+import needs vibe-sketcher's chemistry dependencies and `qvf-writer` in its own
 Python environment; its installer supports an explicit QVF checkout path.
 These applications need not share a Python environment.
 
@@ -123,7 +123,7 @@ vq status HOST JOBID --json
 vq fetch HOST JOBID --name job.qvf -o results/
 ```
 
-vibe-queue recognizes the single-file payload and selects the managed
+vibe-scheduler recognizes the single-file payload and selects the managed
 `vibeqc run` entry point. Do not pass `--python` or `--branch` for this path.
 Its request parser recognizes the payload shape; it does not validate the
 archive's scientific request. On scheduler hosts, the development queue uses
@@ -218,7 +218,9 @@ the later opt-in retained-runtime recovery mapping. Keep these limits separate
 from archive validity and from later consumer fixes. None requires changing
 the QVF v1 schema or rewriting accepted artifacts.
 
-## Open the geometry in vibe-sketch
+<a id="open-the-geometry-in-vibe-sketch"></a>
+
+## Open the geometry in vibe-sketcher
 
 A foreign QVF contributes molecular structures and supported reaction-scheme
 content to a sketch. Keep the original result archive and write a separate
@@ -295,7 +297,7 @@ and `--no-functional` explicitly say the method takes none. Multiple structures,
 existing jobs/runs/results and unsupported source content are refused without
 dropping sections. See [command details and refusal rules](cli.md#prepare-one-pending-job-toolkit-060).
 
-The example's reference validation, vibe-qc request load, vibe-view structure
+The example's reference validation, vibe-qc request load, vibe-viewer structure
 read and sketch geometry round trip are format and integration checks. They
 make no claim that a quantum-chemistry calculation has been validated.
 
@@ -307,5 +309,5 @@ canonical QVF sections. They
 create new, validated archives and report conversion limits. Imported
 geometry has no job request: use the explicit pending-job pattern above or
 the `prepare-job` helper
-before submitting it to vibe-qc through vibe-queue. Keep result archives
+before submitting it to vibe-qc through vibe-scheduler. Keep result archives
 when exporting a selected geometry or grid to a text format.
