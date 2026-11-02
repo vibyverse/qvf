@@ -228,13 +228,17 @@ sketch archive:
 
 ```python
 from pathlib import Path
-from vibesketch.document.qvf import from_qvf, to_qvf
+from vibesketcher.document.qvf import from_qvf, to_qvf
 
 imported = from_qvf(Path("results/job.qvf").read_bytes())
 for warning in imported.warnings:
     print(warning)
 Path("drawing.qvf").write_bytes(to_qvf(imported.document, preview=False))
 ```
+
+Use a current `vibesketcher` source installation for this example. Older
+installations expose the same API through the deprecated `vibesketch` import;
+the archive extension name `x_vibesketch.document` remains unchanged.
 
 This is a geometry/document conversion, **not a lossless archive update**.
 Foreign job specifications, run logs, wavefunctions, other result sections and
