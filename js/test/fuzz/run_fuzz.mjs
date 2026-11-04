@@ -107,6 +107,16 @@ async function main() {
     console.log(`NEW ${problem}\n    seed=${cur.name} plan=${JSON.stringify(cur.plan)} byteSeed=${cur.byteSeed} -> ${digest}.qvf`);
   };
 
+  const started = Date.now();
+  // Written every few seconds too, so an interrupted campaign keeps its numbers.
+  const writeSummary = () => {
+    const summary = { target: args.target, seed: args.seed, seconds: Math.round((Date.now() - started) / 1000),
+      inputs: stats.inputs, slowest_ms: Math.round(stats.slowestMs), largest_alloc_bytes: stats.largestAlloc,
+      hangs: stats.hangs, crashes: stats.crashes, problems: stats.signatures };
+    writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2));
+    return summary;
+  };
+  const ticker = setInterval(writeSummary, 5000);
   let next = 0;
   while (Date.now() < deadline) {
     await new Promise((resolve) => {
@@ -147,10 +157,8 @@ async function main() {
       });
     });
   }
-  const summary = { target: args.target, seed: args.seed, seconds: args.seconds, inputs: stats.inputs,
-    slowest_ms: Math.round(stats.slowestMs), largest_alloc_bytes: stats.largestAlloc, hangs: stats.hangs,
-    crashes: stats.crashes, problems: stats.signatures };
-  writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2));
+  clearInterval(ticker);
+  const summary = writeSummary();
   const { problems, ...head } = summary;
   console.log(JSON.stringify(head));
   console.log(`problem signatures: ${Object.keys(problems).length}`);

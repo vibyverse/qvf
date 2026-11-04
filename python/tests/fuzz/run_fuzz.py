@@ -69,6 +69,16 @@ def main(argv=None) -> int:
     t0 = time.monotonic()
     rounds = 0
     harness_errors = 0
+
+    def summary():
+        # Written after every round, so an interrupted campaign keeps its numbers.
+        s = {"target": args.target, "seconds": round(time.monotonic() - t0, 1),
+             "rounds": rounds, "harness_errors": harness_errors,
+             "inputs": stats["inputs"], "slowest_s": round(stats["slowest"], 3),
+             "peak_bytes": stats["peak"], "problems": stats["signatures"]}
+        (out / "summary.json").write_text(json.dumps(s, indent=2))
+        return s
+
     while time.monotonic() < deadline:
         try:
             one()
@@ -76,12 +86,8 @@ def main(argv=None) -> int:
             harness_errors += 1
             print(f"harness error in round {rounds}: {exc!r:.300}", flush=True)
         rounds += 1
-    summary = {"target": args.target, "seconds": round(time.monotonic() - t0, 1),
-               "rounds": rounds, "harness_errors": harness_errors,
-               "inputs": stats["inputs"],
-               "slowest_s": round(stats["slowest"], 3), "peak_bytes": stats["peak"],
-               "problems": stats["signatures"]}
-    (out / "summary.json").write_text(json.dumps(summary, indent=2))
+        summary()
+    summary = summary()
     print(json.dumps({k: v for k, v in summary.items() if k != "problems"}))
     print(f"problem signatures: {len(stats['signatures'])}")
     return 1 if stats["signatures"] else 0
