@@ -36,6 +36,7 @@ pub mod json;
 #[rustfmt::skip]
 pub mod kinds;
 pub mod limits;
+pub mod operations;
 pub mod reader;
 pub mod schema_check;
 pub mod sections;

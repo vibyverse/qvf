@@ -1,6 +1,7 @@
-//! `qvf`: validate and inspect QVF archives, the `validate`, `info`, `cat`
-//! and `extract` commands of the Python `qvf` CLI with the same finding
-//! codes, report layout and exit codes: 0 success, 1 validation failed,
+//! `qvf`: validate, inspect and maintain QVF archives, the `validate`,
+//! `info`, `cat`, `extract`, `diff`, `repack`, `scrub` and `schema` commands
+//! of the Python `qvf` CLI with the same finding codes, report layout and
+//! exit codes: 0 success (or equal), 1 validation failed (or different),
 //! 2 usage or I/O error.
 //!
 //! ```sh
@@ -8,17 +9,26 @@
 //! qvf info ARCHIVE [--json]
 //! qvf cat ARCHIVE [SECTION MEMBER]
 //! qvf extract ARCHIVE SECTION MEMBER -o OUTPUT
+//! qvf diff LEFT RIGHT [--atol X] [--rtol X] [--ignore-metadata] [--max-differences N] [--json]
+//! qvf repack ARCHIVE -o OUTPUT [--compression preserve|store|deflate]
+//! qvf scrub ARCHIVE (-o OUTPUT | --dry-run)
+//! qvf schema
 //! ```
 
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::process::ExitCode;
 
+use qvf::operations::{DiffOptions, ScrubOptions};
 use qvf::zip::ZipArchive;
-use qvf::{generated, validate_bytes, Level, Limits, Reader, Report, ValidateOptions};
+use qvf::{generated, validate_bytes, Compression, Editor, Level, Limits, Reader, Report, ValidateOptions};
 use serde_json::{json, Map, Value};
 
-const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract} ...
+/// The normative JSON Schema, a byte-identical copy of
+/// `spec/qvf_manifest.schema.json` (checked by `tests/cli.rs`).
+const SCHEMA: &str = include_str!("../../qvf_manifest.schema.json");
+
+const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract,diff,repack,scrub,schema} ...
 
   validate ARCHIVE [--level {container,manifest,payloads,semantics,references,all}] [--json]
                                 validate cumulatively through a selected stage
@@ -26,8 +36,15 @@ const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract} ...
   cat ARCHIVE [SECTION MEMBER]  print the manifest or one JSON member
   extract ARCHIVE SECTION MEMBER -o OUTPUT
                                 verify and extract one declared member (never overwrites)
+  diff LEFT RIGHT [--atol X] [--rtol X] [--ignore-metadata] [--max-differences N] [--json]
+                                compare decoded content, independent of ZIP layout
+  repack ARCHIVE -o OUTPUT [--compression {preserve,store,deflate}]
+                                copy current members to a new archive, dropping orphans
+  scrub ARCHIVE (-o OUTPUT | --dry-run)
+                                report and remove hostname and author contacts into a new archive
+  schema                        print the packaged normative JSON Schema
 
-exit status: 0 success, 1 validation failed, 2 usage or I/O error";
+exit status: 0 success or equal, 1 validation failed or different, 2 usage or I/O error";
 
 /// A failure that ends the command with exit status 2.
 struct Fail(String);
@@ -43,15 +60,24 @@ fn usage(message: &str) -> Fail {
 }
 
 /// Positional arguments and flags of one command.
+#[derive(Default)]
 struct Args {
     positional: Vec<String>,
     json: bool,
     level: Option<String>,
     output: Option<String>,
+    atol: Option<String>,
+    rtol: Option<String>,
+    ignore_metadata: bool,
+    max_differences: Option<String>,
+    compression: Option<String>,
+    dry_run: bool,
+    patterns: Vec<String>,
+    replacement: Option<String>,
 }
 
 fn parse(args: &[String], allowed: &[&str]) -> Result<Args, Fail> {
-    let mut out = Args { positional: Vec::new(), json: false, level: None, output: None };
+    let mut out = Args::default();
     let mut it = args.iter();
     while let Some(a) = it.next() {
         let (flag, inline) = match a.split_once('=') {
@@ -65,6 +91,19 @@ fn parse(args: &[String], allowed: &[&str]) -> Result<Args, Fail> {
             "--json" if allowed.contains(&"--json") => out.json = true,
             "--level" if allowed.contains(&"--level") => out.level = Some(value("--level")?),
             "-o" | "--output" if allowed.contains(&"-o") => out.output = Some(value("-o/--output")?),
+            "--atol" | "--rtol" | "--max-differences" | "--compression" | "--replacement" if allowed.contains(&flag) => {
+                let v = Some(value(flag)?);
+                match flag {
+                    "--atol" => out.atol = v,
+                    "--rtol" => out.rtol = v,
+                    "--max-differences" => out.max_differences = v,
+                    "--compression" => out.compression = v,
+                    _ => out.replacement = v,
+                }
+            }
+            "--path-pattern" | "--user-pattern" if allowed.contains(&"--path-pattern") => out.patterns.push(value(flag)?),
+            "--ignore-metadata" if allowed.contains(&flag) => out.ignore_metadata = true,
+            "--dry-run" if allowed.contains(&flag) => out.dry_run = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 std::process::exit(0);
@@ -298,11 +337,11 @@ fn info(args: &[String]) -> Result<u8, Fail> {
     };
     let reader = open_checked(archive)?;
     let mut sections = Vec::new();
-    for s in listed_sections(&reader) {
-        let members = s
-            .members()
+    let listed: Vec<&str> = listed_sections(&reader).iter().map(|s| s.id).collect();
+    for (s, roles) in reader.sections_with_roles().into_iter().filter(|(s, _)| listed.contains(&s.id)) {
+        let members = roles
             .iter()
-            .map(|(role, spec)| member_info(&reader, role, spec.as_object().unwrap_or(&Map::new())))
+            .map(|role| member_info(&reader, role, s.members()[role].as_object().unwrap_or(&Map::new())))
             .collect::<Result<Vec<_>, _>>()?;
         sections.push(json!({"id": s.id, "kind": s.kind, "members": members}));
     }
@@ -376,6 +415,124 @@ fn extract(args: &[String]) -> Result<u8, Fail> {
     Ok(0)
 }
 
+/// A float option as Python's `float()` reads it.
+fn float_arg(name: &str, v: Option<&String>) -> Result<f64, Fail> {
+    match v {
+        None => Ok(0.0),
+        Some(s) => {
+            let t = s.trim();
+            t.parse::<f64>().map_err(|_| usage(&format!("argument {name}: invalid float value: {s:?}")))
+        }
+    }
+}
+
+fn diff(args: &[String]) -> Result<u8, Fail> {
+    let a = parse(args, &["--json", "--atol", "--rtol", "--ignore-metadata", "--max-differences"])?;
+    let [left, right] = a.positional.as_slice() else {
+        return Err(usage("diff requires LEFT and RIGHT"));
+    };
+    let max_differences = match &a.max_differences {
+        None => 20,
+        Some(s) => {
+            let n: i64 = s.trim().parse().map_err(|_| usage(&format!("argument --max-differences: invalid int value: {s:?}")))?;
+            if n < 1 {
+                return Err(Fail("max_differences must be positive".into()));
+            }
+            n as usize
+        }
+    };
+    let options = DiffOptions {
+        atol: float_arg("--atol", a.atol.as_ref())?,
+        rtol: float_arg("--rtol", a.rtol.as_ref())?,
+        ignore_metadata: a.ignore_metadata,
+        max_differences,
+    };
+    if !(options.atol.is_finite() && options.atol >= 0.0 && options.rtol.is_finite() && options.rtol >= 0.0) {
+        return Err(Fail("tolerances must be finite and non-negative".into()));
+    }
+    let (l, r) = (open_checked(left)?, open_checked(right)?);
+    let result = qvf::operations::diff(&l, &r, &options).map_err(|e| Fail(format!("{}: {}", e.code, e.message)))?;
+    if a.json {
+        print_json(&result.to_json());
+    } else {
+        if result.equal {
+            println!("Equal");
+        } else {
+            println!("Different ({} differences)", result.difference_count);
+        }
+        for d in &result.differences {
+            println!("  {}: {}", d.location, d.message);
+        }
+        if result.truncated {
+            println!("  additional differences omitted; raise --max-differences to display more");
+        }
+    }
+    Ok(if result.equal { 0 } else { 1 })
+}
+
+/// Stage output beside `destination` and publish it only when complete and
+/// only if `destination` does not exist, as the Python CLI does.
+fn new_output(destination: &str, write: impl FnOnce(&std::path::Path) -> Result<(), Fail>) -> Result<(), Fail> {
+    let dest = std::path::Path::new(destination);
+    if dest.exists() || dest.symlink_metadata().is_ok() {
+        return Err(Fail(format!("output already exists: {destination}")));
+    }
+    let dir = match dest.parent() {
+        Some(d) if !d.as_os_str().is_empty() => d.to_path_buf(),
+        _ => std::path::PathBuf::from("."),
+    };
+    let staged = dir.join(format!(".qvf-output-{}-{}.tmp", std::process::id(), qvf::operations::uuid4()));
+    let result = write(&staged).and_then(|()| std::fs::hard_link(&staged, dest).map_err(Fail::from));
+    let _ = std::fs::remove_file(&staged);
+    result
+}
+
+fn repack(args: &[String]) -> Result<u8, Fail> {
+    let a = parse(args, &["-o", "--compression"])?;
+    let [archive] = a.positional.as_slice() else {
+        return Err(usage("repack requires exactly one ARCHIVE"));
+    };
+    let output = a.output.ok_or_else(|| usage("the following arguments are required: -o/--output"))?;
+    let compression = match a.compression.as_deref().unwrap_or("preserve") {
+        "preserve" => None,
+        "store" => Some(Compression::Stored),
+        "deflate" => Some(Compression::Deflate),
+        other => return Err(usage(&format!("argument --compression: invalid choice: {other:?}"))),
+    };
+    open_checked(archive)?;
+    new_output(&output, |staged| Ok(Editor::repack(archive, staged, compression)?))?;
+    println!("Repacked to {output}");
+    Ok(0)
+}
+
+fn scrub(args: &[String]) -> Result<u8, Fail> {
+    let a = parse(args, &["-o", "--dry-run", "--path-pattern", "--replacement"])?;
+    let [archive] = a.positional.as_slice() else {
+        return Err(usage("scrub requires exactly one ARCHIVE"));
+    };
+    if a.dry_run && a.output.is_some() {
+        return Err(Fail("--dry-run and --output are mutually exclusive".into()));
+    }
+    if !a.patterns.is_empty() {
+        return Err(Fail("--path-pattern and --user-pattern are not supported by the Rust qvf (no regular-expression engine); use the Python CLI".into()));
+    }
+    let reader = open_checked(archive)?;
+    let options = ScrubOptions { dry_run: a.dry_run };
+    let report = match &a.output {
+        None => qvf::operations::scrub(&reader, None, &options)?,
+        Some(output) => {
+            let mut report = Value::Null;
+            new_output(output, |staged| {
+                report = qvf::operations::scrub(&reader, Some(staged), &options)?;
+                Ok(())
+            })?;
+            report
+        }
+    };
+    print_json(&report);
+    Ok(0)
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
@@ -383,6 +540,16 @@ fn main() -> ExitCode {
         Some("info") => info(&args[1..]),
         Some("cat") => cat(&args[1..]),
         Some("extract") => extract(&args[1..]),
+        Some("diff") => diff(&args[1..]),
+        Some("repack") => repack(&args[1..]),
+        Some("scrub") => scrub(&args[1..]),
+        Some("schema") => match &args[1..] {
+            [] => {
+                print!("{SCHEMA}");
+                Ok(0)
+            }
+            [extra, ..] => Err(usage(&format!("unrecognized arguments: {extra}"))),
+        },
         Some("--version") => {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(0)

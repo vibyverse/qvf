@@ -49,7 +49,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{Code, QvfError};
 use crate::limits::Limits;
-use crate::reader::{check_entry_caps, declared_size_problem, Reader};
+use crate::reader::{check_entry_caps, declared_size_problem, DType, Reader};
 use crate::writer::{invalid, Compression, Element, SectionInfo, UpdateBase, WriteError, Writer, WriterOptions};
 use crate::zip::{METHOD_DEFLATE, METHOD_STORE};
 use crate::zip_writer::{Method, ZipWriter};
@@ -507,6 +507,25 @@ pub(crate) fn copy_member(
     check_entry_caps(entry, limits).map_err(read_error)?;
     if let Some((code, msg)) = declared_size_problem(spec, entry.size, path) {
         return Err(read_error(QvfError::new(code, msg)));
+    }
+    if let Some(dtype) = spec.get("dtype") {
+        // As the Python reader checks a tensor before streaming it.
+        let d = dtype
+            .as_str()
+            .and_then(DType::parse)
+            .ok_or_else(|| read_error(QvfError::new(Code::E_DTYPE, format!("member {path:?}: unknown dtype {dtype}"))))?;
+        let shape: Option<Vec<usize>> = match spec.get("shape") {
+            None => Some(Vec::new()),
+            Some(Value::Array(dims)) => dims.iter().map(|x| x.as_u64().map(|n| n as usize)).collect(),
+            Some(_) => None,
+        };
+        let expected = shape.as_deref().and_then(|s| crate::writer::tensor_bytes(d, s));
+        if expected != Some(entry.size) {
+            return Err(read_error(QvfError::new(
+                Code::E_BINARY_SIZE,
+                format!("member {path:?}: dtype and shape do not describe the {} bytes of its entry", entry.size),
+            )));
+        }
     }
     let mut hash = Sha256::new();
     let mut io_error = None;
