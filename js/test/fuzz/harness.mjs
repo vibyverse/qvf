@@ -15,8 +15,9 @@
 // at load) is imported: call install() first, then load().
 
 export const MEMORY_BASE = 48 * 1024 ** 2;
-// Per pass; the validator and the reader each read every member once.
-export const MEMORY_FACTOR = 8;
+// Two passes (the validator and the reader each read every member once), and
+// fflate grows its output chunks while the reader holds the exact buffer.
+export const MEMORY_FACTOR = 16;
 
 export const SMALL = { max_member_bytes: 2 ** 24, max_total_bytes: 2 ** 26, max_json_bytes: 2 ** 22 };
 export const DEFAULT = {};
