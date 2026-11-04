@@ -177,7 +177,13 @@ public:
     }
     int64_t as_int() const {
         if (type_ == Type::Int) return int_;
-        if (type_ == Type::Double) return static_cast<int64_t>(dbl_);
+        // A double outside the int64 range (such as an over-long integer
+        // literal) is refused: converting it would be undefined behaviour.
+        if (type_ == Type::Double) {
+            if (dbl_ >= -9223372036854775808.0 && dbl_ < 9223372036854775808.0)
+                return static_cast<int64_t>(dbl_);
+            throw std::runtime_error("qvf::Json number outside the int64 range");
+        }
         throw std::runtime_error("qvf::Json not a number");
     }
     const std::string& as_string() const {
@@ -16045,7 +16051,9 @@ LocalHeader ZipReader::local_header(const Entry& e) const {
         fail("truncated local header");
     const std::vector<uint8_t> var =
         impl_->bytes_at(var_off, static_cast<size_t>(namelen) + extralen);
-    if (namelen != e.name.size() || std::memcmp(var.data(), e.name.data(), namelen) != 0)
+    // An empty name and extra field leave `var` empty (its data() may be null).
+    if (namelen != e.name.size() ||
+        (namelen != 0 && std::memcmp(var.data(), e.name.data(), namelen) != 0))
         fail("entry " + qname(e.name) + ": local header name differs from the central directory");
     LocalHeader lh;
     lh.data_offset = var_off + namelen + extralen;

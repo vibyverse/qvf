@@ -1,0 +1,11 @@
+qvf provides CMake targets:
+
+  find_package(qvf CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE qvf::qvf)
+
+qvf::qvf requires C++17. A C-only target still links the C++ runtime:
+
+  set_target_properties(main PROPERTIES LINKER_LANGUAGE CXX)
+
+qvf also provides pkg-config metadata (qvf.pc) and the single header
+<qvf/qvf_single.hpp>.

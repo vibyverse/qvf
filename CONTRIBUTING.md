@@ -80,6 +80,13 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 # CTest includes qvf_conformance and qvf_conformance_no_schema.
 
+# Schema-checker parity: the C++ tool and the JavaScript checker against
+# jsonschema over all three corpora and mutated documents. Needs the C++ build
+# above and js/dist (npm ci && npm run build in js/). A checker that is not
+# found is skipped, so confirm that -rs reports no skips.
+QVF_CPP_BUILD_DIR="$PWD/build" QVF_NODE="$(command -v node)" \
+  python -m pytest python/tests/test_schema_checker_parity.py -v -rs
+
 # C++ under AddressSanitizer + UndefinedBehaviorSanitizer, then the reader over
 # the corpus (build/ is ignored by version control)
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g"
@@ -112,11 +119,20 @@ done
 python scripts/check_endian_roundtrip.py build/endian/be --reference build/endian/le
 
 # Fuzzing the ZIP reader and the validator (clang; not run in CI yet). Where
-# clang has no libFuzzer runtime, the target uses a built-in mutation driver.
+# clang has no libFuzzer runtime (on Ubuntu it is in libclang-rt-18-dev), the
+# targets use a built-in mutation driver without coverage feedback.
 CC=clang CXX=clang++ cmake -S cpp -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DQVF_FUZZ=ON
-cmake --build build/fuzz --target zip_reader_fuzzer
+cmake --build build/fuzz --target zip_reader_fuzzer manifest_fuzzer
 mkdir -p build/fuzz/corpus   # libFuzzer adds new inputs to the first directory only
-./build/fuzz/zip_reader_fuzzer -max_total_time=60 build/fuzz/corpus conformance/corpus conformance/negative
+./build/fuzz/zip_reader_fuzzer -max_total_time=60 -max_len=65536 build/fuzz/corpus \
+  conformance/corpus conformance/negative conformance/legacy
+# manifest_fuzzer takes manifest.json plus member payloads and builds a
+# consistent ZIP from them, so mutations reach the payload and semantic checks
+python scripts/fuzz_manifest_seeds.py build/fuzz/manifest_seeds \
+  conformance/corpus conformance/negative conformance/legacy
+mkdir -p build/fuzz/manifest_corpus
+./build/fuzz/manifest_fuzzer -max_total_time=60 -max_len=262144 \
+  build/fuzz/manifest_corpus build/fuzz/manifest_seeds
 
 # Generated tables: check them, and regenerate after editing the schema,
 # registry.json or spec Appendix B (then regenerate the single header too)
@@ -228,7 +244,11 @@ publication or a second review as a gate on ordinary source changes.
    installation from outside the source checkout and exercise static/shared
    C/C++ clients. If the [local Conan recipe](packaging/conan/README.md) is
    included, run its `test_package` under the native-build lock and retain the
-   recipe revision/profile. Claim Fortran support only for compiler/platform
+   recipe revision/profile. If the [vcpkg overlay port](packaging/vcpkg/README.md)
+   is included, refresh its tag archive SHA512 after the tag exists, install it
+   for a static and a shared triplet and build its out-of-tree consumers.
+   Build `npm pack` in `js/` and import the tarball from a scratch project.
+   Claim Fortran support only for compiler/platform
    combinations actually checked; installed modules are compiler-specific.
 5. **Release and publish through the approved path.** Only the authorized owner
    creates the immutable tag after acceptance. Inspect the actual publication

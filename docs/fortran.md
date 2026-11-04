@@ -16,14 +16,49 @@ cmake --install build --prefix "$PWD/install"
 
 `QVF_FORTRAN` defaults to `OFF`; ordinary C/C++ consumers need no Fortran
 compiler. Enabling it requires a Fortran compiler with `ISO_C_BINDING` and
-Fortran 2008 allocatable-character support. Toolkit 0.5.0 passed its Linux
-GNU 12 candidate checks, including all 12 CTests with Fortran layout and
-ownership checks and runtime bounds checking. Focused implementation checks
-also passed with GNU 16. Other compiler/platform coverage remains pending;
-these checks do not establish it. No CI is needed for an ordinary development push.
+Fortran 2008 allocatable-character support. See
+[checked compilers](#checked-compilers) for the combinations that have run.
+No CI is needed for an ordinary development push.
 Fortran examples follow `QVF_BUILD_EXAMPLES`; tests follow `QVF_BUILD_TESTS`.
 With tests enabled, choose a `Python3_EXECUTABLE` with NumPy and jsonschema
 installed, then run `ctest --test-dir build -R '^qvf_fortran_'`.
+
+## Checked compilers
+
+Only the combinations below have been run. Other compilers, versions and
+platforms (macOS, Windows, Intel ifx, NVIDIA nvfortran, Cray, AArch64) are
+unchecked. They may work, but no claim is made.
+
+| Fortran compiler | Platform | Checks |
+|---|---|---|
+| GNU gfortran 11.5.0 | Ubuntu 24.04, x86_64 | focused development checks |
+| GNU gfortran 12.4.0 | Ubuntu 24.04, x86_64 | focused development checks |
+| GNU gfortran 12 | Linux | toolkit 0.5.0 candidate (all 12 CTests) |
+| GNU gfortran 13.3.0 | Ubuntu 24.04, x86_64 | focused development checks, ASan/UBSan |
+| GNU gfortran 14.2.0 | Ubuntu 24.04, x86_64 | focused development checks |
+| GNU gfortran 16 | Linux | focused implementation checks for 0.5.0 |
+| LLVM flang 18.1.3 | Ubuntu 24.04, x86_64 | focused development checks |
+| LLVM flang 19.1.1 | Ubuntu 24.04, x86_64 | focused development checks |
+| LLVM flang 20.1.2 | Ubuntu 24.04, x86_64 | focused development checks |
+
+The focused development checks used the Ubuntu packages (`gfortran-N`,
+`flang-N`) with GCC 13.3.0 as the C/C++ compiler, CMake 3.28.3 and Python
+3.13 with NumPy and jsonschema. For each compiler they cover:
+
+- Release and Debug builds of `qvf::fortran`, the example and the tests with
+  warnings as errors: `-Wall -Wextra -pedantic -std=f2008 -fcheck=all -Werror`
+  for gfortran, `-pedantic -Werror` for flang. No diagnostics were reported.
+- Both `qvf_fortran_` CTests: descriptor sizes against the C ABI, ownership,
+  refusals, exact error message copies, and Python validation (zero
+  findings) with array layout read back through the Python `Reader`.
+- Installation and an external `find_package(qvf)` consumer built with the
+  same compiler, whose output validates with zero findings.
+
+The gfortran 13 sanitizer run builds the C++ library and the Fortran sources
+with `-fsanitize=address,undefined`. LeakSanitizer reports the allocatable
+variables of the test main programs, which are implicitly saved and never
+freed before exit. Those reports are not library leaks, so that run sets
+`ASAN_OPTIONS=detect_leaks=0`.
 
 For an installed or embedded consumer:
 
@@ -69,7 +104,8 @@ A failed write may leave an incomplete file which must not be used as QVF.
 
 Convenience functions return `integer(c_int)`, zero (`QVF_OK`) on success.
 An optional allocatable `message` receives a copied error string, including
-wrapper shape/text errors. `qvf_error_message(handle)` copies the last C
+wrapper shape/text errors. Its length is exactly that of the copied text.
+`qvf_error_message(handle)` copies the last C
 writer error; without a handle it copies the C global error. Wrapper refusal
 messages are returned through `message`, not written into the C error buffer.
 Text arguments trim trailing blanks and reject embedded NUL bytes. Supply
@@ -83,6 +119,9 @@ by the caller and are borrowed only for that call. Temporary buffers require
 memory proportional to the supplied arrays; use the raw streaming API for
 larger data. Empty arrays, non-finite values, inconsistent extents and arrays
 with more than `huge(0_c_int)` elements are refused before crossing the ABI.
+Non-finite values are refused without raising an IEEE invalid exception, so
+callers that enable halting (for example `-ffpe-trap=invalid`) receive a
+refusal rather than a signal.
 
 | Function | Array dimensions in the Fortran call | Meaning |
 |---|---|---|

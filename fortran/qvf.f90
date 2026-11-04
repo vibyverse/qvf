@@ -4,7 +4,7 @@ module qvf
   use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
   use qvf_c
   implicit none
-  private :: pack2, pack3, valid_text, finish_status, bounded
+  private :: pack2, pack3, valid_text, status_message, bounded
   interface
     function qvf_strlen(text) bind(C, name='strlen') result(n)
       import
@@ -57,15 +57,16 @@ contains
     bounded = n > 0 .and. n <= int(huge(0_c_int), c_int64_t)
   end function
 
-  subroutine finish_status(status, handle, message)
+  ! Callers assign the result to their own optional message. gfortran 11 and
+  ! 12 lose the length of a deferred-length optional dummy forwarded to a
+  ! second procedure, so the message must not be passed through.
+  function status_message(status, handle) result(message)
     integer(c_int), intent(in) :: status
     type(c_ptr), intent(in) :: handle
-    character(len=:), allocatable, intent(out), optional :: message
-    if (present(message)) then
-      message = ''
-      if (status /= QVF_OK) message = qvf_error_message(handle)
-    end if
-  end subroutine
+    character(len=:), allocatable :: message
+    message = ''
+    if (status /= QVF_OK) message = qvf_error_message(handle)
+  end function
 
   function qvf_open(handle, path, program, version, calculation, message) result(status)
     type(c_ptr), intent(inout) :: handle
@@ -84,7 +85,7 @@ contains
     created=c_null_ptr
     status=c_qvf_writer_create(c_loc(n), c_loc(v), c_loc(c), c_loc(p), c_loc(created))
     if (status==QVF_OK) handle=created
-    call finish_status(status, handle, message)
+    if (present(message)) message=status_message(status,handle)
   end function
 
   function qvf_finish(handle, message) result(status)
@@ -92,7 +93,7 @@ contains
     character(len=:), allocatable, intent(out), optional :: message
     integer(c_int) :: status
     status=c_qvf_writer_finish(handle)
-    call finish_status(status, handle, message)
+    if (present(message)) message=status_message(status,handle)
   end function
 
   function qvf_close(handle) result(status)
@@ -145,7 +146,7 @@ contains
     if (.not. all(ieee_is_finite(positions))) return
     numbers=atomic_numbers; xyz=pack2(positions)
     status=c_qvf_add_structure(handle,c_null_ptr,c_loc(numbers),c_loc(xyz),int(size(numbers),c_int))
-    call finish_status(status,handle,message)
+    if (present(message)) message=status_message(status,handle)
   end function
 
   function qvf_volume(handle, kind, grid_json, values, message) result(status)
@@ -165,7 +166,7 @@ contains
     dims=int(shape(values),c_int64_t); data=pack3(values)
     k=qvf_c_string(kind); g=qvf_c_string(grid_json); dtype=qvf_c_string('float64')
     status=c_qvf_add_volume(handle,c_loc(k),c_loc(g),c_loc(dtype),3_c_int,c_loc(dims),c_loc(data),c_null_ptr)
-    call finish_status(status,handle,message)
+    if (present(message)) message=status_message(status,handle)
   end function
 
   function qvf_trajectory(handle, metadata_json, coords, message, lattice, velocities, gradients, times, energies) result(status)
@@ -217,7 +218,7 @@ contains
     meta=qvf_c_string(metadata_json); xyz=pack3(coords)
     status=c_qvf_add_trajectory(handle,c_loc(meta),int(nf,c_int),int(size(coords,2),c_int), &
       c_loc(xyz),pc,per_frame,pv,pg,pt,pe)
-    call finish_status(status,handle,message)
+    if (present(message)) message=status_message(status,handle)
   end function
 
   function qvf_gto(handle, centers, angular_momenta, nprim, exponents, coefficients, mo, &
@@ -241,7 +242,10 @@ contains
     if (any(centers<0) .or. any(angular_momenta<0) .or. any(angular_momenta>6) .or. any(nprim<1)) return
     if (sum(int(nprim,c_int64_t))/=size(exponents,kind=c_int64_t)) return
     if (size(coefficients)/=size(exponents)) return
-    if (.not. all(ieee_is_finite(exponents)) .or. any(exponents<=0)) return
+    ! Separate checks: .or. need not short-circuit, and an ordered NaN
+    ! comparison signals IEEE invalid, which traps under halting mode.
+    if (.not. all(ieee_is_finite(exponents))) return
+    if (any(exponents<=0)) return
     if (.not. all(ieee_is_finite(coefficients)) .or. .not. all(ieee_is_finite(mo))) return
     p=1; norm=0; pe=c_null_ptr; po=c_null_ptr
     if (present(pure)) p=merge(1_c_int,0_c_int,pure)
@@ -259,6 +263,6 @@ contains
     c=centers; l=angular_momenta; n=nprim; exp=exponents; coeff=coefficients; orbitals=pack2(mo)
     status=c_qvf_add_wavefunction_gto(handle,int(ns,c_int),c_loc(c),c_loc(l),c_loc(n),c_loc(exp),c_loc(coeff), &
                                     p,norm,int(nm,c_int),int(size(mo,2),c_int),c_loc(orbitals),pe,po)
-    call finish_status(status,handle,message)
+    if (present(message)) message=status_message(status,handle)
   end function
 end module qvf

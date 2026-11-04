@@ -4,3 +4,5 @@ recursive-include examples *.py
 include LICENSE
 include NOTICE
 recursive-include qvf *.py *.json
+# The test suite needs the repository checkout (conformance corpus, docs).
+prune tests
