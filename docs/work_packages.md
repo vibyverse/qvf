@@ -320,7 +320,10 @@ checks verify descriptor sizes, refusal/ownership and Python-validated array
 layouts. Installed CMake consumption is checked. The 0.5.0 Linux GNU 12
 candidate passed all 12 CTests, including Fortran layout/ownership checks
 with runtime bounds checking, alongside prior focused GNU 16 checks.
-Other compiler/platform coverage remains; WP-45 stays in progress.
+Unreleased focused development checks add gfortran 11, 12, 13 and 14 and LLVM
+flang 18, 19 and 20 on Ubuntu 24.04 x86_64, with two wrapper fixes (message
+text on gfortran 11/12, NaN exponent refusal without an IEEE trap). Other
+platforms remain; WP-45 stays in progress.
 **Scope.** `fortran/qvf.f90` (`module qvf`, `bind(C)` interfaces + wrappers
 handling column-major → row-major), CMake `QVF_FORTRAN` option, example
 writing structure + grid + trajectory + wavefunction, CI job with gfortran
@@ -387,13 +390,21 @@ round-trip-tested on small fixtures and validated.
 options and relocatable `qvf.pc` metadata are included in toolkit 0.5.0.
 The 0.6.0 local Conan 2 recipe and installed C/C++ consumers are in
 `packaging/conan`; the release/adoption checklist is in `CONTRIBUTING.md`.
-Registry publishing, vcpkg and broader platform acceptance remain open.
+Unreleased: a vcpkg overlay port in `packaging/vcpkg` (static and shared
+triplets, tag archive or local source), cleaned sdist/wheel and npm tarball
+contents, and a PyPI trusted-publisher checklist in `docs/python-release.md`.
+Registry publishing and broader platform acceptance remain open.
 **Scope.** PyPI release workflow (trusted publishing from GitHub Actions,
 tag-driven), `qvf.pc`, `QVF_BUILD_SHARED` with SONAME = ABI version, vcpkg
 port and conan recipe in `packaging/`, release checklist in
 `CONTRIBUTING.md`, `scripts/make_archive.sh` updated for the new layout.
 
 ### WP-50 · Fuzzing and big-endian CI — M · Sonnet · design § 10
+**Status.** Unreleased local checks, no CI jobs: a coverage-guided libFuzzer
+campaign over the ZIP reader and a new `manifest_fuzzer` target fixed two
+undefined-behaviour defects, and the C++ tests and corpus pass under emulated
+s390x (QEMU user mode) with a bit-for-bit cross-host tensor check. The CI
+jobs remain.
 **Scope.** libFuzzer targets for `ZipReader`, inflate, `Json::parse`,
 `Manifest::from_json`, `validate::run`; a GitHub Actions job running each
 target for a bounded time; OSS-Fuzz-ready layout; one QEMU s390x job that

@@ -156,6 +156,7 @@ Each item is spec + schema + registry + both writers + validator + corpus + docs
 - ✅ **Unreleased, #18:** typed biomolecular atom-site identity preserves insertion
   codes, alternate locations and occupancies; converter and consumer adoption
   remain separate from the format definition.
+- ✅ **Unreleased, #11:** twenty compound unit names (for example `hartree_per_bohr`) in the § 4.3 vocabulary, accepted 2026-11-04.
 - ⬜ Demand-driven, not scheduled: `wavefunction.nao` / `.sto` (P16), `spectra.xas` / `.mossbauer` (P13)
 
 ## Phase 3 — libqvf (core and C++/C/Python facades landed)
@@ -167,12 +168,12 @@ The library other codes link. Core first, then the facades, then every binding o
 - ✅ **WP-42** C++ `Writer`, chunked `TensorView`, all canonical typed kinds and `Editor` (append, optional atomic commit, streaming repack)
 - ✅ **WP-43** C++ lazy `Reader`, typed manifest/tensor access, streaming, `get<K>` protocol and staged validation with shared finding codes; canonical kind decoders are supplied by WP-42
 - ✅ **WP-44** Complete C ABI: writer for every kind, reader, validator, editor; shared-library export; ABI versioning (D16)
-- 🔨 **WP-45** Fortran module over the complete C ABI and checked writers landed; Linux GNU 12 candidate and focused GNU 16/Python interoperability checks pass; other compiler/platform coverage remains
+- 🔨 **WP-45** Fortran module over the complete C ABI and checked writers landed; Linux GNU 12 candidate and focused GNU 16/Python interoperability checks pass; focused development checks cover gfortran 11 to 14 and LLVM flang 18 to 20 on Ubuntu 24.04 x86_64 (Unreleased, two wrapper fixes); other platforms remain
 - ✅ **WP-46** Python `qvf` package: model, streaming writer, lazy typed reader, editor, shims (D20)
 - ✅ **WP-47** CLI `qvf`: staged validate, info, cat, extract, numeric diff, repack, reported scrub, conformance, schema
 - 🔨 **WP-48** Converters: scalar cube and geometry-only XYZ/extXYZ with trajectories are in 0.5.0 ([guide](docs/converters.md)); static XSF primitive geometry/scalar grids and single-model PDB geometry are included in 0.6.0. Bounded real molecular s/p/sp/d Molden conversion is on main (Unreleased), with independent orbital-value checks. PDB import/export of atom-site identity, alternate locations and model ensembles is on main (Unreleased, #27), with independent gemmi and RDKit read-back checks. PDB `HELIX`/`SHEET` ranges map to typed `secondary_structure` (#28) and `CONECT` to structure bonds (#29) and `CRYST1`/`SCALE` to a periodic cell with its space group (#30), `SSBOND`/`LINK` to structure bonds (#31), `REMARK 350` assemblies to expanded structures (#32), and opt-in crystal symmetry expansion to the unit cell (#33), all Unreleased. Core crystal CIF import (unit cell from the space group) and P 1 export (#34), VASP POSCAR/CONTCAR (#35) and CHGCAR (#36) and mmCIF (#37) import/export and opt-in PDB NCS copy generation (#38) are on main (Unreleased). extXYZ energy/forces/stress (#39) XSF forces/several grids (#40) and Molden f/g shells (#41) are on main (Unreleased).
-- 🔨 **WP-49** Packaging: CMake library-only options and pkg-config metadata landed; a local Conan 2 recipe, installed C/C++ consumers and release/adoption checklist are included in 0.6.0. PyPI trusted publishing, vcpkg and registry distribution remain.
-- 🔨 **WP-50** Fuzzing in CI, big-endian QEMU job: a local big-endian check under emulated s390x passes all C++ tests and the corpus (Unreleased, no CI job). Fuzzing in CI remains.
+- 🔨 **WP-49** Packaging: CMake library-only options and pkg-config metadata landed; a local Conan 2 recipe, installed C/C++ consumers and release/adoption checklist are included in 0.6.0. A vcpkg overlay port (`packaging/vcpkg`), cleaned Python sdist/wheel and npm tarball contents and a PyPI trusted-publisher checklist are on main (Unreleased). Setting up trusted publishing and registry distribution remain maintainer actions.
+- 🔨 **WP-50** Fuzzing in CI, big-endian QEMU job: a local big-endian check under emulated s390x passes all C++ tests and the corpus, and a coverage-guided libFuzzer campaign over the ZIP reader and a new manifest target fixed two undefined-behaviour defects (Unreleased, no CI jobs). Fuzzing in CI remains.
 
 ## Phase 4 — ecosystem
 
@@ -230,7 +231,7 @@ The 2026-10-10 pause has ended. The remaining work is:
   tranches await a later compatible release and explicit consumer adoption.
   The frozen releases take priority; no new version or release date is selected.
 - After the frozen releases, Phase 3 continues with WP-45 / WP-48, then packaging and broader platform checks. WP-46 supplies the Python `qvf` package while keeping `qvf_writer`, `qvf_reader`, `qvf_kinds`, `qvf_model` and `qvf_units` as compatibility imports. `pip install <checkout>/python` preserves those imports for consumers such as vibe-sketch.
-- Parked: WP-06 (hosting the retained schema `$id`), CI for the WP-61 Rust crate, compound unit names such as hartree/bohr in the § 4.3 vocabulary, a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job), and a coverage-guided fuzzing run on Linux (WP-50).
+- Parked: WP-06 (hosting the retained schema `$id`), CI for the WP-61 Rust crate, and a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job; CONTRIBUTING.md documents the local run, which passes). Compound unit names were accepted on 2026-11-04 (#11), and the coverage-guided fuzzing run on Linux was done locally (WP-50).
 - Known consumer gap: no consumer renders `wavefunction.bloch` yet. The cc-pV6Z `l = 6` channel-export defect is fixed on vibe-qc main (#546); existing consumer releases may still need that fix. Fresh checks did not reproduce `space_group_number: 0`: absent symmetry is omitted and a genuine group 221 passes.
 
 ## Getting involved
