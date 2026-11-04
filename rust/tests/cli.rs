@@ -427,3 +427,41 @@ fn diff_tolerances_and_truncation_match_python() {
     // Within tolerance; the update writes the default byte_order explicitly, as the Python editor does.
     assert_eq!(loose["differences"], json!([{"where": "manifest/byte_order", "message": "missing from left"}]), "{loose}");
 }
+
+#[test]
+fn conformance_matches_python() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../conformance");
+    let dir = |d: &str| root.join(d).to_string_lossy().into_owned();
+    let empty = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("qvf-cli-empty-{}", std::process::id()));
+    std::fs::create_dir_all(&empty).unwrap();
+    let commands: Vec<Vec<String>> = vec![
+        vec!["conformance".into(), dir("corpus")],
+        vec!["conformance".into(), "--no-negative".into(), dir("corpus")],
+        vec!["conformance".into(), "--no-legacy".into(), dir("corpus")],
+        vec!["conformance".into(), dir("corpus"), "--negative".into(), dir("legacy"), "--no-legacy".into()],
+        vec!["conformance".into(), "--no-negative".into(), "--legacy".into(), dir("legacy"), dir("corpus")],
+        // The negative corpus run with the positive rules: every archive fails.
+        vec!["conformance".into(), "--no-negative".into(), dir("negative")],
+        vec!["conformance".into(), empty.to_string_lossy().into_owned()],
+    ];
+    let Some(expected) = python(&commands) else {
+        println!("SKIP: Python or the qvf package is unavailable");
+        return;
+    };
+    // The PASS/FAIL lines and the summaries; the failure details are free text.
+    let lines = |t: &str| -> Vec<String> { t.lines().filter(|l| !l.starts_with("     - ")).map(str::to_owned).collect() };
+    let mut failures = Vec::new();
+    for (command, (py_code, py_out)) in commands.iter().zip(&expected) {
+        let (code, out) = rust(command);
+        let what = format!("qvf {}", command.join(" "));
+        if code != *py_code {
+            failures.push(format!("{what}: exit {code}, Python {py_code}"));
+        } else if lines(&out) != lines(py_out) {
+            failures.push(format!("{what}:\n{out}\nPython:\n{py_out}"));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&empty);
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    assert_eq!(expected[0].0, 0);
+    assert_eq!(expected[5].0, 1);
+}

@@ -1,5 +1,5 @@
 //! `qvf`: validate, inspect and maintain QVF archives, the `validate`,
-//! `info`, `cat`, `extract`, `diff`, `repack`, `scrub` and `schema` commands
+//! `info`, `cat`, `extract`, `diff`, `repack`, `scrub`, `conformance` and `schema` commands
 //! of the Python `qvf` CLI with the same finding codes, report layout and
 //! exit codes: 0 success (or equal), 1 validation failed (or different),
 //! 2 usage or I/O error.
@@ -12,6 +12,7 @@
 //! qvf diff LEFT RIGHT [--atol X] [--rtol X] [--ignore-metadata] [--max-differences N] [--json]
 //! qvf repack ARCHIVE -o OUTPUT [--compression preserve|store|deflate]
 //! qvf scrub ARCHIVE (-o OUTPUT | --dry-run)
+//! qvf conformance CORPUS [--negative DIR | --no-negative] [--legacy DIR | --no-legacy]
 //! qvf schema
 //! ```
 
@@ -28,7 +29,7 @@ use serde_json::{json, Map, Value};
 /// `spec/qvf_manifest.schema.json` (checked by `tests/cli.rs`).
 const SCHEMA: &str = include_str!("../../qvf_manifest.schema.json");
 
-const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract,diff,repack,scrub,schema} ...
+const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract,diff,repack,scrub,conformance,schema} ...
 
   validate ARCHIVE [--level {container,manifest,payloads,semantics,references,all}] [--json]
                                 validate cumulatively through a selected stage
@@ -42,6 +43,8 @@ const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract,diff,repa
                                 copy current members to a new archive, dropping orphans
   scrub ARCHIVE (-o OUTPUT | --dry-run)
                                 report and remove hostname and author contacts into a new archive
+  conformance CORPUS [--negative DIR] [--no-negative] [--legacy DIR] [--no-legacy]
+                                run an explicit positive corpus and optional siblings
   schema                        print the packaged normative JSON Schema
 
 exit status: 0 success or equal, 1 validation failed or different, 2 usage or I/O error";
@@ -74,6 +77,10 @@ struct Args {
     dry_run: bool,
     patterns: Vec<String>,
     replacement: Option<String>,
+    negative: Option<String>,
+    legacy: Option<String>,
+    no_negative: bool,
+    no_legacy: bool,
 }
 
 fn parse(args: &[String], allowed: &[&str]) -> Result<Args, Fail> {
@@ -103,6 +110,10 @@ fn parse(args: &[String], allowed: &[&str]) -> Result<Args, Fail> {
             }
             "--path-pattern" | "--user-pattern" if allowed.contains(&"--path-pattern") => out.patterns.push(value(flag)?),
             "--ignore-metadata" if allowed.contains(&flag) => out.ignore_metadata = true,
+            "--negative" if allowed.contains(&flag) => out.negative = Some(value(flag)?),
+            "--legacy" if allowed.contains(&flag) => out.legacy = Some(value(flag)?),
+            "--no-negative" if allowed.contains(&flag) => out.no_negative = true,
+            "--no-legacy" if allowed.contains(&flag) => out.no_legacy = true,
             "--dry-run" if allowed.contains(&flag) => out.dry_run = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
@@ -533,6 +544,22 @@ fn scrub(args: &[String]) -> Result<u8, Fail> {
     Ok(0)
 }
 
+fn conformance(args: &[String]) -> Result<u8, Fail> {
+    let a = parse(args, &["--negative", "--legacy", "--no-negative", "--no-legacy"])?;
+    let [corpus] = a.positional.as_slice() else {
+        return Err(usage("conformance requires exactly one CORPUS"));
+    };
+    let options = qvf::conformance::RunOptions {
+        negative_dir: a.negative.map(Into::into),
+        no_negative: a.no_negative,
+        legacy_dir: a.legacy.map(Into::into),
+        no_legacy: a.no_legacy,
+    };
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    qvf::conformance::run(std::path::Path::new(corpus), &options, &mut out).map_err(Fail)
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
@@ -543,6 +570,7 @@ fn main() -> ExitCode {
         Some("diff") => diff(&args[1..]),
         Some("repack") => repack(&args[1..]),
         Some("scrub") => scrub(&args[1..]),
+        Some("conformance") => conformance(&args[1..]),
         Some("schema") => match &args[1..] {
             [] => {
                 print!("{SCHEMA}");

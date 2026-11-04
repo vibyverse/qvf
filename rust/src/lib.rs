@@ -28,6 +28,7 @@
 #![forbid(unsafe_code)]
 
 pub mod builders;
+pub mod conformance;
 pub mod editor;
 pub mod error;
 #[rustfmt::skip]
