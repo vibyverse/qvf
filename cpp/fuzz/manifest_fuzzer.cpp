@@ -1,4 +1,4 @@
-// manifest_fuzzer.cpp — libFuzzer target: manifest.json and member payloads
+// manifest_fuzzer.cpp: libFuzzer target over manifest.json and member payloads
 // inside a well-formed ZIP, through the JSON parser, the typed model, the
 // reader and every validation stage.
 //
