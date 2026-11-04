@@ -1,4 +1,4 @@
-Proposed, awaiting maintainer acceptance (GOVERNANCE.md, 2026-11-04 record):
+Accepted by the maintainer (GOVERNANCE.md, 2026-11-04 record, #11):
 twenty compound unit names appended to the spec § 4.3 vocabulary and
 `$defs/UnitName`, from `angstrom-1` and `hartree_per_bohr` to
 `e2_bohr2_per_hartree` and `states_per_ev`, each with its SI factor from the

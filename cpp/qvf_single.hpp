@@ -3403,7 +3403,7 @@ private:
 #include <variant>
 namespace qvf {
 enum class ByteOrder { Native, Little, Big };
-// The caller owns data and keeps it alive through write_into()/Writer::add().
+// The caller owns data and keeps it alive through write_into() or Writer::add.
 // Elements are contiguous, row-major. shape describes the accessible storage.
 struct TensorView {
     const void* data = nullptr;

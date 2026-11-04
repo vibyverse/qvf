@@ -1,7 +1,8 @@
 # PySCF adapter
 
 `qvf.adapters.pyscf` writes molecular PySCF SCF/DFT and closed-shell
-excited-state results as QVF archives (WP-62). It is the second independent producer of
+excited-state results, and periodic Γ-point SCF/DFT results, as QVF
+archives (WP-62). It is the second independent producer of
 `wavefunction.gto` beside vibe-qc, and it uses only existing QVF v1 kinds and
 members: no format change. The adapter is unreleased and is not included in
 toolkit v0.6.0. From a checkout containing it, install the optional dependency
@@ -183,6 +184,77 @@ optional sections. All references use those selected IDs.
 These APIs are unreleased. The output uses existing v0.6.0 schema fields,
 but consumer display support remains specific to each application; see the
 [family workflow](../family_workflow.md). Frozen consumer pins stay v0.6.0.
+
+## Periodic Γ-point calculations
+
+`write_scf` and `add_scf` also accept a PySCF periodic mean-field object of a
+`pbc.gto.Cell` at the Γ point: `pbc.scf.RHF`, `pbc.scf.UHF`, `pbc.dft.RKS`
+and `pbc.dft.UKS`, with real orbitals. The archive uses the existing
+`structure` (spec § 5.1) and `wavefunction.gto` (spec § 5.3) contracts, so
+there is no format change.
+
+```python
+from pyscf.pbc import gto, scf
+from qvf import validate_qvf
+from qvf.adapters.pyscf import write_scf
+
+cell = gto.M(atom="C 0 0 0; C 0.8917 0.8917 0.8917",
+             a="0 1.7834 1.7834; 1.7834 0 1.7834; 1.7834 1.7834 0",
+             basis="gth-szv", pseudo="gth-pade", mesh=[15, 15, 15])
+mf = scf.RHF(cell).run()
+write_scf(mf, "diamond-gamma.qvf")
+assert validate_qvf("diamond-gamma.qvf")["findings"] == []
+```
+
+| PySCF | QVF |
+|---|---|
+| `cell.lattice_vectors()` (bohr, rows) | `structure.lattice_vectors`, rows in Å through `Lattice` and the format's bohr factor |
+| `cell.dimension` | `pbc`: the first `dimension` axes are periodic, as PySCF treats them |
+| atom positions | Cartesian positions in Å, as for a molecule, not wrapped into the cell |
+| `mf.kpt` (zero) | `mo_metadata.k_point` `[0, 0, 0]` |
+| orbitals, AO map | as for a molecule (Appendix A), one AO set per cell |
+| `cell.intor('int1e_ovlp')` | `overlap`: the AO overlap of spec § 5.3, without images |
+| `mf.make_rdm1()` | `density_matrix`, or the α and β densities |
+| GTH pseudopotential | `basis.ecp` entries with `n_core_electrons` and the potential name as `label`, also for a zero core (H) |
+| `mf.energy_nuc()` | `energies.components.nuclear_repulsion`: the Ewald energy of the point nuclei per cell |
+| request | `job.spec` with `job_type: "periodic"`, `kpoints: [1, 1, 1]` and `options` `mesh`, `integrals` (`fftdf`, `gdf`, …), `pseudo` and `exxdiv` |
+
+**The overlap and the Γ metric.** Spec § 5.3 defines `overlap` as
+`⟨χ_μ|χ_ν⟩` of the contracted AOs, and validators check its diagonal against
+Appendix A.1 (`E_NORMALIZATION`). The adapter therefore writes the AO overlap
+of one cell without its images. The Γ-point orbitals are Bloch sums at k = 0
+(spec § 5.3.1 with N = 1), orthonormal in the lattice-summed overlap
+`S_Γ[μ, ν] = Σ_T ⟨χ_μ(r)|χ_ν(r − T)⟩`, which is PySCF's
+`cell.pbc_intor('int1e_ovlp')`. Its diagonal exceeds one wherever an AO
+overlaps its own images, 2.37 for the diffuse carbon s function of GTH-SZV
+in diamond, so writing it as `overlap` would fail the Appendix A.1 check.
+A consumer that needs `Cᵀ S_Γ C = 1`, the electron count `tr(P S_Γ)` or a
+population builds `S_Γ` from the basis and the lattice. With the stored
+`overlap`, `tr(P S)` is not the electron count of a cell. The Mulliken and
+Löwdin charges in `atom_properties` are computed with `S_Γ`, so they equal
+PySCF's periodic Mulliken analysis.
+
+**Pseudopotentials.** A GTH pseudopotential has a local part with polynomial
+prefactors and separable nonlocal projectors. It is not the semi-local form
+of the spec's `projectors`, so the adapter records the core count and the
+name only. Such an entry cannot be evaluated: rebuild the potential by name
+in a program that has it. `n_electrons` is the valence count, the sum of the
+atomic numbers minus the core counts minus the charge, and the populations use
+the effective nuclear charges `Z − n_core_electrons`.
+
+**Energies.** `energies.total` and `provenance.scf_energy` are `mf.e_tot`,
+including the exchange-divergence (Madelung) correction that `exxdiv`
+selects for HF and hybrid functionals. `nuclear_repulsion` is
+PySCF's Ewald energy per cell of the point nuclei with their effective
+charges, in a neutralizing background for a charged cell. `electronic` is
+the rest.
+
+**Refused.** k-point sampling objects (`KRHF`, `KUHF`, `KRKS` and the like:
+their orbitals belong in `wavefunction.bloch`, a later tranche), a nonzero
+`kpt`, complex orbitals, periodic ROHF, ROKS and GHF, a cell of dimension
+zero, periodic response and grids of a cell (`add_density_grid`,
+`add_orbital_grid`, `molecular_grid`), which would need lattice-summed AOs.
+Space-group symmetry labels are not written.
 
 ## Effective core potentials
 
@@ -411,9 +483,27 @@ the values equal `cubegen.density` and `cubegen.orbital`, and the written
 cube file, imported through `qvf.convert.import_cube`, has the archive's
 grid. A skewed explicit grid and a small `chunk` give the same values.
 
+`python/tests/test_adapter_pyscf_pbc.py` checks the Γ-point path on diamond
+(two-atom primitive cell, RHF and RKS/PBE) and a hydrogen atom in a 4 Å cubic
+box (UHF and UKS), all with GTH-SZV, GTH-Pade and a 15³ mesh, in about
+30 s. Every archive validates with no finding. The lattice vectors and the
+fractional coordinates round-trip to 1e-12 bohr. `S_Γ` is computed twice:
+by quadrature over the cell of the lattice-summed AOs from the Appendix A
+evaluator, and by PySCF from a cell rebuilt from the archive alone (the
+structure, the basis shells, the pseudopotential labels and the mesh). The two
+agree to 2e-11 for diamond and 1e-7 for the hydrogen box, and with either the
+stored orbitals satisfy `C S_Γ Cᵀ = 1` and `tr(P S_Γ) = N`. The stored
+`overlap` equals the AO overlap without images, with unit diagonal. An Ewald
+sum written in the test reproduces `nuclear_repulsion` to 1e-13 hartree,
+and `total = electronic + nuclear_repulsion`. The rebuilt cell reproduces
+`e_tot` from the stored density to 1e-8 hartree and by a fresh SCF to 1e-7
+hartree (observed: 2e-15). Charges equal PySCF's Mulliken analysis with
+`S_Γ`.
+
 ## Not yet covered
 
 Later WP-62 tranches: unrestricted/open-shell response, triplet NTOs and
-periodic Γ-point calculations. Spin-orbit ECP terms (omitted, see above), solvent models (refused), GHF and
-relativistic two-component wavefunctions (refused) and ghost atoms (refused)
-are not mapped either.
+k-point sampled periodic calculations (`wavefunction.bloch`). GTH projectors
+(named only, see above), spin-orbit ECP terms (omitted, see above), solvent
+models (refused), GHF and relativistic two-component wavefunctions (refused)
+and ghost atoms (refused) are not mapped either.

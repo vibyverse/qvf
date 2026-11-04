@@ -92,15 +92,14 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
-### 2026-11-04: Compound unit names in the unit vocabulary (proposed)
+### 2026-11-04: Compound unit names in the unit vocabulary
 
-**Status.** Proposed for maintainer acceptance under "Change process". It is
-a public contract change. It takes effect, and producers may write the new
-names, only once the maintainer accepts it and a toolkit release carries it.
-Until then this record states the proposal, and the branch that carries it
-is not merged.
+**Status.** Accepted by the maintainer on 2026-11-04 under "Change
+process" (vibyverse/qvf#11), with the readings at the end of this record
+settled as proposed. It is a public contract change. Producers may write the
+new names once a toolkit release carries them.
 
-**Decision (proposed).** The unit vocabulary of spec § 4.3 and
+**Decision.** The unit vocabulary of spec § 4.3 and
 `$defs/UnitName` gains twenty **compound unit names**, appended after
 `dimensionless` so that the 25 names of the 2026-10-08 record keep their
 order, their C++ enumerators and their meaning:
@@ -209,19 +208,76 @@ initialises those aggregates by position must be updated. `convert()` in
 Python, C++ and JavaScript still handles only lengths and energies.
 
 **Registry.** `registry.json` registers kinds and namespaces, not units, so
-the proposal changes no registry entry and acceptance promotes nothing
-there. On acceptance this record's status becomes accepted and the change
-enters `CHANGELOG.md` through its `changelog.d` fragment.
+the change touches no registry entry and promotes nothing there. It enters
+`CHANGELOG.md` through its `changelog.d` fragment.
 
-**Readings to confirm.** (a) The `const` entries above, which narrow keys
-that the schema used to accept with any unit name. (b) A grid `units.data`
+**Readings settled at acceptance.** (a) The `const` entries above stay. They
+narrow keys that the schema used to accept with any unit name, but only
+where every earlier name already contradicted § 4.3. (b) A grid `units.data`
 is not fixed per kind, because one grid payload serves every `volume.*`
-kind: a `volume.density` grid that declares `hartree_per_e` contradicts
-§ 4.3, and no v1 validator detects it. (c) The spellings `states_per_ev`
-(not `per_ev`), `c_per_m2` (the SI symbol, lower case, as in `gpa` and
-`hz`) and `angstrom` in compounds, while the volume keeps its earlier name
-`a3`. (d) Whether `ev_per_angstrom`, the one eV based compound, belongs in
-the list or producers should convert to `hartree_per_bohr`.
+kind. A `volume.density` grid that declares `hartree_per_e` contradicts
+§ 4.3, and no v1 validator detects it yet. A semantic check per kind can be
+added later as an additive validator rule. (c) The spellings stay:
+`states_per_ev` (not `per_ev`, so the name says what is counted),
+`c_per_m2` (the SI symbol in lower case, as in `gpa` and `hz`) and
+`angstrom` in compounds, while the volume keeps its earlier name `a3`.
+(d) `ev_per_angstrom` stays. Custom `atom_properties` roles have no fixed
+unit, and producers that work in eV and Å should not have to convert to
+declare them. Fields with a fixed unit still take `hartree_per_bohr`.
+
+### 2026-11-04: The overlap of Γ-point `wavefunction.gto` orbitals
+
+**Status.** Accepted by the maintainer under "Change process" as a
+clarification of normative text (vibyverse/qvf#12).
+
+**Decision.** Spec § 5.3 gains the subsection *Γ-point orbitals of
+a periodic structure* under *AO overlap and density matrices*, and Appendix
+A.1 one sentence. For a `wavefunction.gto` section whose structure has a
+periodic axis: (1) `overlap` is the AO overlap `⟨χ_μ|χ_ν⟩` without lattice
+images, as § 5.3 already defines it, and its diagonal is checked against
+Appendix A.1 unchanged. (2) The orbitals are expanded in the Γ-point Bloch
+sums of the AOs (§ 5.3.1 with k = 0 and N = 1), their orthonormality and
+the electron count `tr(P S)` refer to the lattice-summed overlap
+`S_Γ = Σ_T ⟨χ_μ(r)|χ_ν(r − T)⟩`, and Mulliken-type populations use `S_Γ`.
+Consumers build `S_Γ` from `basis`, `lattice_vectors` and `pbc`, and **MUST
+NOT** report the non-orthonormality of such orbitals in `overlap` as a defect.
+No member, kind, unit, finding code or validator rule changes. **No
+`qvf_version` bump.**
+
+**Rationale.** The PySCF Γ-point exporter (vibyverse/qvf#9) found the gap.
+§ 5.3 said that `tr(P S)` is the number of electrons, which is true only in
+`S_Γ`. For diamond in GTH-SZV/GTH-Pade (2-atom cell, 15³ mesh, RHF),
+`tr(P S_Γ)` is 8.000 and `tr(P S)` with the AO overlap is 9.62. The canonical
+orbitals are orthonormal in `S_Γ` to 7e-11 and deviate from orthonormality
+in `S` by up to 3.0. A producer that wrote `S_Γ` as `overlap` to make `tr(P S)` hold fails
+`E_NORMALIZATION`: the `S_Γ` diagonal is 2.37 for the carbon s function and
+0.50 for each p function. Both readings of § 5.3 were defensible, and the
+clarification picks the one the definition of `overlap` and the validators
+already imply. `S_Γ` is also the S(k) of `wavefunction.bloch` (§ 5.3.1) at
+Γ, so the Γ-only and the k-resolved kinds now state the same metric.
+
+**Compatibility.** Every archive that is valid stays valid, and every
+finding stays as it is: no validator, schema or corpus change. An archive
+whose `overlap` is `S_Γ` with non-negligible images already fails
+`E_NORMALIZATION`. One whose images are too small to change the diagonal at
+1e-6 still passes, and its off-diagonal deviation from `⟨χ_μ|χ_ν⟩` is as
+small as those images. Molecular sections are unaffected, since `S_Γ` is
+`overlap` without a periodic axis. A consumer that evaluated a periodic
+Γ-point orbital from the in-cell AOs alone, without images, was already
+outside "Γ-point crystalline orbitals" and sees a difference wherever the
+images contribute.
+
+**Deferred: a member for `S_Γ`.** The maintainer decided not to add one for
+now. An optional `wavefunction.gto` member, for example `overlap_lattice`
+(float64 `[n_ao, n_ao]`, allowed only with a periodic axis), would let a
+validator check `Σ C̄ S_Γ C = 1` and `tr(P S_Γ) = n_electrons` from the
+archive alone. That whole-matrix check would also catch an `m` permutation
+or a sign flip within a spherical shell, and a wrong `lattice_vectors` or
+`pbc`, none of which the A.1 diagonal sees. A later proposal has to settle
+which `orbital_kind` values must be orthonormal (`custom` and NBO sets may
+not be), the tolerance, whether the same check applies to molecular
+`overlap`, and whether a second Γ-point producer should exist first. Adding
+the member then is the additive case.
 
 ### 2026-10-30 — Typed secondary-structure range ends and classes (#28)
 
@@ -2504,7 +2560,7 @@ meanwhile is additive.)
    data.
 3. Reach out — once your code emits conforming archives, it can be listed as a
    supported producer and its native format considered for direct
-   [vibe-view](https://vibe-qc.com) support. See
+   [vibe-viewer](https://vibe-qc.com) support. See
    [`docs/integration_guide.md`](docs/integration_guide.md).
 
 ## Evolving the governance

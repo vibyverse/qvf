@@ -61,7 +61,7 @@ def test_generated_files_are_current():
     outputs = gen.build()
     assert set(outputs) == {gen.OUT_CPP_KINDS, gen.OUT_CPP_TABLE, gen.OUT_TS_TABLE,
                             gen.OUT_PY_KINDS, gen.OUT_CPP_TYPED, gen.OUT_C_KINDS,
-                            gen.OUT_KIND_DOCS}
+                            gen.OUT_KIND_DOCS, gen.OUT_RUST_TABLE}
     for rel, text in outputs.items():
         path = os.path.join(ROOT, rel)
         assert os.path.exists(path), f"{rel} missing; run python3 scripts/gen_kinds.py"
