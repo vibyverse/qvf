@@ -320,13 +320,7 @@ checks verify descriptor sizes, refusal/ownership and Python-validated array
 layouts. Installed CMake consumption is checked. The 0.5.0 Linux GNU 12
 candidate passed all 12 CTests, including Fortran layout/ownership checks
 with runtime bounds checking, alongside prior focused GNU 16 checks.
-Focused development checks on Ubuntu 24.04 x86_64 pass with gfortran 11, 12,
-13 and 14 and LLVM flang 18, 19 and 20 (warnings as errors, Release and
-Debug, CTest, Python validation, installed consumer). They fixed two
-wrapper defects: truncated or garbage `message` text on gfortran 11/12, and
-an IEEE invalid trap on NaN GTO exponents under halting mode with gfortran.
-The matrix is in [the Fortran guide](fortran.md#checked-compilers). macOS,
-Windows and other vendor compilers remain unchecked. WP-45 stays in progress.
+Other compiler/platform coverage remains; WP-45 stays in progress.
 **Scope.** `fortran/qvf.f90` (`module qvf`, `bind(C)` interfaces + wrappers
 handling column-major → row-major), CMake `QVF_FORTRAN` option, example
 writing structure + grid + trajectory + wavefunction, CI job with gfortran
