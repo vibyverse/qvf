@@ -58,7 +58,7 @@ To add the sections to a writer you already have, use
 | `mo_coeff`, `mo_energy`, `mo_occ` | coefficients and `mo_metadata` (energies in hartree, occupations; point-group labels with `symmetry=True`) |
 | `mol.intor('int1e_ovlp')` | `overlap`, in the QVF AO basis |
 | `mf.make_rdm1()` | `density_matrix`, or `density_matrix_alpha` and `density_matrix_beta` |
-| ECP core electrons | `basis.ecp` entries with `n_core_electrons` and the ECP name; no projectors yet |
+| ECP (`mol._ecpbas`) | `basis.ecp` entries with `n_core_electrons`, the ECP name and the scalar `projectors` ([below](#effective-core-potentials)). `ecp_projectors=False` writes the name and core count only |
 | Mulliken and Löwdin analysis | `atom_properties`: `mulliken_charge`, `loewdin_charge`; open shells add `spin_population` (Mulliken α − β) |
 | method, `xc`, basis name | `job.spec` (`functional` is `null` for Hartree–Fock), `provenance` |
 | `e_tot`, `energy_nuc()` | `provenance.scf_energy`, root `energies` (`total`, `nuclear_repulsion`, `electronic`) |
@@ -223,6 +223,41 @@ These APIs are unreleased. The output uses existing v0.6.0 schema fields,
 but consumer display support remains specific to each application; see the
 [family workflow](../family_workflow.md). Frozen consumer pins stay v0.6.0.
 
+## Effective core potentials
+
+Every ECP atom gets a `basis.ecp` entry (spec
+[§ 5.3](../../spec/qvf-format-spec.md#effective-core-potentials)) with its
+core count, the ECP name as `label`, and by default the radial functions of
+the potential as `projectors`, so a consumer can evaluate the potential from
+the archive. `write_scf(mf, path, ecp_projectors=False)` (also accepted by
+`add_scf`, `add_wavefunction`, `add_td` and `write_td`) writes the label and
+core count only, as earlier versions of the adapter did.
+
+The projectors are read from `mol._ecpbas` and `mol._env`, the input of the
+`ECPscalar` integrals that built the core Hamiltonian
+(`gto.mole.make_ecp_env`), not from the library file. They therefore hold
+exactly the potential of the calculation, also for an ECP given inline. The
+PySCF conventions map onto the spec without conversion:
+
+| PySCF | QVF | Source |
+|---|---|---|
+| `ANG_OF = -1` | the local part, `local: true`, `l` one above the highest semi-local `l` of the centre (0 without channels) | `make_ecp_env`, spec § 5.3 |
+| `RADI_POWER = n` (the `rorder` index of `mol._ecp`) | `powers` entry `n` of `c r^(n−2) exp(−α r²)` | NWChem ECP format (NWChem documentation, "Effective Core Potentials"), kept by `gto.basis.parse_nwchem.parse_ecp` |
+| `ANG_OF = l ≥ 0`: `V = U_L + Σ_l \|l⟩ U_l ⟨l\|` | the semi-local channel, which already is `U_l − U_L` | Gaussian/NWChem/Molpro tabulation (the def2 tables contain `−U_L` in every channel) |
+| exponents, coefficients | bohr⁻², hartree · bohr^(2−n) | atomic units of the basis-set libraries |
+| `SO_TYPE_OF = 1` | not written, and the entry carries `x_pyscf_spin_orbit_omitted: true` | `ECPscalar` contains no spin-orbit term |
+
+A potential without a local part (Stuttgart RSC for Ag, for example, whose
+`U_L` is empty) is written without a `local: true` function, which the spec
+reads as `U_L = 0`. The terms of one channel appear in PySCF's integral
+order: by radial power, then by decreasing exponent.
+
+Spin-orbit ECP terms (CRENBL, for example) enter only the spin-orbit
+integrals of a two-component or GHF calculation, which the adapter refuses.
+The scalar mean field the adapter writes never used them, so the written
+projectors are still the complete potential of that calculation. The
+`x_pyscf_spin_orbit_omitted` marker records that the named ECP has more.
+
 ## How the AO conventions map
 
 These are the three places where a PySCF archive could silently disagree with
@@ -285,6 +320,22 @@ agree to 3e-12 hartree and the densities to `max |ΔP|` ≈ 1e-8, the SCF
 convergence level. The OH comparison starts PySCF from the reference density,
 because the UHF π hole has two solutions of the same energy.
 
+`python/tests/test_adapter_pyscf_ecp.py` checks the ECP projectors against
+PySCF in three independent ways. The archive's radial functions equal those
+evaluated from `gto.basis.load_ecp`, channel by channel, for def2
+(Stuttgart-Köln ECP28MWB on I), LANL2DZ (with `r⁻²` and `r⁻¹` terms),
+Stuttgart large-core I, Stuttgart RSC Ag and CRENBL (with spin-orbit terms).
+Adaptive radial quadrature of the archive's potential reproduces the
+one-centre `ECPscalar` integrals of s, p, d and f primitives to 1e-10
+relative, which fixes the `r^(n−2)` power and shows that a channel acts in
+addition to the local part. Finally a molecule rebuilt in PySCF from the
+archive's `basis` payload alone (shells and ECP) reproduces the
+`ECPscalar` matrix to 5e-14 and the RHF energy to 2e-13 hartree for HI in
+def2-SVP, I₂ in LANL2DZ, AgH in def2-SVP with the Stuttgart RSC ECP and HI
+in CRENBL. Every archive validates with no finding. The response sections'
+NTO bases carry the same entries, and `ecp_projectors=False` keeps the
+label-only entries.
+
 `python/tests/test_adapter_pyscf_td.py` checks response conversion separately:
 RHF/RKS TDA and full response, the Casida class, triplet state tables and NTOs,
 spherical/Cartesian bases, rectangular NTO spaces and frozen MO indices.
@@ -311,7 +362,8 @@ conversion checks, not a new scientific accuracy claim for either engine.
 
 ## Not yet covered
 
-Later WP-62 tranches: restricted-open and spin-flip response, densities on a grid (`volume.density`) and periodic
-Γ-point calculations. ECP projectors, solvent models (refused), GHF and
+Later WP-62 tranches: restricted-open and spin-flip response, densities on a
+grid (`volume.density`) and periodic
+Γ-point calculations. Spin-orbit ECP terms (omitted, see above), solvent models (refused), GHF and
 relativistic two-component wavefunctions (refused) and ghost atoms (refused)
 are not mapped either.

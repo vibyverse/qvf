@@ -437,9 +437,12 @@ to the full reference wavefunction. Tranche 3 (#26) adds singlet full-response
 NTOs from PySCF's `sqrt(2)(X+Y)`, retaining non-unit squared singular-value
 weights and reconstructing the length-gauge transition moments. Closed-shell
 triplet NTOs are written as unrestricted α/β spin-orbital channels (β particle
-sign reversed), checked against PySCF's UHF response. Unrestricted/open-shell
-response remains deferred; grid densities → `volume.density`;
-PBC Γ-point → periodic structure + Γ wavefunction; ECP projectors.
+sign reversed), checked against PySCF's UHF response. UHF/UKS TDA and full
+response are exported with spin-labelled contributions and per-spin NTO
+channels. Scalar ECP projectors (`basis.ecp[].projectors`) are written from
+`mol._ecpbas`. Spin-orbit terms are omitted. Restricted-open and spin-flip
+response remain deferred; grid densities → `volume.density`;
+PBC Γ-point → periodic structure + Γ wavefunction.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone

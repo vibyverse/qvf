@@ -42,6 +42,10 @@ The AO conventions (spec Appendix A) are mapped as follows; the
   solid harmonics (``real_solid_harmonics``) and checked to be exact.
   With PySCF 2.14 it is the identity. Cartesian shells share libint's
   lexicographic order and need no permutation.
+* **Effective core potentials** are written as ``basis.ecp`` entries with
+  their scalar ``projectors`` (spec § 5.3), read from ``mol._ecpbas``. PySCF's
+  radial power and difference channels are the spec's; spin-orbit terms are
+  omitted (``_ecp_projectors`` has the mapping).
 * **General contractions** (one PySCF shell with several contracted
   functions, as in cc-pVDZ) become one QVF shell per contracted function, in
   PySCF's AO order. Primitives whose coefficient is exactly zero in that
@@ -424,11 +428,69 @@ def add_structure(writer, mol, *, section_id: str = "structure",
                                 section_id=section_id, label=label)
 
 
-def _ecp_entries(mol):
+def _ecp_projectors(mol, atom):
+    """The scalar ECP radial functions of one atom, as spec § 5.3 projectors.
+
+    Read from the integral input ``mol._ecpbas`` / ``mol._env`` that PySCF's
+    ``ECPscalar`` integrals use (``gto.mole.make_ecp_env``), so the archive
+    holds exactly the potential of the calculation. The conventions map
+    without conversion:
+
+    * ``ANG_OF = -1`` is the local part. It is labelled one above the
+      highest semi-local ``l`` of the centre (0 when there is none).
+    * ``RADI_POWER`` is the NWChem power ``n`` of ``r^(n-2) exp(-α r²)``:
+      PySCF's NWChem parser (``gto.basis.parse_nwchem.parse_ecp``) keeps the
+      tabulated ``n`` (NWChem documentation, "Effective Core Potentials":
+      ``U_l(r) = Σ d r^(n-2) exp(-ζ r²)``), and the ``ECPscalar`` integrals
+      use ``r^(n-2)`` (checked by radial quadrature in
+      ``test_adapter_pyscf_ecp.py``). It is the spec's ``n``.
+    * A semi-local channel multiplies the projector onto ``l`` in addition
+      to the local part (``V = U_L + Σ_l |l⟩ U_l ⟨l|``), so it already is the
+      difference ``U_l − U_L`` the spec stores. The def2 tables, for one,
+      carry ``−U_L`` inside every channel.
+    * Exponents and coefficients are atomic units (bohr⁻², hartree ·
+      bohr^(2−n)), as in the basis-set libraries.
+
+    Spin-orbit rows (``SO_TYPE_OF = 1``) are skipped: the scalar ``ECPscalar``
+    Hamiltonian of a non-relativistic mean field does not contain them.
+    Returns ``(projectors, has_spin_orbit)``.
+    """
+    from pyscf.gto import mole
+    np = _np()
+    channels: dict[int, list[tuple[float, float, int]]] = {}
+    spin_orbit = False
+    for row in np.asarray(mol._ecpbas):
+        if int(row[mole.ATOM_OF]) != atom:
+            continue
+        if int(row[mole.SO_TYPE_OF]) != 0:
+            spin_orbit = True
+            continue
+        n_prim, power = int(row[mole.NPRIM_OF]), int(row[mole.RADI_POWER])
+        exps = mol._env[row[mole.PTR_EXP]:row[mole.PTR_EXP] + n_prim]
+        coefs = mol._env[row[mole.PTR_COEFF]:row[mole.PTR_COEFF] + n_prim]
+        channels.setdefault(int(row[mole.ANG_OF]), []).extend(
+            (float(e), float(c), power) for e, c in zip(exps, coefs))
+    semi = sorted(l for l in channels if l >= 0)
+    projectors = []
+    for l in ([-1] if -1 in channels else []) + semi:
+        terms = channels[l]
+        p: dict[str, Any] = {"l": (semi[-1] + 1 if semi else 0) if l < 0 else l,
+                             "exponents": [t[0] for t in terms],
+                             "coefficients": [t[1] for t in terms],
+                             "powers": [t[2] for t in terms]}
+        if l < 0:
+            p["local"] = True
+        projectors.append(p)
+    return projectors, spin_orbit
+
+
+def _ecp_entries(mol, projectors: bool = True):
+    """``basis.ecp`` entries, with the radial functions when ``projectors``."""
     entries = []
     for i in range(mol.natm):
         core = int(mol.atom_nelec_core(i))
-        if core <= 0:
+        radial, spin_orbit = _ecp_projectors(mol, i) if projectors else ([], False)
+        if core <= 0 and not radial:
             continue
         entry: dict[str, Any] = {"center": i, "n_core_electrons": core}
         ecp = mol.ecp
@@ -437,11 +499,16 @@ def _ecp_entries(mol):
             if isinstance(ecp, dict) else None)
         if isinstance(name, str) and name.strip():
             entry["label"] = name.strip()
+        if radial:
+            entry["projectors"] = radial
+        if spin_orbit:
+            entry["x_pyscf_spin_orbit_omitted"] = True
         entries.append(entry)
     return entries or None
 
 
-def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
+def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label,
+                      ecp_projectors=True):
     np = _np()
     mf = p.mf
     kwargs: dict[str, Any] = {}
@@ -468,7 +535,8 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
             kwargs["density_matrix"] = p.dm_total
     sid = writer.add_wavefunction_gto(
         p.map.shells, spin=p.spin, pure=p.map.pure, structure_ref=structure_ref,
-        overlap=p.overlap, n_electrons=int(p.mol.nelectron), ecp=_ecp_entries(p.mol),
+        overlap=p.overlap, n_electrons=int(p.mol.nelectron),
+        ecp=_ecp_entries(p.mol, ecp_projectors),
         symmetry_labels=labels, section_id=section_id, label=label, **kwargs)
     writer.annotate_section(sid, structure_ref=structure_ref)
     return sid
@@ -476,7 +544,7 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
 
 def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
                      section_id: str = "wf", density: bool = True,
-                     label: str | None = None) -> str:
+                     label: str | None = None, ecp_projectors: bool = True) -> str:
     """Add the orbitals of ``mf`` as a ``wavefunction.gto`` section.
 
     Writes the ``basis`` payload (spherical or Cartesian as ``mol.cart``
@@ -485,13 +553,18 @@ def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
     coefficients in the QVF AO basis, the AO ``overlap`` of PySCF's integral
     code in that basis, and with ``density`` the one-particle density
     matrices (``density_matrix``, or ``density_matrix_alpha`` and
-    ``density_matrix_beta``). ``n_electrons`` and any ECP core counts are
-    written too; ECP projectors are not (the potential is named by its label
-    and core count). The structure ``structure_ref`` names must already be
+    ``density_matrix_beta``). ``n_electrons`` and a ``basis.ecp`` entry per
+    ECP atom (core count and ECP name) are written too. With
+    ``ecp_projectors`` (the default) each entry also carries the scalar
+    radial functions of the potential (``_ecp_projectors``), and
+    ``ecp_projectors=False`` keeps only the label and core count. Spin-orbit
+    ECP terms are never written. An entry whose PySCF ECP has them is marked
+    ``x_pyscf_spin_orbit_omitted: true``. The structure ``structure_ref`` names must already be
     in the writer. Returns the section id.
     """
     return _add_wavefunction(writer, _Prepared(mf), structure_ref=structure_ref,
-                             section_id=section_id, density=density, label=label)
+                             section_id=section_id, density=density, label=label,
+                             ecp_projectors=ecp_projectors)
 
 
 def _populations(p):
@@ -643,20 +716,21 @@ def set_scf_provenance(writer, mf) -> None:
 def add_scf(writer, mf, *, structure_id: str = "structure", wavefunction_id: str = "wf",
             properties_id: str = "atom_properties", job_id: str = "job_spec",
             populations: bool = True, job_spec: bool = True, density: bool = True,
-            provenance: bool = True) -> dict[str, str]:
+            provenance: bool = True, ecp_projectors: bool = True) -> dict[str, str]:
     """Add everything the adapter writes for ``mf`` to an open QVF writer.
 
     ``writer`` is a ``qvf.Writer`` (or the compatibility ``QvfWriter``).
     Adds the structure, the wavefunction, the populations (``populations``),
     the job specification (``job_spec``) and the provenance and energies
-    blocks (``provenance``). Returns the ids of the sections added, keyed
+    blocks (``provenance``). ``ecp_projectors`` is that of
+    ``add_wavefunction``. Returns the ids of the sections added, keyed
     ``structure``, ``wavefunction``, ``atom_properties`` and ``job_spec``.
     """
     p = _Prepared(mf)
     ids = {"structure": add_structure(writer, p.mol, section_id=structure_id)}
     ids["wavefunction"] = _add_wavefunction(
         writer, p, structure_ref=ids["structure"], section_id=wavefunction_id,
-        density=density, label=None)
+        density=density, label=None, ecp_projectors=ecp_projectors)
     if populations:
         ids["atom_properties"] = _add_populations(
             writer, p, structure_ref=ids["structure"], section_id=properties_id, label=None)
@@ -953,6 +1027,7 @@ def _prepare_td(td, ntos):
 def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
     ids = add_scf(writer, p.mf, **scf_options)
     ref = p.reference
+    ecp = _ecp_entries(ref.mol, scf_options.get("ecp_projectors", True))
     holes, particles = [], []
     for state, (hole, particle, weights) in zip(p.states, p.ntos):
         for role, coefficients, output in (("hole", hole, holes),
@@ -973,7 +1048,7 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
                 ref.map.shells, **orbitals,
                 pure=ref.map.pure, structure_ref=ids["structure"],
                 orbital_kind="nto", state_ref=states_id, state_index=state["index"],
-                nto_role=role, overlap=ref.overlap, ecp=_ecp_entries(ref.mol),
+                nto_role=role, overlap=ref.overlap, ecp=ecp,
                 section_id=f"{nto_prefix}_{state['index']}_{role}")
             writer.annotate_section(sid, structure_ref=ids["structure"])
             output.append(sid)
