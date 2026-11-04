@@ -39,6 +39,7 @@ pub mod kinds;
 pub mod limits;
 pub mod operations;
 pub mod reader;
+pub mod regex;
 pub mod schema_check;
 pub mod sections;
 pub mod typed;

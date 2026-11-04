@@ -11,7 +11,7 @@
 //! qvf extract ARCHIVE SECTION MEMBER -o OUTPUT
 //! qvf diff LEFT RIGHT [--atol X] [--rtol X] [--ignore-metadata] [--max-differences N] [--json]
 //! qvf repack ARCHIVE -o OUTPUT [--compression preserve|store|deflate]
-//! qvf scrub ARCHIVE (-o OUTPUT | --dry-run)
+//! qvf scrub ARCHIVE (-o OUTPUT | --dry-run) [--path-pattern REGEX] [--user-pattern REGEX] [--replacement TEXT]
 //! qvf conformance CORPUS [--negative DIR | --no-negative] [--legacy DIR | --no-legacy]
 //! qvf schema
 //! ```
@@ -41,8 +41,8 @@ const USAGE: &str = "usage: qvf [--version] {validate,info,cat,extract,diff,repa
                                 compare decoded content, independent of ZIP layout
   repack ARCHIVE -o OUTPUT [--compression {preserve,store,deflate}]
                                 copy current members to a new archive, dropping orphans
-  scrub ARCHIVE (-o OUTPUT | --dry-run)
-                                report and remove hostname and author contacts into a new archive
+  scrub ARCHIVE (-o OUTPUT | --dry-run) [--path-pattern REGEX] [--user-pattern REGEX] [--replacement TEXT]
+                                report and remove selected personal content into a new archive
   conformance CORPUS [--negative DIR] [--no-negative] [--legacy DIR] [--no-legacy]
                                 run an explicit positive corpus and optional siblings
   schema                        print the packaged normative JSON Schema
@@ -76,6 +76,7 @@ struct Args {
     compression: Option<String>,
     dry_run: bool,
     patterns: Vec<String>,
+    user_patterns: Vec<String>,
     replacement: Option<String>,
     negative: Option<String>,
     legacy: Option<String>,
@@ -108,7 +109,8 @@ fn parse(args: &[String], allowed: &[&str]) -> Result<Args, Fail> {
                     _ => out.replacement = v,
                 }
             }
-            "--path-pattern" | "--user-pattern" if allowed.contains(&"--path-pattern") => out.patterns.push(value(flag)?),
+            "--path-pattern" if allowed.contains(&flag) => out.patterns.push(value(flag)?),
+            "--user-pattern" if allowed.contains(&"--path-pattern") => out.user_patterns.push(value(flag)?),
             "--ignore-metadata" if allowed.contains(&flag) => out.ignore_metadata = true,
             "--negative" if allowed.contains(&flag) => out.negative = Some(value(flag)?),
             "--legacy" if allowed.contains(&flag) => out.legacy = Some(value(flag)?),
@@ -524,11 +526,11 @@ fn scrub(args: &[String]) -> Result<u8, Fail> {
     if a.dry_run && a.output.is_some() {
         return Err(Fail("--dry-run and --output are mutually exclusive".into()));
     }
-    if !a.patterns.is_empty() {
-        return Err(Fail("--path-pattern and --user-pattern are not supported by the Rust qvf (no regular-expression engine); use the Python CLI".into()));
-    }
+    // As Python: the path patterns, then the user patterns, each applied to the result of the previous one.
+    let patterns = a.patterns.iter().chain(&a.user_patterns).map(|p| qvf::regex::Regex::new(p)).collect::<Result<Vec<_>, _>>()?;
     let reader = open_checked(archive)?;
-    let options = ScrubOptions { dry_run: a.dry_run };
+    let options =
+        ScrubOptions { dry_run: a.dry_run, patterns, replacement: a.replacement.clone().unwrap_or_else(|| "[redacted]".into()) };
     let report = match &a.output {
         None => qvf::operations::scrub(&reader, None, &options)?,
         Some(output) => {

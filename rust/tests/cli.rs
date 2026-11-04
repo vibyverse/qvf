@@ -259,6 +259,15 @@ fn maintenance_commands_match_python_on_the_corpus() {
         ));
         commands.push((vec!["scrub".into(), "--dry-run".into(), p.clone()], String::new()));
         commands.push((vec!["scrub".into(), p.clone(), "-o".into(), format!("@/scrub_{name}")], format!("scrub_{name}")));
+        let pats = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<String>>();
+        let mut dry =
+            pats(&["scrub", "--dry-run", "--path-pattern", "/[a-z]+", "--user-pattern", "(?i)A", "--user-pattern", r"\d+"]);
+        dry.push(p.clone());
+        commands.push((dry, String::new()));
+        let mut redact =
+            pats(&["scrub", "--user-pattern", r"[\w.]+\.(xyz|log|inp)\b", "--replacement", "<X>", "--path-pattern", "e"]);
+        redact.extend([p.clone(), "-o".into(), format!("@/redact_{name}")]);
+        commands.push((redact, format!("redact_{name}")));
     }
     // A tolerance difference: the same archive against a copy with perturbed floats is covered by
     // tests/editor.rs; here the corpus pairs exercise the manifest and payload walk.
