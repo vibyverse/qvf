@@ -195,3 +195,202 @@ jobs:
         run: python scripts/gen_kinds.py --check
       - name: Fortran C ABI bindings up to date
         run: python scripts/gen_fortran.py --check
+
+  # The Rust crate (WP-61) on stable and on its declared MSRV. fmt and clippy
+  # run on stable only, since lints differ between toolchains. The writer
+  # tests cross-check with the Python reference validator, so it is installed.
+  rust:
+    if: startsWith(github.ref, 'refs/heads/release-candidate/')
+    name: rust ${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep "msrv" equal to rust-version in rust/Cargo.toml (checked below).
+        include:
+          - toolchain: stable
+          - toolchain: "1.74"
+            msrv: true
+    env:
+      CARGO_TERM_COLOR: always
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install the Python reference validator
+        working-directory: .
+        run: pip install "python/[numpy,validate]"
+      - name: MSRV matches Cargo.toml
+        if: matrix.msrv
+        run: |
+          declared="$(sed -n 's/^rust-version *= *"\(.*\)"/\1/p' Cargo.toml)"
+          if [ "$declared" != "${{ matrix.toolchain }}" ]; then
+            echo "::error::rust-version is '$declared' but the MSRV job uses ${{ matrix.toolchain }}"
+            exit 1
+          fi
+      - name: Install toolchain
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component clippy,rustfmt
+          rustc --version
+      - name: Format
+        if: ${{ !matrix.msrv }}
+        run: cargo fmt --check
+      - name: Clippy
+        if: ${{ !matrix.msrv }}
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Tests
+        env:
+          PYTHON: python
+        run: cargo test --locked
+
+  # The generated schema checkers (C++ tool and JavaScript twin) against
+  # jsonschema in Python, all three in one job. The test skips a checker it
+  # cannot find, so the job fails on any skip.
+  parity:
+    if: startsWith(github.ref, 'refs/heads/release-candidate/')
+    name: schema-checker parity (Python, Node, C++)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - name: Install Python
+        run: pip install -e "python/[numpy,validate]" pytest
+      - name: Build C++
+        run: |
+          cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+      - name: Build JavaScript
+        working-directory: js
+        run: |
+          npm ci
+          npm run build
+      - name: Parity test
+        run: |
+          QVF_CPP_BUILD_DIR="$PWD/build" QVF_NODE="$(command -v node)" \
+            python -m pytest python/tests/test_schema_checker_parity.py -v -rs \
+            --junitxml="$RUNNER_TEMP/parity.xml"
+      - name: No checker skipped
+        run: |
+          python - "$RUNNER_TEMP/parity.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          root = ET.parse(sys.argv[1]).getroot()
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+          tests, skipped = int(suite.get("tests")), int(suite.get("skipped"))
+          print(f"parity: {tests} tests, {skipped} skipped")
+          if tests == 0 or skipped:
+              sys.exit("a schema checker was skipped or no test ran")
+          PY
+
+  # Bounded libFuzzer smoke run (WP-50): each C++ target for FUZZ_SECONDS
+  # over the corpus seeds, under ASan + UBSan (QVF_FUZZ=ON). A crash, leak,
+  # timeout or sanitizer report fails the job, and the reproducers are
+  # uploaded. The libFuzzer runtime is required, not the standalone driver.
+  fuzz:
+    if: startsWith(github.ref, 'refs/heads/release-candidate/')
+    name: fuzz smoke (libFuzzer, ASan + UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC: clang-18
+      CXX: clang++-18
+      FUZZ_SECONDS: "180"
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install clang and the libFuzzer runtime
+        run: sudo apt-get update && sudo apt-get install -y clang-18 libclang-rt-18-dev
+      - name: Configure
+        run: |
+          cmake -S cpp -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DQVF_FUZZ=ON
+          if ! grep -q '^QVF_HAVE_LIBFUZZER:INTERNAL=1$' build/fuzz/CMakeCache.txt; then
+            echo "::error::clang has no libFuzzer runtime"
+            exit 1
+          fi
+      - name: Build
+        run: cmake --build build/fuzz --parallel --target zip_reader_fuzzer manifest_fuzzer
+      - name: Seeds
+        run: |
+          mkdir -p build/fuzz/corpus build/fuzz/manifest_corpus \
+            build/fuzz/artifacts/zip_reader build/fuzz/artifacts/manifest
+          python scripts/fuzz_manifest_seeds.py build/fuzz/manifest_seeds \
+            conformance/corpus conformance/negative conformance/legacy
+      # libFuzzer adds new inputs to the first directory only.
+      - name: zip_reader_fuzzer
+        id: zip_reader
+        run: |
+          ./build/fuzz/zip_reader_fuzzer -max_total_time="$FUZZ_SECONDS" -max_len=65536 \
+            -timeout=30 -rss_limit_mb=2048 -print_final_stats=1 \
+            -artifact_prefix=build/fuzz/artifacts/zip_reader/ \
+            build/fuzz/corpus conformance/corpus conformance/negative conformance/legacy
+      - name: manifest_fuzzer
+        if: ${{ !cancelled() && steps.zip_reader.outcome != 'skipped' }}
+        run: |
+          ./build/fuzz/manifest_fuzzer -max_total_time="$FUZZ_SECONDS" -max_len=262144 \
+            -timeout=30 -rss_limit_mb=2048 -print_final_stats=1 \
+            -artifact_prefix=build/fuzz/artifacts/manifest/ \
+            build/fuzz/manifest_corpus build/fuzz/manifest_seeds
+      - name: Upload crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashers
+          path: build/fuzz/artifacts/
+          if-no-files-found: ignore
+
+  # Big-endian check (WP-50): cross-build for s390x, run CTest under QEMU
+  # user-mode emulation (CMAKE_CROSSCOMPILING_EMULATOR), then write archives on
+  # the emulated and the native host and compare them with the Python
+  # validator and bit for bit.
+  s390x:
+    if: startsWith(github.ref, 'refs/heads/release-candidate/')
+    name: big-endian (s390x under QEMU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install cross toolchain and QEMU
+        run: sudo apt-get update && sudo apt-get install -y g++-s390x-linux-gnu qemu-user
+      - name: Install Python validator
+        run: pip install "python/[numpy,validate]"
+      - name: Cross-build
+        run: |
+          cmake -S cpp -B build/s390x -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/cpp/cmake/toolchains/s390x-linux-gnu.cmake"
+          cmake --build build/s390x --parallel
+      - name: CTest under QEMU
+        run: ctest --test-dir build/s390x --output-on-failure
+      - name: Native build
+        run: |
+          cmake -S cpp -B build/native -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/native --parallel
+      - name: Cross-host round trip
+        run: |
+          mkdir -p build/endian/be build/endian/le
+          qemu-s390x -L /usr/s390x-linux-gnu build/s390x/qvf_endian_probe write build/endian/be/endian_probe.qvf
+          build/native/qvf_endian_probe write build/endian/le/endian_probe.qvf
+          for t in write_all_kinds write_h2o write_h2o_c; do
+            (cd build/endian/be && qemu-s390x -L /usr/s390x-linux-gnu "../../s390x/$t" "$t.qvf")
+            (cd build/endian/le && "../../native/$t" "$t.qvf")
+          done
+          python scripts/check_endian_roundtrip.py build/endian/be --reference build/endian/le

@@ -2,8 +2,8 @@
 
 The `qvf.convert` Python API and `qvf convert` command started in
 toolkit **0.5.0**; XSF and PDB geometry joined in **0.6.0**. The development
-checkout also supports the Molden, core-CIF, mmCIF, POSCAR and CHGCAR subsets
-below. They use the standard library;
+checkout also supports the Molden, core-CIF, mmCIF, POSCAR, CHGCAR, Quantum
+ESPRESSO and FHI-aims subsets below. They use the standard library;
 NumPy is optional. Install the `validate` extra for JSON Schema checks as well
 as the always-on reference checks.
 
@@ -571,6 +571,139 @@ analysis and visualization tools, not a VASP restart. ASE's
 `VaspChargeDensity` reads the export back with the same densities, and
 ASE-written CHGCAR files import to the same grid.
 
+## Quantum ESPRESSO pw.x structures and results (Unreleased)
+
+```bash
+qvf convert si.pwi --from espresso-in --to qvf -o si.qvf
+qvf convert si.qvf --from qvf --to espresso-in -o si-export.pwi
+qvf convert data-file-schema.xml --from espresso-xml --to qvf -o si-result.qvf
+qvf convert rho.cube --from espresso-cube --to qvf -o rho.qvf
+```
+
+**pw.x input.** Import reads the cell and atoms of one pw.x input as a
+`structure` periodic on all three axes, labelled with the `&CONTROL` title
+when one is given. Namelists follow Fortran namelist syntax: `key = value`
+pairs separated by commas or line breaks, `!` comments, quoted strings
+(which may contain `/`), logicals and reals with `d` exponents. Any other
+namelist syntax refuses the import, as does a key given twice. Only
+`&SYSTEM` is interpreted.
+
+The cell comes from `ibrav` as in INPUT_PW. With `ibrav = 0` it is the
+`CELL_PARAMETERS` card in `alat`, `bohr` or `angstrom`. Without a unit the
+deprecated pw.x rule applies: `alat` when `celldm(1)` or `A` is given, else
+`bohr`, and the report sets `cell_units_defaulted`. As in pw.x, `bohr` or
+`angstrom` vectors next to `celldm(1)` or `A` give the lattice parameter
+twice and are refused, and then alat is the length of the first vector.
+Every other Bravais index of INPUT_PW is built from its documented
+vectors: `1, 2, 3, -3, 4, 5, -5, 6, 7, 8, 9, -9, 91, 10, 11, 12, -12, 13, -13`
+and `14`, using the current (QE 6.4.1 and later) axes of `-13`. The parameters
+are `celldm(1..6)` with `celldm(1)` in bohr, or `A`, `B`, `C` in Å with
+`cosAB`, `cosAC`, `cosBC` mapped to celldm as pw.x does: all three for 14,
+`cosAC` for `-12` and `-13`, `cosAB` otherwise (the rhombohedral angle for
+`5` and `-5`). Both sets together, missing or nonpositive lengths, cosines
+with magnitude 1 or more and angles that describe no cell are refused. `space_group` input and
+`crystal_sg` positions are not supported.
+
+`ATOMIC_POSITIONS` is read in `alat`, `bohr`, `angstrom` or `crystal`
+(fractional). Without a unit, pw.x's default `alat` applies and the report
+sets `positions_units_defaulted`. A coordinate may be an arithmetic
+expression with `+ - * / ^` and parentheses, such as `1/3`, evaluated without
+`eval`. Elements come from the `ATOMIC_SPECIES` labels: a one or two letter
+element symbol, in any case, followed by nothing or by a character that is
+not a letter, so `Fe1`, `Fe_up` and `O-d` are Fe, Fe and O. The report maps
+every label to its element. An atom whose three `if_pos` flags are `0` goes
+into the root `constraints.frozen_atoms`. An atom fixed on only some axes is
+counted in `partially_fixed_atoms_omitted`. Other cards, such as
+`K_POINTS`, are listed in `cards_omitted`. Masses, pseudopotentials,
+magnetization, charge and calculation settings are not stored.
+
+Lengths in bohr are converted with the QVF constant (1 Å = 1.8897261246
+bohr, as the CHGCAR import uses), not pw.x's CODATA 2006 value. The two
+differ by 3·10⁻⁹ relative. `A` and `angstrom` input is used directly, with
+no detour through bohr.
+
+Export writes one structure periodic on all three axes as a pw.x input with
+`&CONTROL` (the title is the section label), `&SYSTEM` with `ibrav = 0`,
+`nat` and `ntyp`, an empty `&ELECTRONS`, one `ATOMIC_SPECIES` entry per
+element and `CELL_PARAMETERS` and `ATOMIC_POSITIONS` in Å with 15 decimals in
+archive order. Each species has mass `0.0`, which pw.x replaces by its
+tabulated atomic weight (`pos_iosys` in `PW/src/input.f90`), and the
+pseudopotential placeholder `<element>.UPF`. Add
+`ecutwfc`, the real pseudopotentials and `K_POINTS` before running pw.x.
+Frozen atoms get `if_pos` `0 0 0`, the others `1 1 1`, under the same
+first-structure rule as the POSCAR export.
+
+**pw.x XML data file.** Import reads `data-file-schema.xml` (the
+`qes:espresso` document, in hartree atomic units). The structure is the
+final `output/atomic_structure`: the cell vectors `a1`, `a2`, `a3` in bohr
+and `atomic_positions` in bohr, or `crystal_positions`. Wyckoff positions
+are refused. `input/free_positions` gives frozen atoms as for `if_pos`.
+`output/total_energy/etot` becomes the root `energies.total` in hartree.
+`output/forces` (hartree/bohr) becomes the `forces` section's gradient, the
+negative of the forces (spec § 5.10). `output/stress` (hartree/bohr³) is
+stored with its sign flipped: pw.x writes the negative of (1/V) ∂E/∂ε, positive
+under compression, and QVF stores (1/V) ∂E/∂ε. A stress that is not symmetric is
+refused, and a stress without forces is reported, not stored. When
+`convergence_info/scf_conv/convergence_achieved` is false, energy, forces
+and stress are omitted and `results_omitted_unconverged` is set. The report
+gives the SCF and optimization convergence, `exit_status`, the functional,
+the energy and the `output` elements that were not read, such as
+`band_structure`. A DOCTYPE or entity declaration refuses the file.
+
+**pp.x cube files.** With `output_format = 6`, pp.x writes a Gaussian cube
+in bohr whose voxel vectors are the cell vectors over the FFT grid size, so
+the last plane is not the first plane repeated. Import reads it with the
+cube reader as a grid periodic on all three axes with `includes_endpoint`
+false, so `voxel_vectors[a] × shape[a]` is lattice vector a (spec § 5.2), and
+the structure's cell follows from it. Values are stored as written. For
+`plot_num = 0` they are the charge density in e/bohr³, so the default kind
+is `volume.density` and the report's `integral` (mean value times the cell
+volume in bohr³) is the electron count. The cube does not record
+`plot_num`: assert another scalar kind with `kind=` / `--kind`, for example
+`volume.spin` for `plot_num = 6`. The valence charges in the atom lines are
+counted in `nonzero_atom_charges_omitted`. Use `--to cube` for the reverse
+direction. The pp.x `filplot` intermediate file is not supported: its layout
+depends on the QE version and carries no version marker.
+
+ASE's `read_espresso_in` reads the same `ibrav = 0` inputs, and the export, to
+the same cell and positions (to 10⁻¹⁰ relative once its CODATA 2006 bohr is
+rescaled), and inputs written by ASE import to the same structure. ASE
+supports no other `ibrav`. The tests check every Bravais index against its
+conventional cell: the conventional vectors are integer combinations of the
+imported vectors with the centring multiplicity as determinant, and the
+volume is the conventional volume over that multiplicity. ASE's cube reader
+reads pp.x-style cubes to the same cell and values.
+
+## FHI-aims geometry.in structures (Unreleased)
+
+```bash
+qvf convert geometry.in --from aims --to qvf -o cell.qvf
+qvf convert cell.qvf --from qvf --to aims -o geometry.in.out
+```
+
+Import reads one FHI-aims `geometry.in` in Å. Three `lattice_vector` lines
+make a `structure` periodic on all three axes. With none it is a molecule.
+One or two lattice vectors, or linearly dependent ones, are refused. `atom`
+lines are Cartesian, `atom_frac` lines fractional (they need the lattice),
+and the two may be mixed. Elements come from the species names under the
+pw.x label rule, so `N_tight` is N. An atom with `constrain_relaxation
+.true.`, or with `x`, `y` and `z` constrained, goes into the root
+`constraints.frozen_atoms`. An atom constrained on only some axes is counted
+in `partially_fixed_atoms_omitted`. Per-atom `initial_moment`,
+`initial_charge` and `velocity` lines, `empty` sites (basis functions
+without a nucleus), and symmetry, Hessian, field and multipole keywords are
+counted in `keywords_omitted` and not stored. Any other keyword, including
+`pseudocore`, refuses the import. `#` starts a comment.
+
+Export writes one structure periodic on all three axes, or a molecule, as
+the section label in a comment, `lattice_vector` rows and Cartesian `atom`
+lines in Å with 15 decimals in archive order, species named by element.
+Frozen atoms get `constrain_relaxation .true.`. A structure periodic on only
+some axes is refused, because FHI-aims takes no or three lattice vectors.
+ASE's FHI-aims reader reads the same inputs and the export to the same cell,
+positions and fixed atoms (to 10⁻¹⁰ relative), and files ASE writes, with
+Cartesian or fractional atoms, import to the same structure.
+
 ## Molecular Molden orbitals (Unreleased)
 
 ```sh
@@ -814,6 +947,8 @@ from qvf.convert import import_xsf, export_xsf, import_pdb, export_pdb
 from qvf.convert import import_molden, export_molden, import_cif, export_cif
 from qvf.convert import import_poscar, export_poscar, import_chgcar, export_chgcar
 from qvf.convert import import_mmcif, export_mmcif
+from qvf.convert import import_espresso_in, export_espresso_in, import_espresso_xml
+from qvf.convert import import_espresso_cube, import_aims, export_aims
 
 report = import_xyz("molecule.xyz", "molecule.qvf")
 report = export_xyz("molecule.qvf", "geometry.xyz", extended=True)
@@ -829,6 +964,7 @@ entries and contractions to 512 primitives each.
 These initial converters parse bounded inputs in memory; they are not a
 replacement for the streaming QVF reader/writer for large datasets. QVF
 reader limits also apply on export. Remaining WP-48 work: Molden h shells,
-ECP sections and natural-orbital occupations outside 0 to 2, XSF animation, bonds to symmetry mates, centrosymmetric
-space groups in the PDB expansion, mmCIF assemblies and writing `REMARK 350`
-back. No QVF schema, canonical kind or finding code changes.
+ECP sections and natural-orbital occupations outside 0 to 2, XSF animation,
+bonds to symmetry mates, centrosymmetric space groups in the PDB expansion,
+mmCIF assemblies, writing `REMARK 350` back, QE `space_group` input and pp.x
+`filplot` files. No QVF schema, canonical kind or finding code changes.

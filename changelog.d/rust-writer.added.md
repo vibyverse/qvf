@@ -9,4 +9,4 @@ streamed in slabs), and opaque bytes. Section builders cover `structure`,
 `excited_states`. `rust/tests/writer.rs` checks that the written archives
 have no findings from the Rust validator and the Python reference validator
 and read back unchanged. No new dependency. Trajectory, bands and spectra
-builders, an editor and a CLI remain.
+builders and an editor remain.
