@@ -1767,6 +1767,34 @@ fn volume_errors(
     errors
 }
 
+/// The unit name spec § 4.3 fixes for the grid `units.data` of a volume kind.
+/// One grid payload serves every `volume.*` kind, so the schema cannot fix it
+/// per kind.
+fn volume_data_unit(kind: &str) -> Option<&'static str> {
+    Some(match kind {
+        "volume.density" | "volume.transition_density" => "e_per_bohr3",
+        "volume.potential" => "hartree_per_e",
+        "volume.rdg" => "dimensionless",
+        "volume.laplacian" => "e_per_bohr5",
+        _ => return None,
+    })
+}
+
+/// A grid `units.data` that is a unit name other than the one § 4.3 fixes for
+/// the volume kind (`E_UNIT_CONTRADICTED`), as a message. A string that is not
+/// a unit name is `W_UNIT_UNKNOWN` alone.
+fn grid_data_unit_error(sid: &str, kind: &str, grid: &Obj) -> Option<String> {
+    let fixed = volume_data_unit(kind)?;
+    let unit = as_obj(grid.get("units"))?.get("data");
+    let name = str_of(unit).filter(|u| *u != fixed && is_unit_name(unit))?;
+    Some(format!(
+        "{}grid units.data {} contradicts the unit {} that spec § 4.3 fixes for {kind} data",
+        sec(sid),
+        quote(name),
+        quote(fixed)
+    ))
+}
+
 fn is_grid_payload(kind: &str, role: &str) -> bool {
     if role == "volume_grid" {
         return kind == "reaction.path";
@@ -2616,6 +2644,13 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
             let kinds = if level >= Level::References { Some(&kinds_by_id) } else { None };
             for (code, role, msg) in volume_errors(sid, kind, members, &docs, kinds) {
                 out.push(code, member_pointer(i, &role), msg);
+            }
+            let mut roles: Vec<&String> = docs.keys().filter(|r| is_grid_payload(kind, r)).collect();
+            roles.sort();
+            for r in roles {
+                if let Some(msg) = as_obj(docs.get(r)).and_then(|g| grid_data_unit_error(sid, kind, g)) {
+                    out.push(Code::E_UNIT_CONTRADICTED, member_pointer(i, r), msg);
+                }
             }
         }
         if level >= Level::References {

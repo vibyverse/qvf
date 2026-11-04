@@ -1476,4 +1476,5 @@ pub static FINDING_CODES: &[(&str, &str)] = &[
     ("W_UNIT_UNKNOWN", "warning"),
     ("E_ROOT_INCONSISTENT", "error"),
     ("E_NORMALIZATION", "error"),
+    ("E_UNIT_CONTRADICTED", "error"),
 ];

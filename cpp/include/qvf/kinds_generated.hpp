@@ -696,6 +696,7 @@ inline constexpr FindingCode kFindingCodes[] = {
     {"W_UNIT_UNKNOWN", false},
     {"E_ROOT_INCONSISTENT", true},
     {"E_NORMALIZATION", true},
+    {"E_UNIT_CONTRADICTED", true},
 };
 
 // The entry of a finding code, or nullptr.
