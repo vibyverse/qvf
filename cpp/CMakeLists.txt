@@ -28,11 +28,12 @@ if(MSVC)
 endif()
 
 # --- fuzzing (off by default) -------------------------------------------------
-# -DQVF_FUZZ=ON (clang only) builds cpp/fuzz/zip_reader_fuzzer, a libFuzzer
-# target over the ZIP reader and the validator. Everything in such a build is
-# compiled with ASan + UBSan and coverage instrumentation, so the fuzzer
-# reaches into the library. Where clang ships no libFuzzer runtime (Apple
-# clang), the target links fuzz/standalone_fuzz_main.cpp instead.
+# -DQVF_FUZZ=ON (clang only) builds the libFuzzer targets in cpp/fuzz:
+# zip_reader_fuzzer over raw archive bytes (ZIP reader and validator) and
+# manifest_fuzzer over manifest.json and member payloads in a consistent ZIP.
+# Everything in such a build is compiled with ASan + UBSan and coverage
+# instrumentation, so the fuzzers reach into the library. Where clang ships no libFuzzer runtime (Apple
+# clang), the targets link fuzz/standalone_fuzz_main.cpp instead.
 option(QVF_FUZZ "Build the fuzz targets in cpp/fuzz (clang)" OFF)
 if(QVF_FUZZ)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -248,16 +249,20 @@ if(QVF_FUZZ)
     QVF_HAVE_LIBFUZZER)
   unset(CMAKE_REQUIRED_FLAGS)
   unset(CMAKE_REQUIRED_LINK_OPTIONS)
-  add_executable(zip_reader_fuzzer fuzz/zip_reader_fuzzer.cpp)
-  target_link_libraries(zip_reader_fuzzer PRIVATE qvf)
-  if(QVF_HAVE_LIBFUZZER)
-    target_compile_options(zip_reader_fuzzer PRIVATE -fsanitize=fuzzer)
-    target_link_options(zip_reader_fuzzer PRIVATE -fsanitize=fuzzer)
-  else()
-    message(WARNING "QVF_FUZZ: this clang has no libFuzzer runtime; zip_reader_fuzzer "
-                    "links fuzz/standalone_fuzz_main.cpp (replay and random mutation, "
+  foreach(fuzzer zip_reader_fuzzer manifest_fuzzer)
+    add_executable(${fuzzer} fuzz/${fuzzer}.cpp)
+    target_link_libraries(${fuzzer} PRIVATE qvf)
+    if(QVF_HAVE_LIBFUZZER)
+      target_compile_options(${fuzzer} PRIVATE -fsanitize=fuzzer)
+      target_link_options(${fuzzer} PRIVATE -fsanitize=fuzzer)
+    else()
+      target_sources(${fuzzer} PRIVATE fuzz/standalone_fuzz_main.cpp)
+    endif()
+  endforeach()
+  if(NOT QVF_HAVE_LIBFUZZER)
+    message(WARNING "QVF_FUZZ: this clang has no libFuzzer runtime; the fuzz targets "
+                    "link fuzz/standalone_fuzz_main.cpp (replay and random mutation, "
                     "no coverage feedback)")
-    target_sources(zip_reader_fuzzer PRIVATE fuzz/standalone_fuzz_main.cpp)
   endif()
 endif()
 
