@@ -1,4 +1,4 @@
-"""Explicit, standard-library-only XYZ/extXYZ, PDB, CIF, mmCIF, POSCAR, CHGCAR, XSF, cube and Molden conversions.
+"""Explicit, standard-library-only XYZ/extXYZ, PDB, CIF, mmCIF, POSCAR, CHGCAR, XSF, cube, Molden and Gaussian fchk conversions.
 
 Conversions create a new file and return a report. They do not execute a job
 or infer a grid's physical quantity, periodicity, charge or multiplicity.
@@ -23,7 +23,7 @@ from .validate import run
 __all__ = ["import_xyz", "export_xyz", "import_cube", "export_cube", "import_xsf", "export_xsf",
            "import_pdb", "export_pdb", "import_molden", "export_molden", "import_cif",
            "export_cif", "import_poscar", "export_poscar", "import_chgcar", "export_chgcar",
-           "import_mmcif", "export_mmcif"]
+           "import_mmcif", "export_mmcif", "import_fchk", "export_fchk"]
 _MAX_TEXT = 64 * 1024 * 1024
 _MAX_VALUES = 5_000_000
 _SCALAR_KINDS = {"volume." + name for name in (
@@ -46,6 +46,26 @@ def import_molden(source, destination, *, spin, dialect="standard"):
 def export_molden(source, destination, *, section=None):
     """Export one molecular real s/p/d wavefunction; report omitted metadata."""
     from ._molden import export_molden as convert
+    return convert(source, destination, section=section)
+
+
+def import_fchk(source, destination, *, overlap=True):
+    """Import a Gaussian formatted checkpoint: geometry, basis and SCF orbitals.
+
+    Restricted, restricted-open and unrestricted orbitals, s to l = 7 shells
+    (SP shells split), occupations derived from the electron counts, the SCF
+    densities, the total energy and Mulliken charges. Gaussian's AO order and
+    normalization are mapped onto Appendix A, and with ``overlap`` the AO
+    overlap is computed from the basis so the validator can check it.
+    See docs/converters.md.
+    """
+    from ._fchk import import_fchk as convert
+    return convert(source, destination, overlap=overlap)
+
+
+def export_fchk(source, destination, *, section=None):
+    """Export one molecular real wavefunction as a Gaussian formatted checkpoint."""
+    from ._fchk import export_fchk as convert
     return convert(source, destination, section=section)
 
 

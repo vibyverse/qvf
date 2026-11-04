@@ -679,6 +679,131 @@ energies, occupations and labels; QVF identities, bonds, method metadata,
 jobs and overlap/density matrices are not retained. Supply the reported spin
 on reimport and keep the original archive.
 
+## Gaussian formatted checkpoint files (Unreleased)
+
+```sh
+qvf convert water.fchk --from fchk --to qvf -o water.qvf
+qvf convert water.qvf --from qvf --to fchk --section wf -o water-export.fchk
+```
+
+```python
+from qvf.convert import import_fchk, export_fchk
+
+report = import_fchk("water.fchk", "water.qvf")
+report = export_fchk("water.qvf", "water-export.fchk")
+```
+
+The file layout follows Gaussian's
+[formchk documentation](https://gaussian.com/formchk/): a title line, a
+line with the job type, method and basis name, then named fields. A field
+header gives the name, the type `I` (integer) or `R` (real) and either one
+value or `N=` and a count, followed by the values. Text (`C`, `H`) and
+logical (`L`) fields are skipped and listed in the report. Reals may use `D`
+exponents and the Fortran form without `E` for a three digit exponent.
+
+| fchk field | QVF |
+|---|---|
+| `Atomic numbers`, `Current cartesian coordinates` (bohr) | `structure` atoms, positions in Å |
+| `Charge`, `Multiplicity`, `Number of electrons` | root `provenance` `charge`, `multiplicity`, `n_electrons`, and `basis.n_electrons` |
+| `Shell types`, `Number of primitives per shell`, `Shell to atom map`, `Primitive exponents`, `Contraction coefficients`, `P(S=P) Contraction coefficients` | `wavefunction.gto` `basis` |
+| `Alpha MO coefficients`, `Alpha Orbital Energies` and the Beta pair | `mo_coefficients`, or `mo_coefficients_alpha` and `mo_coefficients_beta`, and the `mo_metadata` energies |
+| `Total SCF Density`, `Spin SCF Density` | `density_matrix`, or `density_matrix_alpha` and `density_matrix_beta` |
+| `Total Energy` | root `energies.total`, with the method of the second line in lowercase |
+| `Mulliken Charges` | an `atom_properties` section with `mulliken_charge` |
+| basis name of the second line | `provenance.basis` |
+
+**Shells.** Shell type 0 is s, 1 is p, `-1` is SP, a positive type l ≥ 2 is
+a Cartesian shell and a negative type `-l` a pure (spherical) one, up to
+l = 7. An SP shell becomes an s and a p shell on the same exponents. The
+`Pure/Cartesian d shells` and `Pure/Cartesian f shells` flags (0 pure,
+1 Cartesian, the f flag for f and higher) must agree with the signs. The AO
+order within a shell maps onto Appendix A.2:
+
+| Shell | Gaussian order | QVF order |
+|---|---|---|
+| p | x, y, z | y, z, x when the file has pure shells (s and p then carry `pure: true`), else x, y, z |
+| pure, l ≥ 2 | m = 0, +1, −1, +2, −2, …, +l, −l | m = −l, …, +l |
+| Cartesian d | xx, yy, zz, xy, xz, yz | xx, xy, xz, yy, yz, zz |
+| Cartesian f | xxx, yyy, zzz, xyy, xxy, xxz, xzz, yzz, yyz, xyz | xxx, xxy, xxz, xyy, xyz, xzz, yyy, yyz, yzz, zzz |
+| Cartesian g and higher | the reverse of the QVF order: zzzz, yzzz, yyzz, …, xxxx | xxxx, xxxy, …, zzzz |
+
+**Normalization.** Every Gaussian basis function is normalized.
+Contraction coefficients refer to normalized primitives, and a squared
+contraction norm must be within 1e-5 of one: an unnormalized contraction is
+ambiguous and refused. Text rounding drift is normalized away and the norms
+are reported. Each Cartesian component is normalized on its own, so the
+Gaussian d_xy is √3 times the QVF d_xy of Appendix A.1, f_xyy is √5 and
+f_xyz √15 times the QVF function. MO coefficients and density matrices are
+divided by these factors. Pure functions are the real solid harmonics of
+Schlegel and Frisch, *Int. J. Quantum Chem.* **54**, 83 (1995), the
+convention of Appendix A.2, so no signs change. These conventions are the
+ones [IOData](https://github.com/theochem/iodata) 1.0.1 documents for fchk
+(`iodata/formats/fchk.py`, `CONVENTIONS`, with L2 normalized primitives).
+No IOData, cclib or Gaussian code is used.
+
+**Spin and occupations.** fchk stores no occupations. A file with
+`Beta MO coefficients` is `unrestricted`. Otherwise equal alpha and beta
+electron counts give `restricted`, and unequal counts `restricted_open`
+(ROHF). Occupations follow the file's orbital order: the first
+`Number of beta electrons` orbitals hold two electrons in a single set, the
+next ones up to `Number of alpha electrons` one. When the file has a
+`Total SCF Density`, the import checks that these occupations reproduce it
+within 1e-5 of its largest element and refuses the file otherwise (an SCF
+that did not occupy the lowest orbitals). The report gives the deviation.
+Orbital kind is `custom`: the file does not say whether its orbitals are
+canonical. A `Spin SCF Density` of a single set has no QVF member, and an
+unrestricted `Total SCF Density` without the spin density cannot be split:
+both are reported as omitted.
+
+**Overlap.** The import computes the AO overlap from the basis (Obara and
+Saika recursion, standard library only) and writes the `overlap` member, so
+the validator checks its diagonal against Appendix A.1 (`E_NORMALIZATION`).
+`import_fchk(..., overlap=False)` skips it for a very large basis: the
+pure Python cost grows with the square of the number of shells.
+
+**Refused on import.** Effective core potentials (`Nuclear charges` below the
+atomic numbers, or `ECP-` fields), ghost and dummy atoms, shells away from
+their atom, l > 7, and counts, charge, multiplicity or electrons that
+disagree. Other numeric fields (gradients, Hessians, post SCF densities, an
+`SCF Energy` that differs from `Total Energy`), the title and the job type
+are listed in the report and not imported.
+
+**Export** writes one molecular `wavefunction.gto` section with real
+`restricted`, `restricted_open` or `unrestricted` orbitals and no ECP.
+Because fchk has no occupations, the occupations must be integral and in
+aufbau order in the row order (2, then 1, then 0 for a single set, 1 then 0
+per spin channel), and both channels need the same number of orbitals.
+Charge and multiplicity are derived from them and checked against
+`provenance` and `basis.n_electrons`. Shells are grouped by atom (stable
+order), as Gaussian writes them and as cclib expects. Each shell type carries
+its own `pure` flag, with one convention for d shells and one for f and
+higher. Contractions are written normalized and the MO coefficients
+compensate, so orbital values are preserved. The SCF densities come from the
+archive's density members or, without them, from the orbitals and
+occupations (`density_source` in the report). A `restricted_open` spin
+density is built from the singly occupied orbitals. `Total Energy` comes from
+root `energies.total`, `SCF Energy` from `provenance.scf_energy` and
+`Mulliken Charges` from a single `atom_properties` section with
+`mulliken_charge` for the structure. Array values use Gaussian's E16.8 fields
+(9 significant digits), scalars keep full precision. The second line names
+the method and basis from `energies` or `provenance`, or `unknown`. Symmetry
+labels, orbital kind, the overlap, identities, bonds and jobs are not
+retained, and the report lists the omitted sections and members.
+
+**Independent checks.** Gaussian was not run and no Gaussian output files
+are used. `python/tests/fchk_fixtures/generate.py` writes synthetic files
+from the documented layout without the converter: RHF with SP and pure d, f
+and g shells, UHF with Cartesian d, f and g shells, and ROHF with pure d and
+Cartesian f (`5D 10F`). The tests compare orbital values at random points
+with a direct evaluation of Gaussian's documented AOs, and the MO overlap
+C S Cᵀ with IOData's own reading and overlap of the same file. PySCF 2.14.0
+RHF, UHF and ROHF calculations, spherical and Cartesian up to g shells, are
+exported and read back by cclib 1.8.1 (s to f shells, cclib's limit), by
+IOData 1.0.1 (orthonormal orbitals in its overlap) and by the importer,
+whose orbitals match PySCF's AO evaluation and satisfy C S Cᵀ = 1 with the
+archive overlap, which agrees with PySCF's. Every archive validates with no
+findings. Remaining: ECPs, natural orbitals and post SCF densities.
+
 ## Python API and limits
 
 ```python

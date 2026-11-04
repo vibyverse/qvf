@@ -67,8 +67,8 @@ def _parser():
     command = commands.add_parser("convert", help="convert XYZ/extXYZ, PDB, XSF, scalar cube or Molden through QVF")
     command.add_argument("input")
     command.add_argument("-o", "--output", required=True)
-    command.add_argument("--from", dest="input_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"), required=True)
-    command.add_argument("--to", dest="output_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"), required=True)
+    command.add_argument("--from", dest="input_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden", "fchk"), required=True)
+    command.add_argument("--to", dest="output_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden", "fchk"), required=True)
     command.add_argument("--section", help="QVF section to export")
     command.add_argument("--block", help="CIF/mmCIF import: data block name (without data_)")
     command.add_argument("--species", nargs="+", metavar="ELEMENT",
@@ -202,7 +202,7 @@ def _execute(args):
             raise ValueError("--spin applies only to Molden import")
         if args.input_format != "molden" and args.molden_dialect is not None:
             raise ValueError("--molden-dialect applies only to Molden import")
-        if args.input_format == "qvf" and args.output_format in ("xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"):
+        if args.input_format == "qvf" and args.output_format in ("xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden", "fchk"):
             if args.output_format == "cube":
                 result = convert.export_cube(args.input, args.output, section=args.section)
             elif args.output_format == "xsf":
@@ -219,6 +219,8 @@ def _execute(args):
                 result = convert.export_cif(args.input, args.output, section=args.section)
             elif args.output_format == "molden":
                 result = convert.export_molden(args.input, args.output, section=args.section)
+            elif args.output_format == "fchk":
+                result = convert.export_fchk(args.input, args.output, section=args.section)
             else:
                 result = convert.export_xyz(args.input, args.output, section=args.section,
                                             extended=args.output_format == "extxyz")
@@ -247,6 +249,8 @@ def _execute(args):
             elif args.input_format == "molden":
                 result = convert.import_molden(args.input, args.output, spin=args.spin,
                                                dialect=args.molden_dialect or "standard")
+            elif args.input_format == "fchk":
+                result = convert.import_fchk(args.input, args.output)
             else:
                 result = convert.import_xyz(args.input, args.output)
         else:
