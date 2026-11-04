@@ -119,11 +119,20 @@ done
 python scripts/check_endian_roundtrip.py build/endian/be --reference build/endian/le
 
 # Fuzzing the ZIP reader and the validator (clang; not run in CI yet). Where
-# clang has no libFuzzer runtime, the target uses a built-in mutation driver.
+# clang has no libFuzzer runtime (on Ubuntu it is in libclang-rt-18-dev), the
+# targets use a built-in mutation driver without coverage feedback.
 CC=clang CXX=clang++ cmake -S cpp -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DQVF_FUZZ=ON
-cmake --build build/fuzz --target zip_reader_fuzzer
+cmake --build build/fuzz --target zip_reader_fuzzer manifest_fuzzer
 mkdir -p build/fuzz/corpus   # libFuzzer adds new inputs to the first directory only
-./build/fuzz/zip_reader_fuzzer -max_total_time=60 build/fuzz/corpus conformance/corpus conformance/negative
+./build/fuzz/zip_reader_fuzzer -max_total_time=60 -max_len=65536 build/fuzz/corpus \
+  conformance/corpus conformance/negative conformance/legacy
+# manifest_fuzzer takes manifest.json plus member payloads and builds a
+# consistent ZIP from them, so mutations reach the payload and semantic checks
+python scripts/fuzz_manifest_seeds.py build/fuzz/manifest_seeds \
+  conformance/corpus conformance/negative conformance/legacy
+mkdir -p build/fuzz/manifest_corpus
+./build/fuzz/manifest_fuzzer -max_total_time=60 -max_len=262144 \
+  build/fuzz/manifest_corpus build/fuzz/manifest_seeds
 
 # Generated tables: check them, and regenerate after editing the schema,
 # registry.json or spec Appendix B (then regenerate the single header too)
