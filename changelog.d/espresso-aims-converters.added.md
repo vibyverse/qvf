@@ -8,6 +8,5 @@ structure, total energy, forces and stress of `data-file-schema.xml`, and
 endpoint plane. `aims` imports and exports FHI-aims `geometry.in` with
 `lattice_vector`, `atom` and `atom_frac`. Fully fixed atoms map to
 `constraints.frozen_atoms`. Everything else is reported. The tests compare
-against ASE's readers and writers when ASE is installed. pp.x `filplot`
-files and QE `space_group` input remain open. No format, schema or validator
-change.
+against ASE's readers and writers when ASE is installed. No format, schema or
+validator change.
