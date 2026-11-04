@@ -12,6 +12,9 @@ from . import __version__, validate
 from .reader import Reader
 from . import operations
 
+_CONVERT_FORMATS = ("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar",
+                    "chgcar", "espresso-in", "espresso-xml", "espresso-cube", "aims", "molden")
+
 
 def _json(value):
     print(json.dumps(value, ensure_ascii=False, indent=2))
@@ -64,11 +67,11 @@ def _parser():
     command.add_argument("--no-negative", action="store_true")
     command.add_argument("--legacy", metavar="DIR")
     command.add_argument("--no-legacy", action="store_true")
-    command = commands.add_parser("convert", help="convert XYZ/extXYZ, PDB, XSF, scalar cube or Molden through QVF")
+    command = commands.add_parser("convert", help="convert structure, grid and orbital files through QVF")
     command.add_argument("input")
     command.add_argument("-o", "--output", required=True)
-    command.add_argument("--from", dest="input_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"), required=True)
-    command.add_argument("--to", dest="output_format", choices=("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"), required=True)
+    command.add_argument("--from", dest="input_format", choices=_CONVERT_FORMATS, required=True)
+    command.add_argument("--to", dest="output_format", choices=_CONVERT_FORMATS, required=True)
     command.add_argument("--section", help="QVF section to export")
     command.add_argument("--block", help="CIF/mmCIF import: data block name (without data_)")
     command.add_argument("--species", nargs="+", metavar="ELEMENT",
@@ -77,7 +80,8 @@ def _parser():
                          help="PDB import: also generate MTRIX copies the file does not give")
     command.add_argument("--expand-symmetry", action="store_true",
                          help="PDB import: also write the unit cell with every space-group copy")
-    command.add_argument("--kind", help="scalar volume kind asserted on cube/XSF import (default volume.generic)")
+    command.add_argument("--kind", help="scalar volume kind asserted on cube/XSF import (default volume.generic; "
+                         "volume.density for espresso-cube)")
     command.add_argument("--periodic", nargs=3, choices=("true", "false"), help="cube/XSF scalar grid periodic axes")
     command.add_argument("--no-endpoint", action="store_true", help="cube import spans n voxels rather than n-1")
     command.add_argument("--spin", choices=("restricted", "restricted_open", "unrestricted"),
@@ -185,8 +189,10 @@ def _execute(args):
     elif args.command == "convert":
         from . import convert
         grid_options = args.kind is not None or args.periodic is not None
-        if args.input_format not in ("cube", "xsf") and grid_options:
+        if args.input_format not in ("cube", "xsf", "espresso-cube") and grid_options:
             raise ValueError("--kind and --periodic apply only to cube/XSF import")
+        if args.input_format == "espresso-cube" and args.periodic is not None:
+            raise ValueError("--periodic does not apply to espresso-cube import (always periodic)")
         if args.input_format != "cube" and args.no_endpoint:
             raise ValueError("--no-endpoint applies only to cube import")
         if args.input_format not in ("cif", "mmcif") and args.block is not None:
@@ -197,8 +203,14 @@ def _execute(args):
             raise ValueError("--expand-symmetry and --expand-ncs apply only to PDB import")
         if args.input_format != "molden" and args.spin is not None:
             raise ValueError("--spin applies only to Molden import")
-        if args.input_format == "qvf" and args.output_format in ("xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar", "chgcar", "molden"):
-            if args.output_format == "cube":
+        if args.input_format == "qvf" and args.output_format in ("espresso-xml", "espresso-cube"):
+            raise ValueError(f"{args.output_format} is an import-only format")
+        if args.input_format == "qvf" and args.output_format != "qvf":
+            if args.output_format == "espresso-in":
+                result = convert.export_espresso_in(args.input, args.output, section=args.section)
+            elif args.output_format == "aims":
+                result = convert.export_aims(args.input, args.output, section=args.section)
+            elif args.output_format == "cube":
                 result = convert.export_cube(args.input, args.output, section=args.section)
             elif args.output_format == "xsf":
                 result = convert.export_xsf(args.input, args.output, section=args.section)
@@ -233,6 +245,15 @@ def _execute(args):
                                             expand_ncs=args.expand_ncs)
             elif args.input_format == "mmcif":
                 result = convert.import_mmcif(args.input, args.output, block=args.block)
+            elif args.input_format == "espresso-in":
+                result = convert.import_espresso_in(args.input, args.output)
+            elif args.input_format == "espresso-xml":
+                result = convert.import_espresso_xml(args.input, args.output)
+            elif args.input_format == "espresso-cube":
+                result = convert.import_espresso_cube(args.input, args.output,
+                                                      kind=args.kind or "volume.density")
+            elif args.input_format == "aims":
+                result = convert.import_aims(args.input, args.output)
             elif args.input_format == "chgcar":
                 result = convert.import_chgcar(args.input, args.output, species=args.species)
             elif args.input_format == "poscar":
