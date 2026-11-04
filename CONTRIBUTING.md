@@ -91,6 +91,26 @@ for f in conformance/corpus/*.qvf; do
   ./build/san/read_qvf "$f" || break
 done
 
+# Big-endian check (local only, no CI job): cross-build for s390x and run
+# CTest (conformance runner and endian probe included) under QEMU user-mode
+# emulation.
+apt-get install g++-s390x-linux-gnu qemu-user
+cmake -S cpp -B build/s390x -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/s390x-linux-gnu.cmake
+cmake --build build/s390x
+ctest --test-dir build/s390x --output-on-failure
+# Round trip: write on the emulated big-endian host and on the native host,
+# then validate the big-endian archives with the Python validator and compare
+# every typed member with the native ones bit for bit.
+cmake -S cpp -B build/native && cmake --build build/native
+mkdir -p build/endian/be build/endian/le
+qemu-s390x -L /usr/s390x-linux-gnu build/s390x/qvf_endian_probe write build/endian/be/endian_probe.qvf
+build/native/qvf_endian_probe write build/endian/le/endian_probe.qvf
+for t in write_all_kinds write_h2o write_h2o_c; do
+  (cd build/endian/be && qemu-s390x -L /usr/s390x-linux-gnu ../../s390x/$t $t.qvf)
+  (cd build/endian/le && ../../native/$t $t.qvf)
+done
+python scripts/check_endian_roundtrip.py build/endian/be --reference build/endian/le
+
 # Fuzzing the ZIP reader and the validator (clang; not run in CI yet). Where
 # clang has no libFuzzer runtime, the target uses a built-in mutation driver.
 CC=clang CXX=clang++ cmake -S cpp -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DQVF_FUZZ=ON

@@ -185,6 +185,22 @@ add_test(NAME qvf_container_tests
          COMMAND qvf_container_tests ${CMAKE_CURRENT_SOURCE_DIR}/../conformance/corpus
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
+# Byte order: write every dtype through each write path, then read it back and
+# compare with little-endian bytes built by shifts. Under a big-endian
+# toolchain (cmake/toolchains/) this checks the byte swap on both sides.
+add_executable(qvf_endian_probe tests/endian_probe.cpp)
+target_link_libraries(qvf_endian_probe PRIVATE qvf)
+add_test(NAME qvf_endian_probe_write
+         COMMAND qvf_endian_probe write endian_probe.qvf
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(qvf_endian_probe_write PROPERTIES FIXTURES_SETUP qvf_endian_probe)
+foreach(probe endian_probe endian_probe_c)
+  add_test(NAME qvf_${probe}_check
+           COMMAND qvf_endian_probe check ${probe}.qvf
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(qvf_${probe}_check PROPERTIES FIXTURES_REQUIRED qvf_endian_probe)
+endforeach()
+
 # Validator hardening: malformed archives built in memory, plus the negative
 # conformance corpus (every archive must yield exactly its expected finding
 # codes). A standalone copy of cpp/ without ../conformance skips the latter.
