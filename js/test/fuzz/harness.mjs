@@ -6,7 +6,7 @@
 // - QvfReader.fromBytes and the member reads refuse an input only with a
 //   QvfError whose code is in Appendix B;
 // - the typed arrays allocated while checking one input stay within what the
-//   input justifies: a fixed base plus a small multiple of the bytes its
+//   input justifies (largest allocation and sum, see below): a fixed base plus a small multiple of the bytes its
 //   entries can really inflate to (the declared size, capped by the DEFLATE
 //   limit of 1032:1). Time is bounded by the runner's watchdog.
 //
@@ -15,9 +15,13 @@
 // at load) is imported: call install() first, then load().
 
 export const MEMORY_BASE = 48 * 1024 ** 2;
-// Two passes (the validator and the reader each read every member once), and
-// fflate grows its output chunks while the reader holds the exact buffer.
-export const MEMORY_FACTOR = 16;
+// No single typed array may exceed the base plus twice what the input can
+// inflate to: that catches allocation driven by a declared size that no
+// stored byte backs. The sum over all allocations (two passes, plus fflate's
+// short-lived scratch buffers per inflate step) only has to stay within a loose
+// multiple, a guard against runaway churn.
+export const LARGEST_FACTOR = 2;
+export const TOTAL_FACTOR = 256;
 
 export const SMALL = { max_member_bytes: 2 ** 24, max_total_bytes: 2 ** 26, max_json_bytes: 2 ** 22 };
 export const DEFAULT = {};
@@ -120,7 +124,12 @@ export async function check(raw, { limits = SMALL, reader = true } = {}) {
   largest = 0;
   await checkValidator(raw, limits, problems);
   if (reader) await checkReader(raw, limits, problems);
-  const bound = MEMORY_BASE + MEMORY_FACTOR * inflatable(raw);
-  if (allocated > bound) problems.push(`memory: allocated ${allocated} bytes (largest ${largest}) over the bound ${bound}`);
+  const backed = inflatable(raw);
+  if (largest > MEMORY_BASE + LARGEST_FACTOR * backed) {
+    problems.push(`memory: one allocation of ${largest} bytes over the bound ${MEMORY_BASE + LARGEST_FACTOR * backed}`);
+  }
+  if (allocated > MEMORY_BASE + TOTAL_FACTOR * backed) {
+    problems.push(`memory: allocated ${allocated} bytes in all, over the bound ${MEMORY_BASE + TOTAL_FACTOR * backed}`);
+  }
   return { problems, allocated, largest };
 }
