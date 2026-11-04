@@ -199,3 +199,23 @@ def test_tolist_of_a_huge_zero_extent_shape_is_refused():
     small = Reader.from_bytes(_archive(b"", member=dict(member, shape=[3, 0, 2])))
     with small:
         assert small.tensor("x", "blob").tolist() == [[], [], []]
+
+
+def _patch_end(raw: bytes, offset: int, value: int) -> bytes:
+    out = bytearray(raw)
+    struct.pack_into("<H", out, out.rindex(b"PK\x05\x06") + offset, value)
+    return bytes(out)
+
+
+@pytest.mark.parametrize("patch", [
+    (4, 1),          # this disk 1: multi-volume
+    (6, 1),          # central directory on disk 1
+    (8, 1),          # entries on this disk disagree with the records
+    (10, 1),         # total entries disagree with the records
+])
+def test_end_record_must_agree_with_the_central_directory(patch):
+    raw = _patch_end(_archive(json.dumps(WATER).encode()), *patch)
+    report = V.validate_qvf(io.BytesIO(raw))
+    assert [f["code"] for f in report["findings"]] == ["E_ZIP_UNREADABLE"], report
+    with pytest.raises(ValueError, match=r"^E_ZIP_UNREADABLE"):
+        Reader.from_bytes(raw)

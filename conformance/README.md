@@ -423,7 +423,8 @@ stream that ends short of it) and `entry_size_impossible` (2 GiB declared for
 a few stored bytes, beyond the 1032:1 DEFLATE limit, which a reader refuses
 without allocating it) make an entry that does not inflate to exactly its
 declared size `E_ZIP_UNREADABLE`, and so does `compression_method_unsupported`,
-a well-formed bzip2 member. `manifest_json_nan` and `manifest_json_utf16` are
+a well-formed bzip2 member, and `zip_multi_volume`, whose end record names
+disk 1. `manifest_json_nan` and `manifest_json_utf16` are
 `E_MANIFEST_JSON`: a manifest is RFC 8259 JSON in UTF-8, without the `NaN`
 extension or another Unicode encoding. The fuzz harnesses of the Python and
 JavaScript readers found these (CONTRIBUTING.md).

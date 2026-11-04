@@ -404,6 +404,23 @@ def _():
             _err("E_ZIP_UNREADABLE"), None)
 
 
+def _patch_end_record(zip_bytes: bytes, offset: int, value: int) -> bytes:
+    """Rewrite one 16-bit field of the end of central directory record."""
+    out = bytearray(zip_bytes)
+    end = out.rindex(b"PK\x05\x06")
+    struct.pack_into("<H", out, end + offset, value)
+    return bytes(out)
+
+
+@case("zip_multi_volume")
+def _():
+    a = base_archive()
+    return (_patch_end_record(a.to_bytes(), 4, 1),
+            "The end of central directory record names disk 1: a split, "
+            "multi-volume ZIP, which no QVF reader supports (spec § 2.1).",
+            _err("E_ZIP_UNREADABLE"), None)
+
+
 @case("orphan_member")
 def _():
     a = base_archive()

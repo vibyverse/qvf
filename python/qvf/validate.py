@@ -274,14 +274,49 @@ class ZipUnreadable(ValueError, zipfile.BadZipFile):
     """
 
 
+def _end_record_problem(zf: zipfile.ZipFile) -> Optional[str]:
+    """Why the end of central directory record disagrees with the archive.
+
+    ``zipfile`` reads every record that fits in the central directory and
+    ignores the disk numbers and the entry count of the end record; the C++
+    and JavaScript readers refuse a multi-volume archive and an entry count
+    that differs from the records. Uses ``zipfile._EndRecData`` and answers
+    ``None`` when it is absent.
+    """
+    end_record = getattr(zipfile, "_EndRecData", None)
+    if end_record is None or zf.fp is None:
+        return None
+    endrec = end_record(zf.fp)
+    if not endrec:
+        return None
+    if endrec[1] != 0 or endrec[2] != 0:
+        return "multi-volume ZIP archives are not supported"
+    count = len(zf.infolist())
+    if endrec[3] != count or endrec[4] != count:
+        return (f"the end record counts {endrec[4]} entries, the central "
+                f"directory holds {count}")
+    return None
+
+
 def _open_zip(source: Any) -> zipfile.ZipFile:
     """``zipfile.ZipFile(source)``, refusing any damage as ``ZipUnreadable``."""
     try:
-        return zipfile.ZipFile(source, "r")
+        zf = zipfile.ZipFile(source, "r")
     except MemoryError:
         raise
     except Exception as exc:  # noqa: BLE001 - any parse failure: unreadable
         raise ZipUnreadable(f"E_ZIP_UNREADABLE: not a readable zip: {exc}") from exc
+    try:
+        problem = _end_record_problem(zf)
+    except MemoryError:
+        zf.close()
+        raise
+    except Exception as exc:  # noqa: BLE001
+        problem = str(exc)
+    if problem:
+        zf.close()
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: not a readable zip: {problem}")
+    return zf
 
 
 def _inflates_past_end(source: Any, info: zipfile.ZipInfo) -> bool:
@@ -358,6 +393,12 @@ def _iter_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo, chunk_size: int = 1 
         raise
     except Exception as exc:  # noqa: BLE001 - any decoder failure: unreadable
         raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} cannot be read: {exc}") from exc
+
+
+def _reason(exc: BaseException) -> str:
+    """An exception's message without the code and label ``_iter_entry`` adds."""
+    text = str(exc).removeprefix("E_ZIP_UNREADABLE: ")
+    return text.split(" cannot be read: ", 1)[-1] if text.startswith("ZIP entry ") else text
 
 
 def _read_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
@@ -2266,7 +2307,8 @@ def validate_qvf(path: str, *, limits: Optional[Limits] = None, level=Level.All)
     try:
         zf = _open_zip(path)
     except Exception as exc:  # noqa: BLE001 — any failure means unreadable
-        out.error("E_ZIP_UNREADABLE", "archive", f"not a readable zip: {exc}")
+        reason = str(exc).removeprefix("E_ZIP_UNREADABLE: ").removeprefix("not a readable zip: ")
+        out.error("E_ZIP_UNREADABLE", "archive", f"not a readable zip: {reason}")
         return out.report(0)
     with zf:
         n_sections = _validate_open_zip(zf, lim, out, level)
@@ -2347,7 +2389,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
         raw = _read_entry(zf, minfo)
     except Exception as exc:  # noqa: BLE001
         out.error("E_ZIP_UNREADABLE", "entry:manifest.json",
-                  f"ZIP entry 'manifest.json' cannot be read: {exc}")
+                  f"ZIP entry 'manifest.json' cannot be read: {_reason(exc)}")
         return 0
     if _json_depth(raw, lim.max_json_depth) > lim.max_json_depth:
         out.error("E_JSON_TOO_DEEP", "manifest.json",
@@ -2565,7 +2607,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                 raw = _read_entry(zf, info)
             except Exception as exc:  # noqa: BLE001
                 out.error("E_ZIP_UNREADABLE", f"entry:{mpath}",
-                          f"ZIP entry {mpath!r} cannot be read: {exc}")
+                          f"ZIP entry {mpath!r} cannot be read: {_reason(exc)}")
                 continue
             if "sha256" in m and hashlib.sha256(raw).hexdigest() != m["sha256"]:
                 out.error("E_SHA256_MISMATCH", mwhere,
