@@ -48,10 +48,6 @@ CORPUS = os.path.join(ROOT, "conformance", "corpus")
 NEGATIVE = os.path.join(ROOT, "conformance", "negative")
 LEGACY = os.path.join(ROOT, "conformance", "legacy")
 SCHEMA_CODES = {"E_SCHEMA", "E_PAYLOAD_SCHEMA"}
-# Archives an implementation cannot open yet: the C++ ZIP layer has no ZIP64
-# (WP-40). They are skipped for that implementation while it reports
-# E_ZIP_UNREADABLE.
-KNOWN_GAPS = {"cpp": {"zip64.qvf"}, "js": set()}
 
 
 # --- the implementations ---------------------------------------------------------
@@ -134,8 +130,6 @@ def _compare_archives(impl, archives, schema=True, monkeypatch=None):
     for (path, limits), got in zip(archives, _run(cmd, requests)):
         archive = os.path.basename(path)
         got_codes = {f["code"] for f in got}
-        if archive in KNOWN_GAPS[name] and "E_ZIP_UNREADABLE" in got_codes:
-            continue
         want = _python_findings(path, limits, schema, monkeypatch)
         want_codes = {f["code"] for f in want}
         if got_codes != want_codes:
