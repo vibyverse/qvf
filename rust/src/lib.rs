@@ -27,6 +27,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod builders;
+pub mod editor;
 pub mod error;
 #[rustfmt::skip]
 pub mod generated;
@@ -43,6 +45,11 @@ pub mod writer;
 pub mod zip;
 pub mod zip_writer;
 
+pub use builders::{
+    BandProjections, Bands, BondingAnalysis, Broadening, DosBonding, DosChannel, DosInfo, DosPair, DosProjected, DosTotal, Kpath,
+    KpathSegment, Peak, Precision, Spectrum, Trajectory, TrajectoryCell,
+};
+pub use editor::{Editor, EditorOptions};
 pub use error::{Code, QvfError, Severity};
 pub use limits::Limits;
 pub use reader::{DType, Reader, Section, Tensor, TensorData};

@@ -218,7 +218,7 @@ pub(crate) fn declared_size_problem(
     }
 }
 
-fn check_entry_caps(entry: &ZipEntry, limits: &Limits) -> Result<(), QvfError> {
+pub(crate) fn check_entry_caps(entry: &ZipEntry, limits: &Limits) -> Result<(), QvfError> {
     if entry.size as f64 > limits.max_member_bytes {
         return Err(QvfError::new(
             Code::E_MEMBER_TOO_LARGE,

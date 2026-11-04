@@ -21,6 +21,11 @@ use serde_json::{json, Map, Value};
 use crate::reader::DType;
 use crate::writer::{invalid, Element, TensorSink, WriteError, Writer};
 
+pub use crate::builders::{
+    BandProjections, Bands, BondingAnalysis, Broadening, DosBonding, DosChannel, DosInfo, DosPair, DosProjected, DosTotal, Kpath,
+    KpathSegment, Peak, Precision, Spectrum, Trajectory, TrajectoryCell, SPECTRUM_1D_KINDS,
+};
+
 /// Element symbols by atomic number (index 0 is a dummy atom).
 pub const ELEMENTS: [&str; 119] = [
     "X", "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc",
@@ -848,6 +853,9 @@ impl<W: Write> Writer<W> {
         ]);
         self.add_section(&es.id, "excited_states", fields)?;
         self.add_json(&es.id, "states", &payload)?;
+        if let Some(info) = self.info.get_mut(&es.id) {
+            info.states = Some(es.states.iter().map(|s| s.index).collect());
+        }
         Ok(es.id.clone())
     }
 }
