@@ -70,6 +70,16 @@ static std::vector<uint8_t> make_zip(const std::vector<Entry>& entries) {
 
 static std::string sha(const std::string& s) { return detail::Sha256::hex_of(s); }
 
+template <class F>
+static bool throws_runtime(F fn) {
+    try {
+        fn();
+    } catch (const std::runtime_error&) {
+        return true;
+    }
+    return false;
+}
+
 static Json json_member(const std::string& path, const std::string& data) {
     Json m = Json::object();
     m.set("path", path).set("format", "json").set("sha256", sha(data));
@@ -634,6 +644,35 @@ static void test_members() {
                 archive(manifest_of({structure_section(), section("ap", "atom_properties", ap)}),
                         {{"structure/structure.json", kWater}, {"q.bin", charges}}),
                 "E_BINARY_SIZE");
+    // Fuzzing regression (WP-50): an integer literal beyond int64 in a shape
+    // parses as a double. Json::as_int() converted it unchecked (undefined
+    // behaviour); read_binary_member now refuses it and validation reports it.
+    {
+        Json huge = binary_member("q.bin", charges, "float64", 2);
+        Json shape = Json::array();
+        shape.push_back(Json::raw("1" + std::string(98, '0')));
+        huge.set("shape", shape);
+        Json aph = Json::object();
+        aph.set("mulliken_charge", huge);
+        const std::vector<uint8_t> a =
+            archive(manifest_of({structure_section(), section("ap", "atom_properties", aph)}),
+                    {{"structure/structure.json", kWater}, {"q.bin", charges}});
+        CHECK(throws_runtime([&] {
+                  QvfReader::from_bytes(a).read_binary_member("ap", "mulliken_charge");
+              }),
+              "shape beyond int64: read_binary_member throws");
+        CHECK(throws_runtime([] { (void)Json::parse("1e300").as_int(); }) &&
+                  throws_runtime([] { (void)Json::parse("-1e19").as_int(); }) &&
+                  Json::parse("-9.2e18").as_int() == -9200000000000000000LL,
+              "as_int refuses doubles outside the int64 range");
+        bool err = false;
+        try {
+            err = has_errors(QvfReader::validate_bytes(a));
+        } catch (const std::exception& e) {
+            std::cerr << "    validate_bytes threw: " << e.what() << "\n";
+        }
+        CHECK(err, "shape beyond int64: validation reports an error and does not throw");
+    }
     Json ap16 = Json::object();
     ap16.set("mulliken_charge", binary_member("q.bin", charges, "float16", 8));
     expect_only("dtype",

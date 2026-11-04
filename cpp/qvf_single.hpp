@@ -177,7 +177,13 @@ public:
     }
     int64_t as_int() const {
         if (type_ == Type::Int) return int_;
-        if (type_ == Type::Double) return static_cast<int64_t>(dbl_);
+        // A double outside the int64 range (such as an over-long integer
+        // literal) is refused: converting it would be undefined behaviour.
+        if (type_ == Type::Double) {
+            if (dbl_ >= -9223372036854775808.0 && dbl_ < 9223372036854775808.0)
+                return static_cast<int64_t>(dbl_);
+            throw std::runtime_error("qvf::Json number outside the int64 range");
+        }
         throw std::runtime_error("qvf::Json not a number");
     }
     const std::string& as_string() const {
