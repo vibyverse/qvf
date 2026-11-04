@@ -1,7 +1,7 @@
 # PySCF adapter
 
 `qvf.adapters.pyscf` writes molecular PySCF SCF/DFT and excited-state
-results, and periodic Γ-point SCF/DFT results, as QVF
+results, and periodic Γ-point and k-point sampled SCF/DFT results, as QVF
 archives (WP-62). It is the second independent producer of
 `wavefunction.gto` beside vibe-qc, and it uses only existing QVF v1 kinds and
 members: no format change. The adapter is unreleased and is not included in
@@ -288,12 +288,89 @@ PySCF's Ewald energy per cell of the point nuclei with their effective
 charges, in a neutralizing background for a charged cell. `electronic` is
 the rest.
 
-**Refused.** k-point sampling objects (`KRHF`, `KUHF`, `KRKS` and the like:
-their orbitals belong in `wavefunction.bloch`, a later tranche), a nonzero
-`kpt`, complex orbitals, periodic ROHF, ROKS and GHF, a cell of dimension
+**Refused.** A nonzero `kpt` (use the k-point class with `kpts=[kpt]`,
+[below](#k-point-sampled-periodic-calculations)), complex orbitals, periodic ROHF, ROKS and GHF, a cell of dimension
 zero, periodic response and grids of a cell (`add_density_grid`,
 `add_orbital_grid`, `molecular_grid`), which would need lattice-summed AOs.
 Space-group symmetry labels are not written.
+
+## k-point sampled periodic calculations
+
+`write_scf` and `add_scf` write `pbc.scf.KRHF`, `pbc.scf.KUHF`,
+`pbc.dft.KRKS` and `pbc.dft.KUKS` results on a Monkhorst-Pack, shifted or
+explicit k mesh as a periodic `structure` and a `wavefunction.bloch` section
+(spec § 5.3.1, provisional). `add_bloch_wavefunction` adds the section alone,
+and `add_wavefunction` forwards a k-point object to it. There is no format
+change.
+
+```python
+from pyscf.pbc import gto, scf
+from qvf import validate_qvf
+from qvf.adapters.pyscf import write_scf
+
+cell = gto.M(atom="C 0 0 0; C 0.8917 0.8917 0.8917",
+             a="0 1.7834 1.7834; 1.7834 0 1.7834; 1.7834 1.7834 0",
+             basis="gth-szv", pseudo="gth-pade", mesh=[15, 15, 15])
+mf = scf.KRHF(cell, kpts=cell.make_kpts([2, 2, 2])).run()
+write_scf(mf, "diamond-k222.qvf")
+assert validate_qvf("diamond-k222.qvf")["findings"] == []
+```
+
+| PySCF | QVF |
+|---|---|
+| cell, lattice, `dimension` | `structure`, as for Γ, with the `multiplicity` of one cell (below) |
+| `mf.kpts` (absolute, bohr⁻¹) | `kpoints.kpoints` in fractional reciprocal-lattice coordinates, `k_i = k · a_i / (2π)` (`fractional_kpoints`, inverse `absolute_kpoints`) |
+| equal k weights of `KSCF` | `kpoints.weights`, `1/n_k` each |
+| uniform mesh, Γ-centred or shifted (`make_kpts(..., scaled_center=...)`, `with_gamma_point=False`) | `kpoints.mesh` and `kpoints.shift` (shift omitted for a Γ-centred mesh, `kpoint_mesh` detects both). An explicit list that is no mesh has neither |
+| `mo_coeff[k]` (complex) | `mo_coefficients[k, s]`, (real, imaginary) on the last axis, through the same AO map |
+| `mo_energy[k]`, `mo_occ[k]` | `energies[k, s]` (hartree) and `occupations[k, s]` (unweighted, 0 to 2 or 0 to 1) |
+| orbital count varying with k | `mo_metadata.n_mo_per_k` with zero padding |
+| GTH pseudopotential, `nelectron` | `basis.ecp` (name and core count) and `basis.n_electrons` of one cell |
+| request | `job.spec` with `job_type: "periodic"`, `kpoints` the mesh, `options.kpoint_shift` for a shifted mesh, `options.kpoints_fractional` for a list that is no mesh, and the Γ options |
+| `e_tot`, `energy_nuc()` | root `energies` and `provenance` per cell, as for Γ |
+
+**Bloch phase convention.** Spec § 5.3.1 defines
+`φ_μk(r) = N^(−1/2) Σ_T e^{+ik·T} χ_μ(r − T)` with the phase independent of
+the atomic position, and `S_μν(k) = Σ_T e^{ik·T} ⟨χ_μ(r)|χ_ν(r − T)⟩`. PySCF
+uses the same Bloch functions per cell, so its `mo_coeff` are written as they
+are. The tests check this numerically: S(k) built from the archive's basis
+and lattice with the spec's phase, from molecular overlaps between the cell
+and its images, equals `cell.pbc_intor('int1e_ovlp', kpts=mf.kpts)` to 1e-9
+at every k. The opposite sign and a phase `e^{ik·(T + R_ν − R_μ)}` differ by
+more than 1e-2 wherever S(k) is complex. Quadrature over the cell with the
+Appendix A AO evaluator agrees to 1e-4.
+
+**Overlap.** QVF v1 has no member for S(k). A consumer builds it from `basis`,
+`lattice_vectors` and `pbc` as for `S_Γ`: the stored orbitals satisfy
+`C(k)ᴴ S(k) C(k) = 1` at every k and spin, and
+`Σ_k w_k tr(P(k) S(k))` with `P(k) = Σ_m n_km C_km C_kmᴴ` is
+`basis.n_electrons`.
+
+**Spin.** PySCF's KUHF reads `cell.spin` as the spin of the whole k-point
+supercell, so `cell.spin = 2` on two k-points is one unpaired electron per
+cell. The `structure`, `job.spec` and `provenance` multiplicities are those of
+one cell, `(n_α − n_β) / n_k + 1`. A spin that is not an integer per cell is
+refused.
+
+**Not written.** `wavefunction.bloch` has no density member, so `density=True`
+is refused, and the adapter writes no AO populations for k-point results
+(`populations=True` and `add_populations` are refused). The default for both
+is to leave them out. Refused as well: KROHF, KROKS and KGHF (the kind has no
+restricted open-shell or generalized form), k-point symmetry-adapted objects
+(`space_group_symmetry=True`, whose orbitals cover the irreducible wedge
+only), k-points with a component along a non-periodic axis, and α and β
+orbital counts that differ at one k-point.
+
+**Checks.** `python/tests/test_adapter_pyscf_kpoints.py` runs diamond KRHF on
+a 2 × 2 × 2 Γ-centred mesh, diamond KRKS (PBE) on 3 × 1 × 1, H₂ KUHF on an
+explicit list of three k-points and a hydrogen-atom KUKS on a 2 × 1 × 1 mesh
+shifted by 0.1. Each archive validates with no findings. Besides the S(k),
+orthonormality and electron-count checks above, the k-points round-trip
+between PySCF's absolute and the spec's fractional coordinates to 1e-12
+through the archive's own lattice, and a cell rebuilt from the archive
+reproduces `e_tot` to 1e-8 hartree from densities built from the stored
+coefficients. A one-point `KRHF` at Γ is written as `wavefunction.bloch`
+with `mesh` `[1, 1, 1]`. The Γ-point and molecular archives are unchanged.
 
 ## Effective core potentials
 
@@ -592,8 +669,8 @@ hartree (observed: 2e-15). Charges equal PySCF's Mulliken analysis with
 
 ## Not yet covered
 
-Later WP-62 tranches: restricted-open and spin-flip response and
-k-point sampled periodic calculations (`wavefunction.bloch`). GTH projectors
+Later WP-62 tranches: restricted-open and spin-flip response, and
+populations and densities of k-point sampled calculations. GTH projectors
 (named only, see above), spin-orbit ECP terms (omitted, see above), solvent
 models (refused), GHF and relativistic two-component wavefunctions (refused)
 and ghost atoms (refused) are not mapped either.
