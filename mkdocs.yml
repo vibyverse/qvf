@@ -3,7 +3,8 @@
 #   mkdocs build --strict
 # The site lands in site/ (ignored). scripts/mkdocs_hooks.py adds the
 # top-level documents below to the site and points links to other repository
-# files at the public source tree. Publishing is a release decision.
+# files at the public source tree. Publishing is a maintainer action through
+# .github/workflows/docs-pages.yml (workflow_dispatch only, see CONTRIBUTING.md).
 site_name: QVF
 site_description: The QVF quantum-chemistry archive format and its toolkit
 site_url: https://vibyverse.com/qvf/docs/
@@ -43,6 +44,7 @@ validation:
   omitted_files: warn
   absolute_links: info
   unrecognized_links: warn
+  anchors: warn
 nav:
   - Home: index.md
   - Format:

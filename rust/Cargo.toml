@@ -1,0 +1,26 @@
+[package]
+name = "qvf"
+version = "0.1.0-dev"
+edition = "2021"
+rust-version = "1.74"
+license = "Apache-2.0"
+description = "Independent Rust reader and validator for the QVF archive format, certified by the shared conformance corpus"
+repository = "https://github.com/vibyverse/qvf"
+readme = "README.md"
+keywords = ["qvf", "quantum-chemistry", "archive", "validator"]
+categories = ["science", "parser-implementations"]
+# The crate embeds nothing from outside rust/ at build time; the conformance
+# test reads ../conformance at run time.
+publish = false
+
+[dependencies]
+# DEFLATE (pure Rust miniz_oxide backend) and CRC-32. The ZIP container layer
+# is our own: the validator must see every central-directory record,
+# duplicates included, before anything is decompressed (spec § 2.1, § 6.1).
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# manifest.json and the JSON members.
+serde_json = "1"
+# Member checksums (spec § 4.2).
+sha2 = { version = "0.10", default-features = false }
+
+[dev-dependencies]

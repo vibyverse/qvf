@@ -2427,7 +2427,7 @@ meanwhile is additive.)
    data.
 3. Reach out — once your code emits conforming archives, it can be listed as a
    supported producer and its native format considered for direct
-   [vibe-view](https://vibe-qc.com) support. See
+   [vibe-viewer](https://vibe-qc.com) support. See
    [`docs/integration_guide.md`](docs/integration_guide.md).
 
 ## Evolving the governance
