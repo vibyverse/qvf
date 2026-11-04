@@ -18,8 +18,8 @@ cargo run --example validate -- ../conformance/corpus/structure_periodic.qvf
 ```
 
 Edition 2021, declared MSRV 1.74 (`rust-version` in `Cargo.toml`). The crate
-is developed and tested with Rust 1.97. The MSRV has not been checked with an
-older toolchain yet, and the crate is not part of the GitHub CI. Build output
+is developed with current stable Rust. The release-candidate CI (`rust` job)
+runs the tests on stable and on 1.74, and fmt and clippy on stable. Build output
 stays in `rust/target/` (ignored).
 
 ## Dependencies
@@ -182,4 +182,3 @@ not an automated test.
   in the other validators, but a lone surrogate escape or a number outside
   the `f64` range is a JSON syntax error here, where JavaScript accepts it.
 * The reader reads the whole archive into memory.
-* Not wired into GitHub CI, and the MSRV is declared but not verified.
