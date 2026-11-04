@@ -1947,10 +1947,13 @@ including a complex or `generalized` wavefunction.
   stored coefficients and AO order mean what the producer's own integral code
   meant (Appendix A.1, *Verifying with `overlap`*), and validators do: a
   diagonal that disagrees with the basis is the error `E_NORMALIZATION`.
+  For a periodic structure it holds no lattice images (*Γ-point orbitals of
+  a periodic structure* below).
 * **`density_matrix`** is the spin-summed (total) one-particle density matrix
   `P` in the AO basis of a single-set wavefunction, so that the electron
   density is `ρ(r) = Σ_μν P[μ, ν] χ_μ(r) χ_ν(r)` and `tr(P S)` is the number
-  of electrons it describes. For orbitals that define it, such as an SCF
+  of electrons it describes (for a periodic structure the AOs are lattice
+  sums and the metric is `S_Γ`, below). For orbitals that define it, such as an SCF
   wavefunction, `P[μ, ν] = Σ_i n_i C[i, μ] C[i, ν]` with the occupations
   `n_i`; a correlated method may store its own density, which its orbitals do
   not reproduce. For complex coefficients `P` is the real part of the
@@ -1965,6 +1968,57 @@ The density members follow the coefficient members: `density_matrix` appears
 only with `mo_coefficients`, and `density_matrix_alpha` and
 `density_matrix_beta` appear only together and only with
 `mo_coefficients_alpha` and `mo_coefficients_beta`.
+
+#### Γ-point orbitals of a periodic structure
+
+A `wavefunction.gto` section whose `basis` refers to a structure with a
+periodic axis (a `pbc` entry that is `true`, § 5.1) carries Γ-point
+crystalline orbitals. Each AO enters them as its Bloch sum at Γ, the Bloch
+sum of § 5.3.1 with k = 0 and N = 1:
+
+```text
+φ_μ(r) = Σ_T χ_μ(r − T)
+ψ_i(r) = Σ_μ C[i, μ] · φ_μ(r)
+```
+
+T runs over the lattice translations along the periodic axes of that
+structure, built from its `lattice_vectors` converted to bohr (§ 4.3), and
+χ_μ is the AO of `basis` exactly as above. The metric of these orbitals is
+the **lattice-summed overlap**
+
+```text
+S_Γ[μ, ν] = Σ_T ⟨χ_μ(r) | χ_ν(r − T)⟩
+```
+
+which is S(k) of § 5.3.1 at k = 0. For a structure without a periodic axis T
+is 0 alone, `S_Γ` is the AO overlap, and the statements below reduce to the
+molecular ones. For such a section:
+
+* **`overlap`** is the AO overlap `⟨χ_μ | χ_ν⟩` defined above: the T = 0 term
+  of `S_Γ`, without lattice images. Its diagonal is checked against
+  Appendix A.1 as for a molecule. It is not `S_Γ`, whose diagonal differs
+  from the A.1 self-overlap wherever an AO overlaps its own images (2.37 for
+  the s function and 0.50 for each p function of carbon in GTH-SZV in
+  diamond), so that a stored `S_Γ` is reported as `E_NORMALIZATION`.
+* **Orthonormality** refers to `S_Γ`. Orthonormal orbitals, such as the
+  canonical orbitals of an SCF calculation, satisfy
+  `Σ_μν C̄[i, μ] S_Γ[μ, ν] C[j, ν] = δ_ij`. They are in general not
+  orthonormal in `overlap`, and a consumer **MUST NOT** treat a deviation
+  there as a defect of the archive.
+* **Density and electron count.** The electron density is
+  `ρ(r) = Σ_μν P[μ, ν] φ_μ(r) φ_ν(r)`, which is periodic, and the number of
+  electrons in one cell, `basis.n_electrons`, is its integral over the cell,
+  `tr(P S_Γ)`. `tr(P S)` with `overlap` is not the electron count: it is
+  9.62 instead of 8 for diamond in the example above. Population analyses in
+  the AO basis, such as Mulliken charges, likewise use `S_Γ`.
+* **Building `S_Γ`.** QVF v1 has no member for `S_Γ`. A consumer builds it
+  from `basis`, `lattice_vectors` and `pbc` with an ordinary AO overlap code,
+  summing over translations until the terms fall below the precision it
+  needs: the overlap of two primitives with exponents α and β whose centres
+  are a distance R apart decays as `exp(−αβ R² / (α + β))`.
+
+For `generalized` coefficients each spin block of the AO axis uses `S_Γ`, as
+it uses `overlap` for a molecule.
 
 #### Checks
 
@@ -4265,6 +4319,10 @@ sees the diagonal only, so it cannot tell apart the components of a spherical
 shell, whose diagonal entries are all equal: a permutation of `m` within a
 spherical shell passes it, as does a sign flip of any component. The
 pointwise AO values must also follow the convention in A.2.
+
+The check applies unchanged to a Γ-point section of a periodic structure,
+because its `overlap` holds no lattice images (§ 5.3, *Γ-point orbitals of a
+periodic structure*).
 
 This is the most valuable interoperability check the format has. The
 normalization trap produces orbitals that look plausible and are wrong; with
