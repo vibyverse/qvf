@@ -1,0 +1,10 @@
+{
+  "archive": "unit_compound_contradicts_fixed.qvf",
+  "description": "A properties.elastic payload that declares units.compliance 'gpa', a unit name that contradicts the gpa-1 spec \u00a7 5.13 fixes for the compliance. Only a validator with a JSON Schema engine detects this. One without accepts the archive.",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

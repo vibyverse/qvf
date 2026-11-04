@@ -1,0 +1,52 @@
+{
+  "archive": "units_compound_periodic.qvf",
+  "description": "Compound unit names (spec \u00a7 4.3) on a crystal: an elastic compliance restating gpa-1 and a piezoelectric tensor restating c_per_m2, the units spec \u00a7 5.13 fixes for them.",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "properties.dielectric",
+    "properties.elastic",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "elastic",
+      "member": "properties",
+      "json_pointer": [
+        "units",
+        "compliance"
+      ],
+      "equals": "gpa-1"
+    },
+    {
+      "section": "elastic",
+      "member": "properties",
+      "json_pointer": [
+        "compliance",
+        0,
+        0
+      ],
+      "equals": 0.030327428878153522,
+      "tol": 1e-12
+    },
+    {
+      "section": "dielectric",
+      "member": "properties",
+      "json_pointer": [
+        "units",
+        "piezoelectric"
+      ],
+      "equals": "c_per_m2"
+    },
+    {
+      "section": "dielectric",
+      "member": "properties",
+      "json_pointer": [
+        "piezoelectric",
+        0,
+        4
+      ],
+      "equals": 0.15,
+      "tol": 1e-12
+    }
+  ]
+}

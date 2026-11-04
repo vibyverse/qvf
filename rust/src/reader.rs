@@ -440,16 +440,16 @@ impl Reader {
         })?;
         let shape: Vec<usize> = match spec.get("shape") {
             None => Vec::new(),
-            Some(Value::Array(dims)) => {
-                dims.iter().map(|d| d.as_f64().filter(|x| x.fract() == 0.0 && *x >= 0.0 && *x <= usize::MAX as f64).map(|x| x as usize)).collect::<Option<Vec<_>>>().ok_or_else(
-                    || {
-                        QvfError::new(
-                            Code::E_MEMBER_MALFORMED,
-                            format!("member {section_id}/{role}: shape must be a list of non-negative integers"),
-                        )
-                    },
-                )?
-            }
+            Some(Value::Array(dims)) => dims
+                .iter()
+                .map(|d| d.as_f64().filter(|x| x.fract() == 0.0 && *x >= 0.0 && *x <= usize::MAX as f64).map(|x| x as usize))
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| {
+                    QvfError::new(
+                        Code::E_MEMBER_MALFORMED,
+                        format!("member {section_id}/{role}: shape must be a list of non-negative integers"),
+                    )
+                })?,
             Some(_) => {
                 return Err(QvfError::new(
                     Code::E_MEMBER_MALFORMED,

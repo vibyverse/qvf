@@ -926,6 +926,35 @@ def _():
             "one without accepts the archive.",
             _err("E_PAYLOAD_SCHEMA"), None)
 
+
+@case("unit_compound_unknown")
+def _():
+    a = base_archive()
+    _volume_density(a, {**_GRID, "units": {"origin": "bohr",
+                                           "data": "e_per_angstrom3"}})
+    return (a.to_bytes(),
+            "A volume.density grid whose units object declares "
+            "'e_per_angstrom3'. It follows the spelling rule of the compound "
+            "unit names, but the vocabulary of spec § 4.3 is a closed list and "
+            "does not hold it, so it is not a unit name. Every validator warns "
+            "(W_UNIT_UNKNOWN), and one with a JSON Schema engine also rejects "
+            "the payload (E_PAYLOAD_SCHEMA).",
+            [{"code": "W_UNIT_UNKNOWN", "severity": "warning"}]
+            + _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("unit_compound_contradicts_fixed")
+def _():
+    a = base_archive()
+    _properties(a, "properties.elastic", "elastic", {
+        "stiffness": _cubic_stiffness(), "units": {"compliance": "gpa"}})
+    return (a.to_bytes(),
+            "A properties.elastic payload that declares units.compliance "
+            "'gpa', a unit name that contradicts the gpa-1 spec § 5.13 fixes "
+            "for the compliance. Only a validator with a JSON Schema engine "
+            "detects this. One without accepts the archive.",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
 # Energy derivatives and the root energies block (spec § 3.6, § 5.10, § 5.11).
 
 @case("forces_atom_count")

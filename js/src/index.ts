@@ -1,5 +1,5 @@
 /**
- * `@qvf/core`: a reader and validator for QVF (Quantum Visualization Format)
+ * `@qvf/core`: a reader, validator and writer for QVF (Quantum Visualization Format)
  * archives, in pure TypeScript for Node and browsers.
  */
 
@@ -47,3 +47,28 @@ export type {
 export { ZipArchive, crc32, pathProblem } from "./zip.js";
 export type { ZipEntry } from "./zip.js";
 export { sha256Hex } from "./sha256.js";
+export { Writer, SCHEMA_URI, jsonBytes, primitiveNorm } from "./writer.js";
+export type {
+  AnnotateOptions,
+  ArrayInput,
+  AtomInput,
+  BinaryOptions,
+  ExcitedStatesOptions,
+  MemberOptions,
+  Participant,
+  ReactionSchemeOptions,
+  RootBlock,
+  SchemeStep,
+  ShellInput,
+  SpectrumOptions,
+  StructureOptions,
+  Tensor,
+  TrajectoryOptions,
+  VolumeOptions,
+  WavefunctionGtoOptions,
+  WriterOptions,
+} from "./writer.js";
+export { ZipWriter } from "./zipWriter.js";
+export type { ZipSink, ZipWriterOptions } from "./zipWriter.js";
+export { encodeTensor } from "./tensor.js";
+export type { EncodedTensor, NestedNumbers, TensorInput } from "./tensor.js";

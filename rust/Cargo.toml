@@ -4,7 +4,7 @@ version = "0.1.0-dev"
 edition = "2021"
 rust-version = "1.74"
 license = "Apache-2.0"
-description = "Independent Rust reader and validator for the QVF archive format, certified by the shared conformance corpus"
+description = "Independent Rust writer, reader and validator for the QVF archive format, certified by the shared conformance corpus"
 repository = "https://github.com/vibyverse/qvf"
 readme = "README.md"
 keywords = ["qvf", "quantum-chemistry", "archive", "validator"]
@@ -20,6 +20,8 @@ publish = false
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 # manifest.json and the JSON members.
 serde_json = "1"
+# The typed models of src/kinds.rs (generated from the schema $defs).
+serde = { version = "1", features = ["derive"] }
 # Member checksums (spec § 4.2).
 sha2 = { version = "0.10", default-features = false }
 

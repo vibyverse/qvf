@@ -905,6 +905,43 @@ static void test_update_validate_repack() {
     fs::remove("wp40_repacked.qvf");
 }
 
+// One empty STORE entry, hand-built: local header, central directory and end
+// record, with the local and central names given separately.
+static std::vector<uint8_t> one_entry_zip(const std::string& local_name,
+                                          const std::string& cd_name) {
+    std::vector<uint8_t> z;
+    auto p16 = [&z](uint32_t v) { z.push_back(uint8_t(v)); z.push_back(uint8_t(v >> 8)); };
+    auto p32 = [&](uint32_t v) { p16(v & 0xFFFF); p16(v >> 16); };
+    p32(0x04034b50u); p16(20); p16(0); p16(0); p16(0); p16(0);   // local header
+    p32(0); p32(0); p32(0); p16(uint32_t(local_name.size())); p16(0);
+    z.insert(z.end(), local_name.begin(), local_name.end());
+    const uint32_t cd = uint32_t(z.size());
+    p32(0x02014b50u); p16(20); p16(20); p16(0); p16(0); p16(0); p16(0);   // central
+    p32(0); p32(0); p32(0); p16(uint32_t(cd_name.size())); p16(0); p16(0);
+    p16(0); p16(0); p32(0); p32(0);
+    z.insert(z.end(), cd_name.begin(), cd_name.end());
+    const uint32_t cd_size = uint32_t(z.size()) - cd;
+    p32(0x06054b50u); p16(0); p16(0); p16(1); p16(1); p32(cd_size); p32(cd); p16(0);
+    return z;
+}
+
+// Fuzzing regression (WP-50): an entry with an empty name and a local header
+// without name or extra field once passed a null pointer to memcmp (UBSan).
+static void test_empty_entry_name() {
+    const container::ZipReader r(one_entry_zip("", ""));
+    CHECK(r.entries().size() == 1, "empty-name entry is listed");
+    bool ok = false;
+    try {
+        ok = r.local_header(r.entries()[0]).data_offset == 30;
+    } catch (const std::exception& e) {
+        std::cerr << "    " << e.what() << "\n";
+    }
+    CHECK(ok, "empty-name local header reads (data at offset 30)");
+    const container::ZipReader r2(one_entry_zip("x", ""));
+    CHECK(throws([&] { (void)r2.local_header(r2.entries()[0]); }, "differs"),
+          "local name 'x' against an empty central name is refused");
+}
+
 static void test_zip_append_container() {
     container::MemorySink* mem = new container::MemorySink;
     container::ZipWriter zw{std::unique_ptr<container::Sink>(mem)};
@@ -1036,6 +1073,7 @@ int main(int argc, char** argv) {
     test_streaming_vs_buffered();
     test_update_validate_repack();
     test_zip_append_container();
+    test_empty_entry_name();
     if (argc > 1 && fs::is_directory(argv[1])) {
         test_corpus_containers(argv[1]);
         test_zero_grid((fs::path(argv[1]) / "volume_spin_zero.qvf").string());
