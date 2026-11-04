@@ -1,0 +1,10 @@
+{
+  "archive": "entry_size_overstated.qvf",
+  "description": "A JSON member whose ZIP headers declare twice the bytes its DEFLATE stream holds; CRC-32 and sha256 match the bytes there are. An entry that inflates to less than its declared size is unreadable (spec \u00a7 6.1).",
+  "expect": [
+    {
+      "code": "E_ZIP_UNREADABLE",
+      "severity": "error"
+    }
+  ]
+}

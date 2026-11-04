@@ -199,13 +199,14 @@ def test_caps_are_checked_before_decompression(tmp_path, monkeypatch):
                                   dtype="uint8", shape=[len(zeros)])}}],
         files={"structure/structure.json": sdata, "x/zeros.bin": zeros})
     read = []
-    real_read = zipfile.ZipFile.read
+    real_open = zipfile.ZipFile.open
 
-    def spy(self, name, pwd=None):
+    def spy(self, name, mode="r", pwd=None, **kwargs):
         read.append(getattr(name, "filename", name))
-        return real_read(self, name, pwd)
+        return real_open(self, name, mode, pwd, **kwargs)
 
-    monkeypatch.setattr(zipfile.ZipFile, "read", spy)
+    # Every entry is decompressed through ZipFile.open (bounded reads).
+    monkeypatch.setattr(zipfile.ZipFile, "open", spy)
     for lim, code in ((Limits(max_ratio=10, ratio_exempt_bytes=1024),
                        "E_COMPRESSION_RATIO"),
                       (Limits(max_member_bytes=1024), "E_MEMBER_TOO_LARGE"),

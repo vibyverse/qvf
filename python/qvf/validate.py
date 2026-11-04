@@ -265,6 +265,137 @@ def _size_problem(member: dict[str, Any], info: zipfile.ZipInfo) -> Optional[tup
     return None
 
 
+class ZipUnreadable(ValueError, zipfile.BadZipFile):
+    """An archive or entry that cannot be read (``E_ZIP_UNREADABLE``).
+
+    A ``ValueError`` like every other refusal of the readers, and a
+    ``zipfile.BadZipFile`` so that code catching the ``zipfile`` error keeps
+    working.
+    """
+
+
+def _open_zip(source: Any) -> zipfile.ZipFile:
+    """``zipfile.ZipFile(source)``, refusing any damage as ``ZipUnreadable``."""
+    try:
+        return zipfile.ZipFile(source, "r")
+    except MemoryError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - any parse failure: unreadable
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: not a readable zip: {exc}") from exc
+
+
+def _inflates_past_end(source: Any, info: zipfile.ZipInfo) -> bool:
+    """Whether a DEFLATE entry read up to its declared size has more output.
+
+    ``zipfile`` stops at the declared size without looking further, so this
+    finishes the stream on the reader's own decompressor (bounded: one byte of
+    output at a time) and also reports a stream that ends before its final
+    block. It relies on ``ZipExtFile`` internals and answers ``False`` when
+    they are absent.
+    """
+    if info.compress_type != zipfile.ZIP_DEFLATED:
+        return False
+    d = getattr(source, "_decompressor", None)
+    fileobj = getattr(source, "_fileobj", None)
+    left = getattr(source, "_compress_left", None)
+    if d is None or fileobj is None or not isinstance(left, int) \
+            or not hasattr(d, "unconsumed_tail"):
+        return False
+    data = d.unconsumed_tail
+    while not d.eof:
+        if data:
+            if d.decompress(data, 1):
+                return True
+            data = d.unconsumed_tail
+            continue
+        if left <= 0:
+            return True                     # the stream has no final block
+        data = fileobj.read(min(left, 1 << 16))
+        if not data:
+            return True
+        left -= len(data)
+    source._compress_left = left
+    return False
+
+
+def _iter_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo, chunk_size: int = 1 << 20):
+    """Yield the uncompressed bytes of an entry in bounded chunks.
+
+    Never inflates past the size the central directory records: a stream that
+    is shorter, longer or damaged, a CRC-32 mismatch and an entry ``zipfile``
+    cannot decode raise ``ZipUnreadable`` (spec § 2.1, § 6.1). The last chunk
+    has been verified only when the iterator is exhausted.
+    """
+    label = f"ZIP entry {info.orig_filename!r}"
+    if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+        # zipfile would also decode bzip2, LZMA and Zstandard; QVF allows
+        # only STORE and DEFLATE (spec § 2.1), like the other readers.
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} uses compression method "
+                            f"{info.compress_type}, not STORE (0) or DEFLATE (8)")
+    if (info.compress_type == zipfile.ZIP_STORED
+            and info.compress_size != info.file_size):
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} is stored with "
+                            f"{info.compress_size} bytes but declares {info.file_size}")
+    try:
+        with zf.open(info) as source:
+            left = info.file_size
+            while left > 0:
+                chunk = source.read(min(chunk_size, left))
+                if not chunk:
+                    raise ZipUnreadable(
+                        f"E_ZIP_UNREADABLE: {label} inflates to "
+                        f"{info.file_size - left} bytes, not its declared "
+                        f"{info.file_size}")
+                left -= len(chunk)
+                yield chunk
+            # One more read finishes the entry: zipfile checks the CRC-32 there.
+            source.read(1)
+            if _inflates_past_end(source, info):
+                raise ZipUnreadable(
+                    f"E_ZIP_UNREADABLE: {label} does not end at its declared "
+                    f"{info.file_size} bytes")
+    except (ZipUnreadable, MemoryError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - any decoder failure: unreadable
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} cannot be read: {exc}") from exc
+
+
+def _read_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
+    """The uncompressed bytes of an entry, read through ``_iter_entry``."""
+    return b"".join(_iter_entry(zf, info))
+
+
+def _reject_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not a JSON value (RFC 8259)")
+
+
+def _parse_json(raw: bytes) -> Any:
+    """Parse a JSON member or manifest: UTF-8 JSON as RFC 8259 defines it.
+
+    Unlike ``json.loads`` on bytes, this does not detect UTF-16 or UTF-32
+    and refuses the ``NaN``, ``Infinity`` and ``-Infinity`` extensions, as
+    the C++ and JavaScript validators do. One leading UTF-8 byte order mark
+    is skipped, as before. Raises ``ValueError`` (``UnicodeDecodeError`` for
+    bytes that are not UTF-8).
+    """
+    return json.loads(raw.decode("utf-8-sig"), parse_constant=_reject_constant)
+
+
+def _loads_coded(raw: bytes, code: str) -> Any:
+    """``json.loads`` whose refusals carry a finding code.
+
+    A ``json.JSONDecodeError`` keeps its type (its message gains the code);
+    any other parser refusal, such as an integer too long to convert, becomes
+    a ``ValueError`` with the code.
+    """
+    try:
+        return _parse_json(raw)
+    except json.JSONDecodeError as exc:
+        raise json.JSONDecodeError(f"{code}: {exc.msg}", exc.doc, exc.pos) from exc
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ValueError(f"{code}: {exc}") from exc
+
+
 class QvfReader:
     """Lazy reader for a ``.qvf`` archive. Verifies member checksums on read.
 
@@ -280,7 +411,7 @@ class QvfReader:
     def __init__(self, path: str, *, limits: Optional[Limits] = None) -> None:
         self.path = path
         self.limits = limits or Limits()
-        self._zip = zipfile.ZipFile(path, "r")
+        self._zip = _open_zip(path)
         try:
             dups = _duplicate_entries(self._zip)
             if dups:
@@ -290,7 +421,7 @@ class QvfReader:
             # getinfo() resolves a duplicated name to its last central-directory
             # record, which is the current manifest (spec § 2.3).
             raw = self._read_json_bytes(self._zip.getinfo(_MANIFEST), _MANIFEST)
-            self.manifest: dict[str, Any] = json.loads(raw)
+            self.manifest: dict[str, Any] = _loads_coded(raw, "E_MANIFEST_JSON")
             order = (self.manifest.get("byte_order", "little")
                      if isinstance(self.manifest, dict) else "little")
             if order != "little":
@@ -327,7 +458,7 @@ class QvfReader:
         if info.file_size > cap:
             raise ValueError(f"E_JSON_TOO_LARGE: {label} is {info.file_size} "
                              f"bytes, over the {cap}-byte JSON cap")
-        raw = self._zip.read(info)
+        raw = _read_entry(self._zip, info)
         limit = self.limits.max_json_depth
         if _json_depth(raw, limit) > limit:
             raise ValueError(f"E_JSON_TOO_DEEP: {label} nests deeper than "
@@ -342,11 +473,11 @@ class QvfReader:
         problem = _size_problem(member, info)
         if problem:
             raise ValueError(f"{problem[0]}: {problem[1]}")
-        raw = self._zip.read(info)
+        raw = _read_entry(self._zip, info)
         if verify and "sha256" in member:
             got = hashlib.sha256(raw).hexdigest()
             if got != member["sha256"]:
-                raise ValueError(f"sha256 mismatch for {member['path']}")
+                raise ValueError(f"E_SHA256_MISMATCH: sha256 mismatch for {member['path']}")
         return raw
 
     def read_json(self, member: dict[str, Any]) -> Any:
@@ -359,7 +490,7 @@ class QvfReader:
         if _json_depth(raw, limit) > limit:
             raise ValueError(f"E_JSON_TOO_DEEP: {member['path']} nests deeper "
                              f"than {limit} levels")
-        return json.loads(raw)
+        return _loads_coded(raw, "E_JSON_INVALID")
 
     def read_array(self, member: dict[str, Any]):
         import numpy as np
@@ -2133,7 +2264,7 @@ def validate_qvf(path: str, *, limits: Optional[Limits] = None, level=Level.All)
     out = _Findings()
 
     try:
-        zf = zipfile.ZipFile(path, "r")
+        zf = _open_zip(path)
     except Exception as exc:  # noqa: BLE001 — any failure means unreadable
         out.error("E_ZIP_UNREADABLE", "archive", f"not a readable zip: {exc}")
         return out.report(0)
@@ -2213,7 +2344,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
     if "manifest.json" in unsafe:
         return 0
     try:
-        raw = zf.read(minfo)
+        raw = _read_entry(zf, minfo)
     except Exception as exc:  # noqa: BLE001
         out.error("E_ZIP_UNREADABLE", "entry:manifest.json",
                   f"ZIP entry 'manifest.json' cannot be read: {exc}")
@@ -2223,7 +2354,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                   f"manifest.json nests deeper than {lim.max_json_depth} levels")
         return 0
     try:
-        manifest = json.loads(raw)
+        manifest = _parse_json(raw)
     except Exception as exc:  # noqa: BLE001
         out.error("E_MANIFEST_JSON", "manifest.json",
                   f"manifest.json is not valid JSON: {exc}")
@@ -2431,7 +2562,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                           f"{lim.max_json_bytes}-byte JSON cap")
                 continue
             try:
-                raw = zf.read(info)
+                raw = _read_entry(zf, info)
             except Exception as exc:  # noqa: BLE001
                 out.error("E_ZIP_UNREADABLE", f"entry:{mpath}",
                           f"ZIP entry {mpath!r} cannot be read: {exc}")
@@ -2446,7 +2577,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                               f"{lim.max_json_depth} levels")
                     continue
                 try:
-                    doc = json.loads(raw)
+                    doc = _parse_json(raw)
                 except Exception as exc:  # noqa: BLE001
                     out.error("E_JSON_INVALID", mwhere,
                               f"member {mpath!r}: not valid JSON ({exc})")

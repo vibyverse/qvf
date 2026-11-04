@@ -417,3 +417,13 @@ is an opt-in application-policy test (`max_ratio` is disabled by default).
 `entry_size_understated` and the absolute size-cap negatives guard bounded
 decompression; `crc_mismatch_stored` and `crc_mismatch_deflated` reject corrupt
 checksums even without an optional member SHA-256.
+`entry_inflates_past_size` (a stream that goes on past its declared size, with
+the CRC-32 and sha256 of the declared prefix), `entry_size_overstated` (a
+stream that ends short of it) and `entry_size_impossible` (2 GiB declared for
+a few stored bytes, beyond the 1032:1 DEFLATE limit, which a reader refuses
+without allocating it) make an entry that does not inflate to exactly its
+declared size `E_ZIP_UNREADABLE`, and so does `compression_method_unsupported`,
+a well-formed bzip2 member. `manifest_json_nan` and `manifest_json_utf16` are
+`E_MANIFEST_JSON`: a manifest is RFC 8259 JSON in UTF-8, without the `NaN`
+extension or another Unicode encoding. The fuzz harnesses of the Python and
+JavaScript readers found these (CONTRIBUTING.md).

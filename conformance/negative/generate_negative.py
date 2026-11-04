@@ -29,6 +29,7 @@ import os
 import struct
 import warnings
 import zipfile
+import zlib
 from typing import Any, Callable, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -329,6 +330,80 @@ def _():
             _err("E_ZIP_UNREADABLE"), None)
 
 
+def _patch_crc(zip_bytes: bytes, name: str, crc: int) -> bytes:
+    """Rewrite one entry's CRC-32 in its local header and central record."""
+    out = bytearray(zip_bytes)
+    raw_name = name.encode("utf-8")
+    for sig, crc_off, name_len_off, name_off in (
+            (b"PK\x03\x04", 14, 26, 30), (b"PK\x01\x02", 16, 28, 46)):
+        pos = out.find(sig)
+        while pos != -1:
+            n = struct.unpack_from("<H", out, pos + name_len_off)[0]
+            if bytes(out[pos + name_off:pos + name_off + n]) == raw_name:
+                struct.pack_into("<I", out, pos + crc_off, crc)
+            pos = out.find(sig, pos + 4)
+    return bytes(out)
+
+
+@case("entry_inflates_past_size")
+def _():
+    a = base_archive()
+    data = bytes((i * 7) % 251 for i in range(8192))
+    head = data[:1024]
+    member = opaque_member("x_test/liar.bin", head)
+    a.add_section({"id": "liar", "kind": "x_test.liar", "members": {"data": member}},
+                  {"x_test/liar.bin": data})
+    raw = _patch_declared_size(a.to_bytes(), "x_test/liar.bin", 1024)
+    return (_patch_crc(raw, "x_test/liar.bin", zlib.crc32(head)),
+            "A member whose ZIP headers declare 1 KiB uncompressed, with the "
+            "CRC-32 and sha256 of the first 1 KiB, while its DEFLATE stream "
+            "goes on to 8 KiB: the entry does not end at its declared size, "
+            "so it is unreadable even though a reader that stops there sees "
+            "matching checksums (spec § 2.1, § 6.1).",
+            _err("E_ZIP_UNREADABLE"), None)
+
+
+@case("entry_size_overstated")
+def _():
+    a = base_archive()
+    data = _json({"note": "x" * 1000})
+    _vendor(a, "short", "data", "x_test/short.json", data)
+    return (_patch_declared_size(a.to_bytes(), "x_test/short.json", 2 * len(data)),
+            "A JSON member whose ZIP headers declare twice the bytes its "
+            "DEFLATE stream holds; CRC-32 and sha256 match the bytes there "
+            "are. An entry that inflates to less than its declared size is "
+            "unreadable (spec § 6.1).",
+            _err("E_ZIP_UNREADABLE"), None)
+
+
+@case("entry_size_impossible")
+def _():
+    a = base_archive()
+    data = bytes(4096)
+    member = opaque_member("x_test/claim.bin", data)
+    a.add_section({"id": "claim", "kind": "x_test.claim", "members": {"data": member}},
+                  {"x_test/claim.bin": data})
+    return (_patch_declared_size(a.to_bytes(), "x_test/claim.bin", 2 ** 31),
+            "A member of a few compressed bytes whose ZIP headers declare 2 GiB "
+            "uncompressed, under the 8 GiB per-member cap but far beyond what "
+            "DEFLATE can expand those bytes to (about 1032:1). A reader must "
+            "refuse it without allocating the declared size (spec § 2.1, § 6.1).",
+            _err("E_ZIP_UNREADABLE"), None)
+
+
+@case("compression_method_unsupported")
+def _():
+    a = base_archive()
+    name, data, _method = a.entries[0]
+    a.entries[0] = (name, data, zipfile.ZIP_BZIP2)
+    return (a.to_bytes(),
+            "The structure member is a well-formed bzip2 entry (ZIP method 12) "
+            "with correct CRC-32 and sha256. QVF members are STORE or DEFLATE "
+            "only (spec § 2.1), so the entry is unreadable even to a reader "
+            "whose ZIP library could decode it.",
+            _err("E_ZIP_UNREADABLE"), None)
+
+
 @case("orphan_member")
 def _():
     a = base_archive()
@@ -410,6 +485,27 @@ def _():
     a = base_archive()
     a.manifest_bytes = b'{"qvf_version": 1, "source": '
     return (a.to_bytes(), "manifest.json is truncated, invalid JSON.",
+            _err("E_MANIFEST_JSON"), None)
+
+
+@case("manifest_json_nan")
+def _():
+    a = base_archive()
+    text = _json(a.manifest).decode("utf-8")
+    a.manifest_bytes = text.replace('"qvf_version": 1', '"qvf_version": NaN', 1).encode()
+    return (a.to_bytes(),
+            "manifest.json holds the bare token NaN, which some JSON parsers "
+            "accept as an extension but RFC 8259 JSON does not have.",
+            _err("E_MANIFEST_JSON"), None)
+
+
+@case("manifest_json_utf16")
+def _():
+    a = base_archive()
+    a.manifest_bytes = _json(a.manifest).decode("utf-8").encode("utf-16")
+    return (a.to_bytes(),
+            "manifest.json is valid JSON encoded as UTF-16 with a byte order "
+            "mark; a manifest parses as UTF-8 JSON (spec § 6).",
             _err("E_MANIFEST_JSON"), None)
 
 
