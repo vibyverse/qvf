@@ -7,6 +7,14 @@
   "license": "Apache-2.0",
   "author": "vibe-qc authors <project@vibe-qc.com>",
   "homepage": "https://vibe-qc.com/docs/qvf/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibyverse/qvf.git",
+    "directory": "js"
+  },
+  "bugs": {
+    "url": "https://github.com/vibyverse/qvf/issues"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -16,15 +24,24 @@
     }
   },
   "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
     "gen-kinds": "node scripts/gen-kinds.mjs",
     "test": "npm run build && node --test test/*.test.mjs",
-    "conformance": "npm run build && node scripts/conformance.mjs"
+    "conformance": "npm run build && node scripts/conformance.mjs",
+    "prepack": "npm run clean && npm run build"
   },
   "dependencies": {
     "fflate": "^0.8.3"
