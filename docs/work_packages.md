@@ -436,8 +436,11 @@ singlet-TDA NTOs and source-amplitude preservation. Frozen MO indices map
 to the full reference wavefunction. Tranche 3 (#26) adds singlet full-response
 NTOs from PySCF's `sqrt(2)(X+Y)`, retaining non-unit squared singular-value
 weights and reconstructing the length-gauge transition moments. Triplet NTOs and
-unrestricted/open-shell response remain deferred; grid densities → `volume.density`;
-PBC Γ-point → periodic structure + Γ wavefunction; ECP projectors.
+unrestricted/open-shell response remain deferred. Grid output adds
+`volume.density`, `volume.spin` and `volume.orbital` (`add_density_grid`,
+`add_orbital_grid`). PBC Γ-point → periodic structure + Γ wavefunction
+remains. Scalar ECP projectors
+(`basis.ecp[].projectors`) are written from `mol._ecpbas`. Spin-orbit terms are omitted.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone

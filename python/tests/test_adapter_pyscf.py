@@ -416,7 +416,10 @@ def test_ecp_core_count_and_electron_count(tmp_path):
     report = validate_qvf(path)
     assert report["findings"] == [], report["findings"]
     data = _load(path)
-    assert data["basis"]["ecp"] == [{"center": 1, "n_core_electrons": 28, "label": "def2-svp"}]
+    (entry,) = data["basis"]["ecp"]
+    assert {k: entry[k] for k in ("center", "n_core_electrons", "label")} == {
+        "center": 1, "n_core_electrons": 28, "label": "def2-svp"}
+    assert entry["projectors"]  # checked in test_adapter_pyscf_ecp.py
     assert data["basis"]["n_electrons"] == mol.nelectron == 26
     assert (mol.atom_charges() - data["props"]["mulliken_charge"]).sum() == pytest.approx(26)
 

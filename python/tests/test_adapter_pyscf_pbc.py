@@ -381,7 +381,8 @@ def test_low_dimensional_structure(tmp_path):
 def test_unsupported_periodic_inputs_are_refused(tmp_path):
     import numpy as np
     from pyscf.pbc import scf
-    from qvf.adapters.pyscf import write_scf, write_td
+    from qvf.adapters.pyscf import (add_density_grid, add_orbital_grid, molecular_grid,
+                                    write_scf, write_td)
     cell = _cell(H_BOX)
     with pytest.raises(NotImplementedError, match="k-point sampling"):
         write_scf(scf.KUHF(cell, kpts=cell.make_kpts([1, 1, 1])).run(), tmp_path / "k.qvf")
@@ -398,4 +399,12 @@ def test_unsupported_periodic_inputs_are_refused(tmp_path):
     closed = scf.RHF(_cell(DIAMOND)).run()
     with pytest.raises(NotImplementedError, match="periodic response"):
         write_td(closed.TDA().run(nstates=1), tmp_path / "td.qvf")
+    with pytest.raises(NotImplementedError, match="periodic cell"):
+        molecular_grid(cell)
+    with Writer(tmp_path / "grid.qvf", program="PySCF", version="test") as writer:
+        with pytest.raises(NotImplementedError, match="periodic cell"):
+            add_density_grid(writer, closed)
+        with pytest.raises(NotImplementedError, match="periodic cell"):
+            add_orbital_grid(writer, closed, ["homo"])
+    (tmp_path / "grid.qvf").unlink()
     assert not any(tmp_path.iterdir())
