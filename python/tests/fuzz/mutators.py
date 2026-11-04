@@ -617,7 +617,10 @@ def mutate(raw: bytes, ops: list[tuple[str, int]], byte_seed: int | None = None)
         a = None
     if a is not None:
         for name, seed in ops:
-            OPS[name](random.Random(seed), a)
+            try:
+                OPS[name](random.Random(seed), a)
+            except (RecursionError, ValueError, TypeError, KeyError, IndexError):
+                pass   # an operator that cannot apply (e.g. too deep to re-parse) is skipped
         raw = a.build()
     if byte_seed is not None:
         raw = byte_mutate(random.Random(byte_seed), raw)

@@ -68,11 +68,17 @@ def main(argv=None) -> int:
 
     t0 = time.monotonic()
     rounds = 0
+    harness_errors = 0
     while time.monotonic() < deadline:
-        one()
+        try:
+            one()
+        except Exception as exc:  # noqa: BLE001 - a harness bug must not end the campaign
+            harness_errors += 1
+            print(f"harness error in round {rounds}: {exc!r:.300}", flush=True)
         rounds += 1
     summary = {"target": args.target, "seconds": round(time.monotonic() - t0, 1),
-               "rounds": rounds, "inputs": stats["inputs"],
+               "rounds": rounds, "harness_errors": harness_errors,
+               "inputs": stats["inputs"],
                "slowest_s": round(stats["slowest"], 3), "peak_bytes": stats["peak"],
                "problems": stats["signatures"]}
     (out / "summary.json").write_text(json.dumps(summary, indent=2))

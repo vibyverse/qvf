@@ -469,7 +469,13 @@ export function mutate(raw, plan, byteSeed = null) {
     a = null; // a non-ZIP seed only gets byte noise
   }
   if (a) {
-    for (const [name, seed] of plan) OPS[name](rngFrom(seed), a);
+    for (const [name, seed] of plan) {
+      try {
+        OPS[name](rngFrom(seed), a);
+      } catch {
+        // an operator that cannot apply (e.g. a manifest too deep to re-parse) is skipped
+      }
+    }
     out = build(a);
   }
   if (byteSeed !== null) out = byteMutate(rngFrom(byteSeed), out);
