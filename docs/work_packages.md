@@ -435,10 +435,18 @@ RHF/RKS TDA and TDHF/TDDFT `excited_states` + `spectra.uvvis`, with paired
 singlet-TDA NTOs and source-amplitude preservation. Frozen MO indices map
 to the full reference wavefunction. Tranche 3 (#26) adds singlet full-response
 NTOs from PySCF's `sqrt(2)(X+Y)`, retaining non-unit squared singular-value
-weights and reconstructing the length-gauge transition moments. Triplet NTOs and
-unrestricted/open-shell response remain deferred; grid densities → `volume.density`;
-PBC Γ-point → periodic structure + Γ wavefunction. Scalar ECP projectors
-(`basis.ecp[].projectors`) are written from `mol._ecpbas`. Spin-orbit terms are omitted.
+weights and reconstructing the length-gauge transition moments. Closed-shell
+triplet NTOs are written as unrestricted α/β spin-orbital channels (β particle
+sign reversed), checked against PySCF's UHF response. UHF/UKS TDA and full
+response are exported with spin-labelled contributions and per-spin NTO
+channels. Grid output adds `volume.density`, `volume.spin` and
+`volume.orbital` (`add_density_grid`, `add_orbital_grid`). Scalar ECP
+projectors (`basis.ecp[].projectors`) are written from `mol._ecpbas`.
+Spin-orbit terms are omitted. Excited-state transition densities are written
+as `volume.transition_density` on request. Periodic Γ-point SCF/DFT writes a
+periodic structure and a Γ wavefunction (spec § 5.3 Γ-point overlap note).
+Restricted-open and spin-flip response, k-point sampling and periodic
+response remain deferred.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone
