@@ -1,5 +1,5 @@
 //! An independent Rust implementation of QVF, the archive format of the
-//! vibe-qc family: a streaming writer with section builders, a reader with
+//! vibe-qc family: a streaming writer with section builders, an editor, a reader with
 //! typed little-endian tensors and typed section models ([`kinds`],
 //! generated from the schema `$defs`, read with [`Reader::get`]), and a
 //! validator that reports the stable finding codes of the format specification
@@ -18,8 +18,10 @@
 //! # Ok::<(), qvf::QvfError>(())
 //! ```
 //!
-//! The `qvf` binary (`src/bin/qvf.rs`) offers the `validate`, `info`, `cat`
-//! and `extract` commands of the Python CLI.
+//! [`Editor`] updates an archive in place (spec § 2.3) and repacks it.
+//! The `qvf` binary (`src/bin/qvf.rs`) offers the `validate`, `info`, `cat`,
+//! `extract`, `diff`, `repack`, `scrub`, `conformance` and `schema` commands
+//! of the Python CLI.
 //!
 //! The crate does not depend on the C++ library or its C ABI. The JSON
 //! Schema check runs on the instruction table `scripts/gen_kinds.py`
