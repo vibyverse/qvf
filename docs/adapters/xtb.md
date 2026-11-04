@@ -117,7 +117,7 @@ the file alone does not distinguish canonical from transformed orbitals.
 `--canonical-orbitals` (Python: `canonical_orbitals=True`) explicitly asserts
 untransformed canonical xTB orbitals and enables canonical orbital labels in
 consumers. The managed runner below establishes that origin automatically.
-GFN0 custom charges have a labelled table in current vibe-view development
+GFN0 custom charges have a labelled table in current vibe-viewer development
 source; older consumers may not display custom properties. Provenance-only
 arrays may not have a dedicated display. All mapped kinds use existing QVF v1 contracts;
 no schema or consumer pin changes are needed.
@@ -167,7 +167,7 @@ qvf run-xtb xtb-job.json --binary /opt/xtb/bin/xtb
 ```
 
 The request lives beside `coord` and `xcontrol`, which must request JSON and
-any selected density output. vibe-view creates all three files. The request
+any selected density output. vibe-viewer creates all three files. The request
 contract is:
 
 ```json

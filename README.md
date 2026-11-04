@@ -11,8 +11,8 @@ viewer hints in a single random-access file, instead of a scatter of Cube, XYZ,
 Molden, XSF, log, and program-specific sidecar files.
 
 This toolkit lets **any** quantum-chemistry code produce valid `.qvf` archives
-without depending on vibe-qc. Within the vibe-qc family (vibe-qc, vibe-view,
-vibe-sketch, vibe-queue) QVF is the standard format the programs read, write
+without depending on vibe-qc. Within the vibe-qc family (vibe-qc, vibe-viewer,
+vibe-sketcher, vibe-scheduler) QVF is the standard format the programs read, write
 and hand each other; see [GOVERNANCE.md](GOVERNANCE.md#qvf-in-the-vibe-qc-family). It is licensed **Apache-2.0** (see `LICENSE`), so
 it can be linked into proprietary as well as open-source codes.
 
@@ -42,7 +42,7 @@ capabilities and preservation limits, use the [family workflow](docs/family_work
 | [`cpp/include/qvf/qvf_c.h`](cpp/include/qvf/qvf_c.h) | C ABI 1 for all canonical kinds, reading, validation and editing; static or shared-library builds. |
 | [`docs/kinds.md`](docs/kinds.md) | Generated kind catalogue: members, fields, payloads, fixed units and a corpus example for every canonical kind. |
 | [`docs/library_guide.md`](docs/library_guide.md) | How to build, link, and call both writers. |
-| [`docs/family_workflow.md`](docs/family_workflow.md) | A runnable job across vibe-qc, vibe-queue, vibe-view and vibe-sketch, with consumer limits and a portable example. |
+| [`docs/family_workflow.md`](docs/family_workflow.md) | A runnable job across vibe-qc, vibe-scheduler, vibe-viewer and vibe-sketcher, with consumer limits and a portable example. |
 | [`docs/orca_integration.md`](docs/orca_integration.md) | Worked mapping from an engine's data (GBW-style wavefunction, spectra, properties) onto QVF sections. |
 | [`GOVERNANCE.md`](GOVERNANCE.md) + [`registry.json`](registry.json) | How QVF is stewarded, versioned, and evolved — an open standard created and stewarded by vibe-qc; the registry of canonical kinds + vendor namespaces. |
 | [`conformance/`](conformance/) | Golden corpus + runner so any producer/consumer can self-certify. |
@@ -144,9 +144,19 @@ per validation rule — every validator must reject with the expected code.
 A conforming producer must satisfy the checklist in
 [`spec/qvf-format-spec.md`](spec/qvf-format-spec.md) § "Producer conformance".
 
+## Vibyverse names
+
+The companion tools are now **vibe-viewer**, **vibe-sketcher** and
+**vibe-scheduler**. Their former names — vibe-view, vibe-sketch and vibe-queue —
+are deprecated. QVF and vibe-qc retain their names, and the Scheduler command
+remains `vq`. Package names, Python imports and archive/schema identifiers are
+unchanged. Examples using `vibe-view` or `vibe-sketch` retain the compatible
+command aliases; updated installations also provide `vibe-viewer` and
+`vibe-sketcher`. The consolidated project site is [Vibyverse](https://vibyverse.com).
+
 ## Reference consumer
 
-The reference GPU viewer for `.qvf` is **vibe-view**, part of the vibe family.
+The reference GPU viewer for `.qvf` is **vibe-viewer**, part of the vibe family.
 Use QVF's reference validators to check the format contract. Viewers and
 runners support different section subsets; the [family workflow](docs/family_workflow.md)
 shows the supported single-job path and current consumer limits.

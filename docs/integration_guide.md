@@ -3,7 +3,7 @@
 QVF is **producer-neutral**: nothing about the format is vibe-qc-specific, and
 any quantum-chemistry code can emit `.qvf` files. This guide is the
 code-agnostic how-to — the patterns, the data mapping, and the one contract you
-must get right — so that applications such as **vibe-view** (the reference
+must get right — so that applications such as **vibe-viewer** (the reference
 viewer) can read the result sections they support.
 
 For the exact byte-level contract, read the QVF specification
@@ -372,7 +372,7 @@ Interop is a two-way street, and we actively want more producers:
    certifying a producer is emitting the same logical calculations with your code
    and checking they decode to the expected values. This is how "conforming
    producer" becomes something you can *prove*, not just assert.
-3. **Get listed.** Once your code emits conforming archives, vibe-view can
+3. **Get listed.** Once your code emits conforming archives, vibe-viewer can
    officially support your output — reach out and we'll add your code to the
    supported-producer list and, if useful, write a worked integration guide for
    it (like the [ORCA one](orca_integration.md)).
@@ -380,7 +380,7 @@ Interop is a two-way street, and we actively want more producers:
    is missing a field, tell us — the format grows with its producers.
 
 The reverse direction is also on the table: if your code has a **native output
-format** you'd like vibe-view to read directly (in addition to QVF), that's a
+format** you'd like vibe-viewer to read directly (in addition to QVF), that's a
 conversation worth having too.
 
 ## Calling the writer from other languages

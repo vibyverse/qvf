@@ -9,7 +9,7 @@ property output.
 
 The goal: after an ORCA job runs, produce a single `result.qvf` that carries the
 geometry, the wavefunction (basis + MOs), spectra, and scalar properties, so the
-user can open one file in vibe-view (or any QVF consumer) instead of juggling
+user can open one file in vibe-viewer (or any QVF consumer) instead of juggling
 `.gbw`, `.out`, `.property.txt`, and `.hess`.
 
 ## Where the QVF writer sits
@@ -186,7 +186,7 @@ w.add_spectrum("spectra.nmr", nmr);
 
 EPR is a **canonical** kind (`spectra.epr`), paralleling `spectra.nmr`: a single
 object-shaped `spectrum` member carrying the g-tensor, per-nucleus hyperfine (A)
-tensors, and the zero-field-splitting (D) tensor. vibe-view renders it in a
+tensors, and the zero-field-splitting (D) tensor. vibe-viewer renders it in a
 dedicated panel. Emit it like any other object-shaped spectrum:
 
 ```cpp
@@ -267,7 +267,7 @@ python python/qvf_reader.py result.qvf
 
 It verifies sha256 integrity, binary sizing, id uniqueness, reference
 resolution, and (with `jsonschema` installed) full schema conformance. A green
-run means any QVF consumer — including vibe-view — will read your file.
+run means any QVF consumer — including vibe-viewer — will read your file.
 
 ## Checklist for an ORCA → QVF integration
 

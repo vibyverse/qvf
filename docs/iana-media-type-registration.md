@@ -60,7 +60,7 @@ a later published release incorporating the same media type.
 
 QVF carries quantum-chemistry structures, calculations, wavefunctions,
 volumetric fields, spectra, trajectories, and related analysis data. The
-vibe-qc calculation program, vibe-view viewer, vibe-sketch structure editor,
+vibe-qc calculation program, vibe-viewer viewer, vibe-sketcher structure editor,
 and independent producers and consumers can exchange these archives.
 
 The manifest carries an integer format version; optional additions within

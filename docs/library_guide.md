@@ -44,7 +44,7 @@ without embedding a library.
 
 Both produce byte-for-byte-identical *binary* payloads (raw little-endian IEEE
 arrays) and semantically identical manifests; they interoperate with any QVF
-consumer, including vibe-view.
+consumer, including vibe-viewer.
 
 ## The C++ library
 
