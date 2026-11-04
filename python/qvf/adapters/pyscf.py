@@ -16,6 +16,11 @@ states and UV-visible sticks beside that SCF reference. Singlet TDA and
 full response can also carry paired natural transition orbitals. Full
 response retains both X and Y; triplet NTOs are not mapped (see ``add_td``).
 
+``add_density_grid`` and ``add_orbital_grid`` evaluate the SCF density, the
+spin density of an open-shell reference and selected orbitals on a regular
+grid (``volume.density``, ``volume.spin``, ``volume.orbital``);
+``molecular_grid`` builds the default box around the nuclei.
+
 PySCF is imported lazily: ``import qvf.adapters.pyscf`` works without it, and
 calling an export function then raises ``ImportError``. From a checkout
 containing this unreleased adapter, install the optional dependencies with
@@ -40,6 +45,10 @@ The AO conventions (spec Appendix A) are mapped as follows; the
   solid harmonics (``real_solid_harmonics``) and checked to be exact.
   With PySCF 2.14 it is the identity. Cartesian shells share libint's
   lexicographic order and need no permutation.
+* **Effective core potentials** are written as ``basis.ecp`` entries with
+  their scalar ``projectors`` (spec § 5.3), read from ``mol._ecpbas``. PySCF's
+  radial power and difference channels are the spec's; spin-orbit terms are
+  omitted (``_ecp_projectors`` has the mapping).
 * **General contractions** (one PySCF shell with several contracted
   functions, as in cc-pVDZ) become one QVF shell per contracted function, in
   PySCF's AO order. Primitives whose coefficient is exactly zero in that
@@ -58,9 +67,11 @@ from typing import Any
 from .._legacy_writer import BOHR_PER_ANGSTROM, primitive_norm
 
 __all__ = [
-    "AOMap", "ao_map", "add_job_spec", "add_populations", "add_scf", "add_td",
-    "add_structure", "add_wavefunction", "basis_name", "cartesian_powers",
-    "method_name", "real_solid_harmonics", "set_scf_provenance", "write_scf", "write_td",
+    "AOMap", "DEFAULT_GRID_MARGIN_BOHR", "DEFAULT_GRID_SPACING_BOHR", "ao_map",
+    "add_density_grid", "add_job_spec", "add_orbital_grid", "add_populations", "add_scf",
+    "add_td", "add_structure", "add_wavefunction", "basis_name", "cartesian_powers",
+    "method_name", "molecular_grid", "real_solid_harmonics", "set_scf_provenance",
+    "write_scf", "write_td",
 ]
 
 _INSTALL_HINT = ("qvf.adapters.pyscf needs the optional qvf-writer[pyscf] dependencies; "
@@ -422,11 +433,69 @@ def add_structure(writer, mol, *, section_id: str = "structure",
                                 section_id=section_id, label=label)
 
 
-def _ecp_entries(mol):
+def _ecp_projectors(mol, atom):
+    """The scalar ECP radial functions of one atom, as spec § 5.3 projectors.
+
+    Read from the integral input ``mol._ecpbas`` / ``mol._env`` that PySCF's
+    ``ECPscalar`` integrals use (``gto.mole.make_ecp_env``), so the archive
+    holds exactly the potential of the calculation. The conventions map
+    without conversion:
+
+    * ``ANG_OF = -1`` is the local part. It is labelled one above the
+      highest semi-local ``l`` of the centre (0 when there is none).
+    * ``RADI_POWER`` is the NWChem power ``n`` of ``r^(n-2) exp(-α r²)``:
+      PySCF's NWChem parser (``gto.basis.parse_nwchem.parse_ecp``) keeps the
+      tabulated ``n`` (NWChem documentation, "Effective Core Potentials":
+      ``U_l(r) = Σ d r^(n-2) exp(-ζ r²)``), and the ``ECPscalar`` integrals
+      use ``r^(n-2)`` (checked by radial quadrature in
+      ``test_adapter_pyscf_ecp.py``). It is the spec's ``n``.
+    * A semi-local channel multiplies the projector onto ``l`` in addition
+      to the local part (``V = U_L + Σ_l |l⟩ U_l ⟨l|``), so it already is the
+      difference ``U_l − U_L`` the spec stores. The def2 tables, for one,
+      carry ``−U_L`` inside every channel.
+    * Exponents and coefficients are atomic units (bohr⁻², hartree ·
+      bohr^(2−n)), as in the basis-set libraries.
+
+    Spin-orbit rows (``SO_TYPE_OF = 1``) are skipped: the scalar ``ECPscalar``
+    Hamiltonian of a non-relativistic mean field does not contain them.
+    Returns ``(projectors, has_spin_orbit)``.
+    """
+    from pyscf.gto import mole
+    np = _np()
+    channels: dict[int, list[tuple[float, float, int]]] = {}
+    spin_orbit = False
+    for row in np.asarray(mol._ecpbas):
+        if int(row[mole.ATOM_OF]) != atom:
+            continue
+        if int(row[mole.SO_TYPE_OF]) != 0:
+            spin_orbit = True
+            continue
+        n_prim, power = int(row[mole.NPRIM_OF]), int(row[mole.RADI_POWER])
+        exps = mol._env[row[mole.PTR_EXP]:row[mole.PTR_EXP] + n_prim]
+        coefs = mol._env[row[mole.PTR_COEFF]:row[mole.PTR_COEFF] + n_prim]
+        channels.setdefault(int(row[mole.ANG_OF]), []).extend(
+            (float(e), float(c), power) for e, c in zip(exps, coefs))
+    semi = sorted(l for l in channels if l >= 0)
+    projectors = []
+    for l in ([-1] if -1 in channels else []) + semi:
+        terms = channels[l]
+        p: dict[str, Any] = {"l": (semi[-1] + 1 if semi else 0) if l < 0 else l,
+                             "exponents": [t[0] for t in terms],
+                             "coefficients": [t[1] for t in terms],
+                             "powers": [t[2] for t in terms]}
+        if l < 0:
+            p["local"] = True
+        projectors.append(p)
+    return projectors, spin_orbit
+
+
+def _ecp_entries(mol, projectors: bool = True):
+    """``basis.ecp`` entries, with the radial functions when ``projectors``."""
     entries = []
     for i in range(mol.natm):
         core = int(mol.atom_nelec_core(i))
-        if core <= 0:
+        radial, spin_orbit = _ecp_projectors(mol, i) if projectors else ([], False)
+        if core <= 0 and not radial:
             continue
         entry: dict[str, Any] = {"center": i, "n_core_electrons": core}
         ecp = mol.ecp
@@ -435,11 +504,16 @@ def _ecp_entries(mol):
             if isinstance(ecp, dict) else None)
         if isinstance(name, str) and name.strip():
             entry["label"] = name.strip()
+        if radial:
+            entry["projectors"] = radial
+        if spin_orbit:
+            entry["x_pyscf_spin_orbit_omitted"] = True
         entries.append(entry)
     return entries or None
 
 
-def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
+def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label,
+                      ecp_projectors=True):
     np = _np()
     mf = p.mf
     kwargs: dict[str, Any] = {}
@@ -466,7 +540,8 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
             kwargs["density_matrix"] = p.dm_total
     sid = writer.add_wavefunction_gto(
         p.map.shells, spin=p.spin, pure=p.map.pure, structure_ref=structure_ref,
-        overlap=p.overlap, n_electrons=int(p.mol.nelectron), ecp=_ecp_entries(p.mol),
+        overlap=p.overlap, n_electrons=int(p.mol.nelectron),
+        ecp=_ecp_entries(p.mol, ecp_projectors),
         symmetry_labels=labels, section_id=section_id, label=label, **kwargs)
     writer.annotate_section(sid, structure_ref=structure_ref)
     return sid
@@ -474,7 +549,7 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
 
 def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
                      section_id: str = "wf", density: bool = True,
-                     label: str | None = None) -> str:
+                     label: str | None = None, ecp_projectors: bool = True) -> str:
     """Add the orbitals of ``mf`` as a ``wavefunction.gto`` section.
 
     Writes the ``basis`` payload (spherical or Cartesian as ``mol.cart``
@@ -483,13 +558,18 @@ def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
     coefficients in the QVF AO basis, the AO ``overlap`` of PySCF's integral
     code in that basis, and with ``density`` the one-particle density
     matrices (``density_matrix``, or ``density_matrix_alpha`` and
-    ``density_matrix_beta``). ``n_electrons`` and any ECP core counts are
-    written too; ECP projectors are not (the potential is named by its label
-    and core count). The structure ``structure_ref`` names must already be
+    ``density_matrix_beta``). ``n_electrons`` and a ``basis.ecp`` entry per
+    ECP atom (core count and ECP name) are written too. With
+    ``ecp_projectors`` (the default) each entry also carries the scalar
+    radial functions of the potential (``_ecp_projectors``), and
+    ``ecp_projectors=False`` keeps only the label and core count. Spin-orbit
+    ECP terms are never written. An entry whose PySCF ECP has them is marked
+    ``x_pyscf_spin_orbit_omitted: true``. The structure ``structure_ref`` names must already be
     in the writer. Returns the section id.
     """
     return _add_wavefunction(writer, _Prepared(mf), structure_ref=structure_ref,
-                             section_id=section_id, density=density, label=label)
+                             section_id=section_id, density=density, label=label,
+                             ecp_projectors=ecp_projectors)
 
 
 def _populations(p):
@@ -641,20 +721,21 @@ def set_scf_provenance(writer, mf) -> None:
 def add_scf(writer, mf, *, structure_id: str = "structure", wavefunction_id: str = "wf",
             properties_id: str = "atom_properties", job_id: str = "job_spec",
             populations: bool = True, job_spec: bool = True, density: bool = True,
-            provenance: bool = True) -> dict[str, str]:
+            provenance: bool = True, ecp_projectors: bool = True) -> dict[str, str]:
     """Add everything the adapter writes for ``mf`` to an open QVF writer.
 
     ``writer`` is a ``qvf.Writer`` (or the compatibility ``QvfWriter``).
     Adds the structure, the wavefunction, the populations (``populations``),
     the job specification (``job_spec``) and the provenance and energies
-    blocks (``provenance``). Returns the ids of the sections added, keyed
+    blocks (``provenance``). ``ecp_projectors`` is that of
+    ``add_wavefunction``. Returns the ids of the sections added, keyed
     ``structure``, ``wavefunction``, ``atom_properties`` and ``job_spec``.
     """
     p = _Prepared(mf)
     ids = {"structure": add_structure(writer, p.mol, section_id=structure_id)}
     ids["wavefunction"] = _add_wavefunction(
         writer, p, structure_ref=ids["structure"], section_id=wavefunction_id,
-        density=density, label=None)
+        density=density, label=None, ecp_projectors=ecp_projectors)
     if populations:
         ids["atom_properties"] = _add_populations(
             writer, p, structure_ref=ids["structure"], section_id=properties_id, label=None)
@@ -819,6 +900,7 @@ class _PreparedTD:
 def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
     ids = add_scf(writer, p.mf, **scf_options)
     ref = p.reference
+    ecp = _ecp_entries(ref.mol, scf_options.get("ecp_projectors", True))
     holes, particles = [], []
     for state, (hole, particle, weights) in zip(p.states, p.ntos):
         for role, coefficients, output in (("hole", hole, holes),
@@ -828,7 +910,7 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
                 occupations=weights, energies=[0.0] * len(weights), spin="restricted",
                 pure=ref.map.pure, structure_ref=ids["structure"],
                 orbital_kind="nto", state_ref=states_id, state_index=state["index"],
-                nto_role=role, overlap=ref.overlap, ecp=_ecp_entries(ref.mol),
+                nto_role=role, overlap=ref.overlap, ecp=ecp,
                 section_id=f"{nto_prefix}_{state['index']}_{role}")
             writer.annotate_section(sid, structure_ref=ids["structure"])
             output.append(sid)
@@ -911,3 +993,263 @@ def write_td(td, target, *, calculation: str | None = None,
                 calculation=calculation) as writer:
         return _add_td(writer, p, states_id=states_id, spectrum_id=spectrum_id,
                        nto_prefix=nto_prefix, scf_options=scf_options)
+
+
+# -- densities and orbitals on a regular grid ----------------------------------
+
+#: Default distance, in bohr, between the outermost nuclei and the grid box faces.
+DEFAULT_GRID_MARGIN_BOHR = 4.0
+#: Default point spacing, in bohr, of ``molecular_grid``.
+DEFAULT_GRID_SPACING_BOHR = 0.2
+# AO values held per evaluation block: 2**23 doubles, 64 MiB.
+_AO_BLOCK_VALUES = 1 << 23
+
+
+def molecular_grid(mol, *, spacing: float | None = DEFAULT_GRID_SPACING_BOHR,
+                   shape=None, margin: float = DEFAULT_GRID_MARGIN_BOHR) -> dict[str, Any]:
+    """A finite, axis-aligned grid around the nuclei of ``mol`` (spec § 5.2).
+
+    The box spans the nuclear coordinates (bohr) widened by ``margin`` bohr on
+    every side. With ``shape`` (``[nx, ny, nz]``, each at least 2) the box
+    is sampled as PySCF's ``tools.cubegen.Cube`` does with the same ``margin``:
+    the origin is the lower box corner and the step along axis ``a`` is the
+    box edge over ``shape[a] − 1``, so both ends lie on the box faces. Without
+    ``shape``, ``spacing`` bohr is used on every axis and the box edge is
+    rounded up to a whole number of steps, centred on the nuclei. Returns the
+    ``origin``, ``voxel_vectors`` and ``shape`` of a grid payload, in bohr.
+    """
+    _pyscf()
+    np = _np()
+    _check_molecule(mol)
+    margin = float(margin)
+    if not math.isfinite(margin) or margin < 0.0:
+        raise ValueError("margin must be a finite number of bohr >= 0")
+    coords = np.asarray(mol.atom_coords(unit="Bohr"), dtype=float)
+    lo, hi = coords.min(axis=0) - margin, coords.max(axis=0) + margin
+    box = hi - lo
+    if shape is not None:
+        shape = [int(n) for n in shape]
+        if len(shape) != 3 or min(shape) < 2:
+            raise ValueError("shape must be three point counts >= 2")
+        if (box <= 0.0).any():
+            raise ValueError("the box is flat along an axis; give margin > 0")
+        steps = [box[a] / (shape[a] - 1) for a in range(3)]
+        origin = lo
+    else:
+        h = float(spacing) if spacing is not None else math.nan
+        if not math.isfinite(h) or h <= 0.0:
+            raise ValueError("spacing must be a positive number of bohr")
+        counts = np.maximum(np.ceil(box / h - 1e-9), 1).astype(int)
+        shape = [int(n) + 1 for n in counts]
+        steps = [h] * 3
+        origin = (lo + hi) / 2 - counts * h / 2
+    return {"origin": [float(x) for x in origin],
+            "voxel_vectors": [[float(steps[a]) if b == a else 0.0 for b in range(3)]
+                              for a in range(3)],
+            "shape": shape}
+
+
+def _grid_spec(mol, grid, spacing, shape, margin):
+    """Normalize a grid argument to (origin, voxel vectors, shape) arrays."""
+    np = _np()
+    if grid is None:
+        grid = molecular_grid(mol, spacing=spacing, shape=shape, margin=margin)
+    elif shape is not None:
+        raise ValueError("pass either grid or shape, not both")
+    origin = np.asarray(grid["origin"], dtype=float)
+    vectors = np.asarray(grid["voxel_vectors"], dtype=float)
+    dims = tuple(int(n) for n in grid["shape"])
+    if origin.shape != (3,) or vectors.shape != (3, 3) or len(dims) != 3 or min(dims) < 1:
+        raise ValueError("grid needs origin [3], voxel_vectors [3][3] and shape of three counts >= 1")
+    if not (np.isfinite(origin).all() and np.isfinite(vectors).all()):
+        raise ValueError("grid origin and voxel_vectors must be finite")
+    if abs(np.linalg.det(vectors)) <= 1e-12 * max(1.0, np.abs(vectors).max()) ** 3:
+        raise ValueError("grid voxel_vectors are linearly dependent")
+    return origin, vectors, dims
+
+
+def _on_grid(mol, origin, vectors, dims, fields, n_fields, chunk):
+    """Evaluate ``fields(ao) -> [n_fields, n_points]`` block by block.
+
+    The points are those of spec § 5.2, ``origin + i v0 + j v1 + k v2``, in
+    the row-major ``[i][j][k]`` order of the ``data`` member. Only one block
+    of AO values is held at a time.
+    """
+    from pyscf.dft import numint
+    np = _np()
+    n_points = math.prod(dims)
+    if chunk is None:
+        chunk = max(256, _AO_BLOCK_VALUES // max(1, mol.nao_nr()))
+    chunk = int(chunk)
+    if chunk < 1:
+        raise ValueError("chunk must be a positive number of points")
+    out = np.empty((n_fields, n_points))
+    for start in range(0, n_points, chunk):
+        stop = min(n_points, start + chunk)
+        index = np.stack(np.unravel_index(np.arange(start, stop), dims), axis=1)
+        points = origin + index @ vectors
+        out[:, start:stop] = fields(numint.eval_ao(mol, points, deriv=0))
+    return out.reshape((n_fields,) + dims)
+
+
+def _volume_links(writer, structure_ref, wavefunction_ref):
+    sections = {s["id"]: s["kind"] for s in writer._sections}
+    if sections.get(structure_ref) != "structure":
+        raise ValueError(f"structure_ref {structure_ref!r} names no structure section "
+                         f"added so far; add the SCF result first (add_scf)")
+    if wavefunction_ref is not None and sections.get(wavefunction_ref) != "wavefunction.gto":
+        raise ValueError(f"wavefunction_ref {wavefunction_ref!r} names no "
+                         f"wavefunction.gto section added so far")
+
+
+def _add_grid_volume(writer, kind, data, origin, vectors, *, section_id, label,
+                     structure_ref, wavefunction_ref, dtype):
+    sid = writer.add_volume(kind, data, origin.tolist(), vectors.tolist(), label=label,
+                            dtype=dtype, section_id=section_id, structure_ref=structure_ref)
+    writer.annotate_section(sid, structure_ref=structure_ref, group=wavefunction_ref)
+    return sid
+
+
+def add_density_grid(writer, mf, *, grid=None, spacing: float | None = DEFAULT_GRID_SPACING_BOHR,
+                     shape=None, margin: float = DEFAULT_GRID_MARGIN_BOHR,
+                     spin: bool | None = None, structure_ref: str = "structure",
+                     wavefunction_ref: str | None = "wf", density_id: str = "density",
+                     spin_id: str = "spin_density", dtype: str = "float32",
+                     chunk: int | None = None) -> dict[str, str]:
+    """Add the SCF electron density, and the spin density, on a regular grid.
+
+    ``volume.density`` holds ρ(r) = Σ_μν P_μν χ_μ(r) χ_ν(r) of
+    ``mf.make_rdm1()`` (both spins) in e/bohr³; ``volume.spin`` holds
+    ρ_α − ρ_β in the same unit. ``spin=None`` writes the spin density for an
+    open-shell reference (UHF, UKS, ROHF, ROKS) and not for a closed-shell
+    RHF/RKS; ``True`` requires an open-shell reference and ``False`` omits it.
+
+    The grid is ``grid`` (a mapping with the ``origin``, ``voxel_vectors``
+    and ``shape`` of a spec § 5.2 grid payload, in bohr; any non-singular
+    voxel vectors) or else ``molecular_grid(mf.mol, spacing=, shape=,
+    margin=)``: by default 0.2 bohr steps and a 4 bohr margin around the
+    nuclei. Values come from ``pyscf.dft.numint.eval_ao``/``eval_rho`` in
+    blocks of ``chunk`` points (by default a 64 MiB AO block), stored as
+    ``dtype`` (``"float32"``, the format's default, or ``"float64"``).
+
+    The sections name ``structure_ref`` at section and grid level. QVF has
+    no volume-to-wavefunction reference, so ``wavefunction_ref`` (the
+    ``wavefunction.gto`` id, which must exist already, or ``None``) is
+    written as the section ``group`` (spec § 4.1). Returns the ids, keyed
+    ``density`` and, when written, ``spin``.
+    """
+    _check_scf(mf)
+    np = _np()
+    from pyscf.dft import numint
+    mol = mf.mol
+    open_shell = _spin_kind(mf) != "restricted"
+    if spin is None:
+        spin = open_shell
+    elif spin and not open_shell:
+        raise ValueError("a closed-shell RHF/RKS reference has no spin density")
+    _volume_links(writer, structure_ref, wavefunction_ref)
+    origin, vectors, dims = _grid_spec(mol, grid, spacing, shape, margin)
+    dm = np.asarray(mf.make_rdm1(), dtype=float)
+    if dm.ndim == 3:
+        matrices = [dm[0] + dm[1]] + ([dm[0] - dm[1]] if spin else [])
+    else:
+        matrices = [dm]
+
+    def fields(ao):
+        return [numint.eval_rho(mol, ao, p, xctype="LDA", hermi=1) for p in matrices]
+
+    values = _on_grid(mol, origin, vectors, dims, fields, len(matrices), chunk)
+    ids = {"density": _add_grid_volume(
+        writer, "volume.density", values[0], origin, vectors, section_id=density_id,
+        label="SCF electron density", structure_ref=structure_ref,
+        wavefunction_ref=wavefunction_ref, dtype=dtype)}
+    if spin:
+        ids["spin"] = _add_grid_volume(
+            writer, "volume.spin", values[1], origin, vectors, section_id=spin_id,
+            label="SCF spin density (alpha - beta)", structure_ref=structure_ref,
+            wavefunction_ref=wavefunction_ref, dtype=dtype)
+    return ids
+
+
+def _resolve_mo(index, occupations, energies):
+    """A 0-based MO row from an integer or ``"homo"``/``"lumo"``."""
+    np = _np()
+    n = len(occupations)
+    if isinstance(index, str):
+        name = index.strip().lower()
+        occupied = np.flatnonzero(np.asarray(occupations) > 0)
+        virtual = np.flatnonzero(np.asarray(occupations) == 0)
+        if name == "homo" and len(occupied):
+            return int(max(occupied, key=lambda i: (energies[i], i)))
+        if name == "lumo" and len(virtual):
+            return int(min(virtual, key=lambda i: (energies[i], i)))
+        raise ValueError(f"no {index!r} orbital in this orbital set")
+    if isinstance(index, bool) or not isinstance(index, (int, np.integer)):
+        raise TypeError("MO indices are integers or 'homo'/'lumo'")
+    if not 0 <= int(index) < n:
+        raise ValueError(f"MO index {index} is outside 0..{n - 1}")
+    return int(index)
+
+
+def add_orbital_grid(writer, mf, mo_indices, *, spin: str = "alpha", grid=None,
+                     spacing: float | None = DEFAULT_GRID_SPACING_BOHR, shape=None,
+                     margin: float = DEFAULT_GRID_MARGIN_BOHR,
+                     structure_ref: str = "structure", wavefunction_ref: str | None = "wf",
+                     section_prefix: str = "mo", dtype: str = "float32",
+                     chunk: int | None = None) -> list[str]:
+    """Add selected molecular orbitals as ``volume.orbital`` sections.
+
+    ``mo_indices`` lists 0-based orbital rows, the rows of the coefficient
+    member of the ``wavefunction.gto`` section (spec § 5.3), or the names
+    ``"homo"`` and ``"lumo"`` (the highest occupied and lowest unoccupied
+    orbital by energy). For an unrestricted reference ``spin`` picks the
+    ``"alpha"`` or ``"beta"`` set; restricted and restricted open-shell
+    orbitals have one set and accept only ``"alpha"``. Each orbital is the
+    real amplitude ψ_i(r) = Σ_μ C_μi χ_μ(r) in bohr^(−3/2) with PySCF's
+    sign, which is also the archive's (``C_qvf = T C``).
+
+    The grid, ``chunk``, ``dtype`` and links are those of
+    ``add_density_grid``; every orbital in one call shares the grid and one
+    AO evaluation. Section ids are ``{section_prefix}_{row}``, with the spin
+    inserted for an unrestricted set (``mo_beta_4``), and the label names
+    the row, the spin and HOMO/LUMO. Returns the ids in ``mo_indices`` order.
+    """
+    _check_scf(mf)
+    np = _np()
+    mol = mf.mol
+    if spin not in ("alpha", "beta"):
+        raise ValueError("spin must be 'alpha' or 'beta'")
+    unrestricted = _spin_kind(mf) == "unrestricted"
+    if not unrestricted and spin != "alpha":
+        raise ValueError("restricted orbitals have one set; use spin='alpha'")
+    channel = ("alpha", "beta").index(spin)
+    coeff = np.asarray(mf.mo_coeff[channel] if unrestricted else mf.mo_coeff, dtype=float)
+    occ = np.asarray(mf.mo_occ[channel] if unrestricted else mf.mo_occ, dtype=float)
+    energies = np.asarray(mf.mo_energy[channel] if unrestricted else mf.mo_energy, dtype=float)
+    if isinstance(mo_indices, (int, str, np.integer)):
+        mo_indices = [mo_indices]
+    rows = [_resolve_mo(i, occ, energies) for i in mo_indices]
+    if not rows:
+        raise ValueError("no MO indices given")
+    if len(set(rows)) != len(rows):
+        raise ValueError("MO indices name the same orbital twice")
+    named = {}
+    for name in ("homo", "lumo"):
+        try:
+            named[_resolve_mo(name, occ, energies)] = name.upper()
+        except ValueError:
+            pass
+    _volume_links(writer, structure_ref, wavefunction_ref)
+    origin, vectors, dims = _grid_spec(mol, grid, spacing, shape, margin)
+    selected = coeff[:, rows]
+    values = _on_grid(mol, origin, vectors, dims, lambda ao: (ao @ selected).T, len(rows), chunk)
+    ids = []
+    for slab, row in zip(values, rows):
+        sid = f"{section_prefix}_{spin}_{row}" if unrestricted else f"{section_prefix}_{row}"
+        label = f"MO {row}" + (f" {spin}" if unrestricted else "")
+        if row in named:
+            label += f" ({named[row]})"
+        ids.append(_add_grid_volume(
+            writer, "volume.orbital", slab, origin, vectors, section_id=sid, label=label,
+            structure_ref=structure_ref, wavefunction_ref=wavefunction_ref, dtype=dtype))
+    return ids
