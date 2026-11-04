@@ -55,6 +55,7 @@ def molecule(cart):
 
 def molden_ao_values(pure):
     """PySCF AO values in Molden order and normalization, shell by shell."""
+    pytest.importorskip('pyscf')
     from pyscf.tools import molden
     blocks = {}
     for cart in (False, True):
