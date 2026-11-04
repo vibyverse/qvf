@@ -230,7 +230,7 @@ The 2026-10-10 pause has ended. The remaining work is:
   tranches await a later compatible release and explicit consumer adoption.
   The frozen releases take priority; no new version or release date is selected.
 - After the frozen releases, Phase 3 continues with WP-45 / WP-48, then packaging and broader platform checks. WP-46 supplies the Python `qvf` package while keeping `qvf_writer`, `qvf_reader`, `qvf_kinds`, `qvf_model` and `qvf_units` as compatibility imports. `pip install <checkout>/python` preserves those imports for consumers such as vibe-sketch.
-- Parked: WP-06 (hosting the retained schema `$id`), WP-61 (needs a Rust toolchain in CI), compound unit names such as hartree/bohr in the § 4.3 vocabulary, a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job), and a coverage-guided fuzzing run on Linux (WP-50).
+- Parked: WP-06 (hosting the retained schema `$id`), WP-61 (needs a Rust toolchain in CI), compound unit names such as hartree/bohr in the § 4.3 vocabulary, a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job), and a coverage-guided fuzzing run on Linux (WP-50). The parity test runs locally as documented in CONTRIBUTING.md. A local run on 2026-11-04 found the three checkers in agreement.
 - Known consumer gap: no consumer renders `wavefunction.bloch` yet. The cc-pV6Z `l = 6` channel-export defect is fixed on vibe-qc main (#546); existing consumer releases may still need that fix. Fresh checks did not reproduce `space_group_number: 0`: absent symmetry is omitted and a genuine group 221 passes.
 
 ## Getting involved

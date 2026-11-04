@@ -80,6 +80,13 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 # CTest includes qvf_conformance and qvf_conformance_no_schema.
 
+# Schema-checker parity: the C++ tool and the JavaScript checker against
+# jsonschema over all three corpora and mutated documents. Needs the C++ build
+# above and js/dist (npm ci && npm run build in js/). A checker that is not
+# found is skipped, so confirm that -rs reports no skips.
+QVF_CPP_BUILD_DIR="$PWD/build" QVF_NODE="$(command -v node)" \
+  python -m pytest python/tests/test_schema_checker_parity.py -v -rs
+
 # C++ under AddressSanitizer + UndefinedBehaviorSanitizer, then the reader over
 # the corpus (build/ is ignored by version control)
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g"
