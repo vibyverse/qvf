@@ -1230,9 +1230,12 @@ def _volume_links(writer, structure_ref, wavefunction_ref):
 
 
 def _add_grid_volume(writer, kind, data, origin, vectors, *, section_id, label,
-                     structure_ref, wavefunction_ref, dtype):
+                     structure_ref, wavefunction_ref, dtype, mo_index=None, spin=None):
+    if wavefunction_ref is None:
+        mo_index = spin = None
     sid = writer.add_volume(kind, data, origin.tolist(), vectors.tolist(), label=label,
-                            dtype=dtype, section_id=section_id, structure_ref=structure_ref)
+                            dtype=dtype, section_id=section_id, structure_ref=structure_ref,
+                            wavefunction_ref=wavefunction_ref, mo_index=mo_index, spin=spin)
     writer.annotate_section(sid, structure_ref=structure_ref, group=wavefunction_ref)
     return sid
 
@@ -1259,11 +1262,12 @@ def add_density_grid(writer, mf, *, grid=None, spacing: float | None = DEFAULT_G
     blocks of ``chunk`` points (by default a 64 MiB AO block), stored as
     ``dtype`` (``"float32"``, the format's default, or ``"float64"``).
 
-    The sections name ``structure_ref`` at section and grid level. QVF has
-    no volume-to-wavefunction reference, so ``wavefunction_ref`` (the
-    ``wavefunction.gto`` id, which must exist already, or ``None``) is
-    written as the section ``group`` (spec § 4.1). Returns the ids, keyed
-    ``density`` and, when written, ``spin``.
+    The sections name ``structure_ref`` at section and grid level.
+    ``wavefunction_ref`` (the ``wavefunction.gto`` id, which must exist
+    already, or ``None``) is written as the section field
+    ``wavefunction_ref`` (spec § 5.2, Volumes of a wavefunction) and, for
+    grouping in viewers, as the section ``group`` (spec § 4.1). Returns the
+    ids, keyed ``density`` and, when written, ``spin``.
     """
     _check_scf(mf)
     _refuse_periodic_grid(mf.mol)
@@ -1338,7 +1342,9 @@ def add_orbital_grid(writer, mf, mo_indices, *, spin: str = "alpha", grid=None,
 
     The grid, ``chunk``, ``dtype`` and links are those of
     ``add_density_grid``; every orbital in one call shares the grid and one
-    AO evaluation. Section ids are ``{section_prefix}_{row}``, with the spin
+    AO evaluation. With a ``wavefunction_ref`` each section also names its
+    row as ``mo_index`` and, for an unrestricted set, its ``spin`` (spec
+    § 5.2), so a viewer finds the orbital's energy and occupation. Section ids are ``{section_prefix}_{row}``, with the spin
     inserted for an unrestricted set (``mo_beta_4``), and the label names
     the row, the spin and HOMO/LUMO. Returns the ids in ``mo_indices`` order.
     """
@@ -1380,5 +1386,6 @@ def add_orbital_grid(writer, mf, mo_indices, *, spin: str = "alpha", grid=None,
             label += f" ({named[row]})"
         ids.append(_add_grid_volume(
             writer, "volume.orbital", slab, origin, vectors, section_id=sid, label=label,
-            structure_ref=structure_ref, wavefunction_ref=wavefunction_ref, dtype=dtype))
+            structure_ref=structure_ref, wavefunction_ref=wavefunction_ref, dtype=dtype,
+            mo_index=row, spin=spin if unrestricted else None))
     return ids

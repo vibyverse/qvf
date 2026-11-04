@@ -1046,6 +1046,9 @@ def _every_option_writer() -> QvfWriter:
                  axis={"kind": "time", "values": [0.0, 0.5], "units": "fs",
                        "labels": ["t = 0", "t = 0.5 fs"], "trajectory_ref": tid},
                  section_id="rho_series")
+    # An orbital volume that names its wavefunction, row and channel (spec § 5.2).
+    w.add_volume("volume.orbital", dens, origin, vox, wavefunction_ref="wf_uhf",
+                 mo_index=1, spin="beta", section_id="mo_beta_1")
     w.add_reaction_path({"symbols": ["O", "H", "H"],
                          "waypoints": [{"frame_index": 0, "label": "R",
                                         "kind": "reactant"}]},
@@ -1809,3 +1812,60 @@ class TestSchemaNamesNewFields:
         by_id["dos_total"]["x_note"] = "unnamed fields still validate"
         by_id["dos_projected"]["channels"][0]["symbol"] = "Si"
         assert not _schema_errors(manifest)
+
+
+class TestVolumesOfAWavefunction:
+    """Spec § 5.2, Volumes of a wavefunction: the writer refuses a reference,
+    row or spin the added wavefunction does not support."""
+
+    @staticmethod
+    def _writer():
+        w = QvfWriter(program="t", version="1", calculation="volumes")
+        w.add_structure([{"symbol": "H", "atomic_number": 1, "position": [0, 0, 0]},
+                         {"symbol": "H", "atomic_number": 1, "position": [0, 0, 0.74]}])
+        shells = [{"center": a, "l": 0, "exponents": [1.0], "coefficients": [1.0]}
+                  for a in range(2)]
+        w.add_wavefunction_gto(shells, mo_coefficients=np.eye(2), energies=[-0.5, 0.5],
+                               occupations=[2, 0], section_id="wf")
+        w.add_wavefunction_gto(shells, mo_coefficients_alpha=np.eye(2),
+                               mo_coefficients_beta=np.eye(2)[:1],
+                               energies_alpha=[-0.5, 0.5], occupations_alpha=[1, 0],
+                               energies_beta=[-0.4], occupations_beta=[1],
+                               section_id="wf_u")
+        return w
+
+    def _add(self, w, kind="volume.orbital", **fields):
+        return w.add_volume(kind, np.zeros((2, 2, 2)), [0, 0, 0], np.eye(3), **fields)
+
+    def test_fields_are_written_and_validate(self, tmp_path):
+        w = self._writer()
+        self._add(w, "volume.density", wavefunction_ref="wf", section_id="rho")
+        self._add(w, wavefunction_ref="wf", mo_index=1, section_id="mo_1")
+        self._add(w, wavefunction_ref="wf_u", mo_index=0, spin="beta", section_id="mo_b0")
+        sections = {s["id"]: s for s in w.build_manifest()["sections"]}
+        assert sections["rho"]["wavefunction_ref"] == "wf"
+        assert "mo_index" not in sections["rho"]
+        assert sections["mo_1"]["mo_index"] == 1 and "spin" not in sections["mo_1"]
+        assert sections["mo_b0"]["spin"] == "beta"
+        _assert_valid_archive(w, str(tmp_path / "linked.qvf"))
+
+    @pytest.mark.parametrize("kind, fields, match", [
+        ("volume.elf", {"wavefunction_ref": "wf"}, "applies to"),
+        ("volume.density", {"wavefunction_ref": "wf", "mo_index": 0}, "volume.orbital only"),
+        ("volume.orbital", {"mo_index": 0}, "needs wavefunction_ref"),
+        ("volume.orbital", {"wavefunction_ref": "wf", "spin": "alpha"}, "needs mo_index"),
+        ("volume.orbital", {"wavefunction_ref": "structure"}, "wavefunction.gto"),
+        ("volume.orbital", {"wavefunction_ref": "wf", "mo_index": 2}, "outside"),
+        ("volume.orbital", {"wavefunction_ref": "wf", "mo_index": -1}, "integer >= 0"),
+        ("volume.orbital", {"wavefunction_ref": "wf", "mo_index": 0, "spin": "alpha"},
+         "one set"),
+        ("volume.orbital", {"wavefunction_ref": "wf_u", "mo_index": 0}, "unrestricted"),
+        ("volume.orbital", {"wavefunction_ref": "wf_u", "mo_index": 1, "spin": "beta"},
+         "outside"),
+    ])
+    def test_refusals(self, kind, fields, match):
+        w = self._writer()
+        before = len(w.build_manifest()["sections"])
+        with pytest.raises(ValueError, match=match):
+            self._add(w, kind, **fields)
+        assert len(w.build_manifest()["sections"]) == before

@@ -1273,6 +1273,93 @@ fn transition_density_errors(
     vec![]
 }
 
+/// Volume kinds that may name the wavefunction they were computed from (spec § 5.2).
+fn is_wavefunction_volume_kind(kind: &str) -> bool {
+    matches!(kind, "volume.density" | "volume.spin" | "volume.orbital")
+}
+
+/// A `volume.density`, `volume.spin` or `volume.orbital` section's
+/// `wavefunction_ref` names a `wavefunction.gto` section. For a
+/// `volume.orbital`, `spin` is absent when that section carries
+/// `mo_coefficients` and present, whenever `mo_index` is, when it carries the
+/// alpha and beta coefficients, and `mo_index` is a row of the member they
+/// select, from the manifest shapes (spec § 5.2, Volumes of a wavefunction).
+/// Returns `(field, message)` pairs, all `E_REF_UNRESOLVED`.
+fn wavefunction_volume_errors(
+    sid: &str,
+    kind: &str,
+    section: &Obj,
+    kinds_by_id: &HashMap<String, String>,
+    mo_rows_of: &HashMap<String, MoRows>,
+) -> Vec<(String, String)> {
+    if !section.contains_key("wavefunction_ref") {
+        return vec![];
+    }
+    let r = section.get("wavefunction_ref");
+    let s = sec(sid);
+    let Some(wf) = str_of(r).filter(|x| kinds_by_id.get(*x).map(String::as_str) == Some("wavefunction.gto")) else {
+        return vec![(
+            "wavefunction_ref".into(),
+            format!("{s}wavefunction_ref {} does not name a wavefunction.gto section (spec § 5.2)", show(r)),
+        )];
+    };
+    if kind != "volume.orbital" {
+        return vec![];
+    }
+    let mut errors = Vec::new();
+    let empty = MoRows::new();
+    let rows = mo_rows_of.get(wf).unwrap_or(&empty);
+    let mo = section.get("mo_index");
+    let spin = section.get("spin");
+    let mut n: Option<f64> = None;
+    let mut member = "mo_coefficients".to_string();
+    if let Some(single) = rows.get("") {
+        if section.contains_key("spin") {
+            errors.push((
+                "spin".into(),
+                format!(
+                    "{s}spin {} selects a spin channel, but wavefunction {} carries one set of orbitals in mo_coefficients (spec § 5.2)",
+                    show(spin),
+                    quote(wf)
+                ),
+            ));
+        }
+        n = Some(*single);
+    } else if rows.contains_key("alpha") || rows.contains_key("beta") {
+        if !section.contains_key("spin") {
+            if section.contains_key("mo_index") {
+                errors.push((
+                    "mo_index".into(),
+                    format!(
+                        "{s}mo_index {} needs spin: wavefunction {} carries alpha and beta coefficients (spec § 5.2)",
+                        show(mo),
+                        quote(wf)
+                    ),
+                ));
+            }
+            return errors;
+        }
+        if let Some(channel @ ("alpha" | "beta")) = str_of(spin) {
+            n = rows.get(channel).copied();
+            member = format!("mo_coefficients_{channel}");
+        }
+    }
+    if let (Some(m), Some(n)) = (int_of(mo), n) {
+        if !(m >= 0.0 && m < n) {
+            errors.push((
+                "mo_index".into(),
+                format!(
+                    "{s}mo_index {} is not one of the {} rows of {member} of wavefunction {} (spec § 5.2)",
+                    num(m),
+                    num(n),
+                    quote(wf)
+                ),
+            ));
+        }
+    }
+    errors
+}
+
 fn atom_properties_meta_errors(sid: &str, members: &Obj, docs: &Docs) -> Vec<(String, String)> {
     let custom: Vec<&String> = members.keys().filter(|r| r.starts_with("custom.")).collect();
     if custom.is_empty() {
@@ -2447,6 +2534,7 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     let mut excited_sections: Vec<Deferred> = Vec::new();
     let mut states_ref_spectra: Vec<Deferred> = Vec::new();
     let mut transition_densities: Vec<Deferred> = Vec::new();
+    let mut wavefunction_volumes: Vec<(Deferred, &str)> = Vec::new();
     let mut bloch_sections: Vec<Deferred> = Vec::new();
     let mut derivative_sections: Vec<(Deferred, &str)> = Vec::new();
     let mut bonds_sections: Vec<Deferred> = Vec::new();
@@ -2646,6 +2734,9 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         if level >= Level::References && kind == "volume.transition_density" {
             transition_densities.push(d);
         }
+        if level >= Level::References && is_wavefunction_volume_kind(kind) && s.contains_key("wavefunction_ref") {
+            wavefunction_volumes.push((d, kind));
+        }
         if level >= Level::Semantics && kind == "atom_properties" {
             for (role, msg) in atom_properties_meta_errors(sid, members, &docs) {
                 out.push(Code::E_MEMBER_MALFORMED, member_pointer(i, &role), msg);
@@ -2734,6 +2825,11 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     }
     for d in &transition_densities {
         for (field, msg) in transition_density_errors(d.sid, d.s, &kinds_by_id, &state_indices_of) {
+            out.push(Code::E_REF_UNRESOLVED, format!("{}/{field}", section_pointer(d.i)), msg);
+        }
+    }
+    for (d, kind) in &wavefunction_volumes {
+        for (field, msg) in wavefunction_volume_errors(d.sid, kind, d.s, &kinds_by_id, &mo_rows_of) {
             out.push(Code::E_REF_UNRESOLVED, format!("{}/{field}", section_pointer(d.i)), msg);
         }
     }

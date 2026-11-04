@@ -770,7 +770,8 @@ method is not the one `provenance.method` names.
 | `group` | no | Free-text label that groups related sections for display, e.g. `"step 2: frequencies"`. |
 
 Some kinds add kind-specific peer fields on the section object (e.g.
-`volume.difference` carries `operand_a`/`operand_b`; `reaction.waypoints`
+`volume.difference` carries `operand_a`/`operand_b`, `volume.orbital`
+carries `wavefunction_ref`, `mo_index` and `spin`, and `reaction.waypoints`
 carries `trajectory_ref`). These are documented per kind in § 5.
 
 **Section references and grouping.** Any section, of any kind including a
@@ -809,7 +810,8 @@ indices need a structure, and without `structure_ref` they address the first
 structure (§ 5.1).
 
 The kind-specific references stay as they are: `operand_a` and `operand_b` of
-`volume.difference` (§ 5.2), `trajectory_ref` of `reaction.waypoints` (§ 5.5),
+`volume.difference` (§ 5.2), `wavefunction_ref` of `volume.density`,
+`volume.spin` and `volume.orbital` (§ 5.2), `trajectory_ref` of `reaction.waypoints` (§ 5.5),
 and the `structure_ref` inside the `basis` payload of `wavefunction.gto`
 (§ 5.3) and `wavefunction.bloch` (§ 5.3.1). When a section carries a `structure_ref` and one of its payloads
 carries one too, **the section's takes precedence**: a consumer reads the
@@ -1619,6 +1621,50 @@ state:
 
 A validator checks that `excited_states_ref` names an `excited_states` section
 and that `state_index` is the `index` of one of its states (§ 6).
+
+#### Volumes of a wavefunction
+
+A `volume.density`, `volume.spin` or `volume.orbital` section that was
+computed from the orbitals of a `wavefunction.gto` section (§ 5.3) **MAY**
+name that section, and a `volume.orbital` the orbital it shows. The fields
+are peers of `members`:
+
+| Field | Kinds | Type | Meaning |
+|---|---|---|---|
+| `wavefunction_ref` | `volume.density`, `volume.spin`, `volume.orbital` | string | `id` of the `wavefunction.gto` section whose orbitals, occupations or density matrices the field was computed from. |
+| `mo_index` | `volume.orbital` | integer ≥ 0 | The 0-based row of the orbital in the coefficient member of that section. Requires `wavefunction_ref`. |
+| `spin` | `volume.orbital` | `"alpha"` or `"beta"` | The coefficient member `mo_index` is a row of: `mo_coefficients_alpha` or `mo_coefficients_beta`. Requires `mo_index`. |
+
+`mo_index` counts rows as `from_mo` and `to_mo` of an excited state do
+(§ 5.12): row `mo_index` of `mo_coefficients` when the referenced section
+carries one set of orbitals (`restricted`, `restricted_open` and
+`generalized`), and row `mo_index` of the member `spin` names when it
+carries the α and β coefficients of an `unrestricted` wavefunction. With a
+`mo_index`, `spin` is therefore present exactly when the referenced section
+carries `mo_coefficients_alpha` and `mo_coefficients_beta`, and it is
+absent whenever that section carries `mo_coefficients`. The orbital's energy, occupation and symmetry
+label are entry `mo_index` of the per-MO arrays of its `mo_metadata`: of the
+top level for one set, of the `alpha` or `beta` channel otherwise.
+
+When the referenced section holds natural transition orbitals (§ 5.3,
+*Natural transition orbitals*), `mo_index` is the index k of the pair of
+a hole and a particle orbital, and the section's `mo_metadata` says through `nto_role`
+whether the volume shows the hole or the particle orbital of that pair and
+through `state_ref` and `state_index` which excited state it belongs to. No
+further field is needed.
+
+The fields state what a producer knows and change nothing in how `data` is
+read: `data` keeps the unit and meaning of its kind, a `volume.spin` is
+ρ_α − ρ_β whatever spin the wavefunction has, and validators do not
+re-evaluate the field from the wavefunction. A section without
+the fields makes no statement, and `group` (§ 4.1) carries no reference: a
+producer that wrote the wavefunction `id` as `group` keeps doing so if it
+wants the sections grouped for display, beside `wavefunction_ref`.
+
+A validator checks that `wavefunction_ref` names a `wavefunction.gto`
+section, that `mo_index` is a row of the coefficient member it selects, read
+from the manifest `shape` of that member, and that `spin` is present exactly
+when that section carries the α and β coefficients (§ 6).
 
 #### `volume.laplacian`
 
@@ -3833,6 +3879,16 @@ Members and kind-specific rules:
 * A `volume.transition_density` section's `excited_states_ref`, when present,
   names an `excited_states` section, and its `state_index` is the `index` of
   one of its states (§ 5.2).
+* A `volume.density`, `volume.spin` or `volume.orbital` section's
+  `wavefunction_ref`, when present, names a `wavefunction.gto` section. When
+  it does, three rules hold for a `volume.orbital` section: its `spin` is
+  absent if the wavefunction section carries `mo_coefficients`, its
+  `mo_index` comes with a `spin` if that section carries the α and β
+  coefficients, and its `mo_index` is a row of `mo_coefficients`, else of the
+  `mo_coefficients_alpha` or `mo_coefficients_beta` that `spin` selects, read
+  from the manifest `shape` of that member (§ 5.2, *Volumes of a
+  wavefunction*). Each violation is `E_REF_UNRESOLVED`, located at the
+  section field.
 * `job.spec`: the `structure_ref` of the `spec` payload, when present, names a
   `structure` section (§ 5.9). The payload's `solvation`, `scf`, `geometry` and
   `resources` objects are checked by the JSON Schema check like the rest of
@@ -4476,7 +4532,7 @@ finding about a member's payload points at the member spec that declares it.
 | `E_PAYLOAD_SCHEMA` | error | § 6 | A JSON member violates the payload definition (§ 5) of its section kind and role (one finding per schema error), or a one-dimensional spectrum's arrays differ in length (§ 5.4). |
 | `E_STRUCTURE_PERIODICITY` | error | § 5.1 | A `structure` payload breaks the periodicity contract, or is not a JSON object. |
 | `E_CHARGE_MULTIPLICITY` | error | § 5.1 | A `structure` section's `charge` and `multiplicity` are impossible for the atoms of its payload: the electron count Σ `atomic_number` − `charge` is negative, or `multiplicity` − 1 exceeds it or differs from it in parity. |
-| `E_REF_UNRESOLVED` | error | § 4.1, § 5.2, § 5.3.1, § 5.4, § 5.5, § 5.8, § 5.9, § 5.10, § 5.11, § 5.12, § 5.14 | A `volume.difference` operand does not name a section in the archive; a `reaction.waypoints` `trajectory_ref` does not name a `trajectory` section; a section's `structure_ref` or `run_ref` does not name a section of kind `structure` or `run.record` respectively; a `job.spec` payload's `structure_ref` or a `forces` or `hessian` `meta.structure_ref` does not name a `structure` section; a `wavefunction.bloch` `basis.structure_ref`, in a section without a section-level `structure_ref`, does not name a `structure` section; a `vibrations` `hessian_ref` does not name a `hessian` section; an `excited_states` `wavefunction_ref` or `nto_ref` does not name a `wavefunction.gto` section, or a `density_ref` a `volume.transition_density` or `volume.difference` section; a grid `structure_ref` does not name a `structure` section; a `volume.series` axis `trajectory_ref` does not name a `trajectory` or `reaction.path` section; or a spectrum's `states_ref` or a `volume.transition_density` `excited_states_ref` does not name an `excited_states` section, or a `state_index` it qualifies names no state of that section; a `reaction.scheme` participant's `structure_ref` does not name a `structure` section; or a `run.record` `job_ref` does not name a `job.spec` section. |
+| `E_REF_UNRESOLVED` | error | § 4.1, § 5.2, § 5.3.1, § 5.4, § 5.5, § 5.8, § 5.9, § 5.10, § 5.11, § 5.12, § 5.14 | A `volume.difference` operand does not name a section in the archive; a `reaction.waypoints` `trajectory_ref` does not name a `trajectory` section; a section's `structure_ref` or `run_ref` does not name a section of kind `structure` or `run.record` respectively; a `job.spec` payload's `structure_ref` or a `forces` or `hessian` `meta.structure_ref` does not name a `structure` section; a `wavefunction.bloch` `basis.structure_ref`, in a section without a section-level `structure_ref`, does not name a `structure` section; a `vibrations` `hessian_ref` does not name a `hessian` section; an `excited_states` `wavefunction_ref` or `nto_ref` does not name a `wavefunction.gto` section, or a `density_ref` a `volume.transition_density` or `volume.difference` section; a grid `structure_ref` does not name a `structure` section; a `volume.series` axis `trajectory_ref` does not name a `trajectory` or `reaction.path` section; or a spectrum's `states_ref` or a `volume.transition_density` `excited_states_ref` does not name an `excited_states` section, or a `state_index` it qualifies names no state of that section; a `volume.density`, `volume.spin` or `volume.orbital` `wavefunction_ref` does not name a `wavefunction.gto` section, or a `volume.orbital` has a `mo_index` that names no row of the coefficient member it selects, a `spin` although the referenced section has no α and β coefficients, or a `mo_index` without the `spin` that α and β coefficients need; a `reaction.scheme` participant's `structure_ref` does not name a `structure` section; or a `run.record` `job_ref` does not name a `job.spec` section. |
 | `E_FILES_INDEX` | error | § 5.8 | A `run.record` `files` index names a role with no member in the section. |
 | `W_UNIT_UNKNOWN` | warning | § 4.3 | A declared unit is not a unit name: a value of a payload's `units` object (of an `excited_states` payload's `meta.units`), a one-dimensional spectrum's `x_units`, `y_units` or `broadening.units`, the `units` of a `volume.series` `axis`, or the `units` of a `{value, units}` object in `provenance` that is not a legacy spelling either. A validator with a JSON Schema engine also reports `E_SCHEMA` or `E_PAYLOAD_SCHEMA` for it. |
 | `E_ROOT_INCONSISTENT` | error | § 3.6, § 5.1, § 5.3, § 5.13 | Two statements of the same quantity differ: an energy of `energies` stated for the method `provenance.method` names differs from `provenance.scf_energy`, or `energies.components.zpve` from `thermochemistry.zpve_eh`, by more than 1e-8 hartree; a `wavefunction.gto` `basis.n_electrons` differs from `provenance.n_electrons`; the `dipole` of a `properties.electric` section differs from the root `dipole_moment` by more than 1e-6 debye; or, in an archive with one `structure` section, its `charge` or `multiplicity` differs from `provenance.charge` or `provenance.multiplicity`. |

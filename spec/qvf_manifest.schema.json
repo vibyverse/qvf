@@ -685,6 +685,10 @@
     "SectionVolumeDensity": {
       "properties": {
         "kind": { "const": "volume.density" },
+        "wavefunction_ref": {
+          "type": "string",
+          "description": "Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction."
+        },
         "members": {
           "type": "object",
           "additionalProperties": false,
@@ -752,6 +756,19 @@
     "SectionVolumeOrbital": {
       "properties": {
         "kind": { "const": "volume.orbital" },
+        "wavefunction_ref": {
+          "type": "string",
+          "description": "Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction."
+        },
+        "mo_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based row of the orbital in the coefficient member of the `wavefunction.gto` section that `wavefunction_ref` names, which is then required: of `mo_coefficients`, or of the `mo_coefficients_alpha` or `mo_coefficients_beta` that `spin` selects. For natural transition orbitals the row is the hole-particle pair index. See QVF spec § 5.2 (volume.*), under Volumes of a wavefunction."
+        },
+        "spin": {
+          "enum": ["alpha", "beta"],
+          "description": "The coefficient member `mo_index` is a row of: `mo_coefficients_alpha` or `mo_coefficients_beta`. Required when the referenced `wavefunction.gto` section carries the alpha and beta coefficients of an unrestricted wavefunction, and absent when it carries `mo_coefficients`; it needs `mo_index`. See QVF spec § 5.2 (volume.*), under Volumes of a wavefunction."
+        },
         "members": {
           "type": "object",
           "additionalProperties": false,
@@ -761,11 +778,19 @@
             "data": { "$ref": "#/$defs/Volume3DBinary" }
           }
         }
+      },
+      "dependentRequired": {
+        "mo_index": ["wavefunction_ref"],
+        "spin": ["mo_index"]
       }
     },
     "SectionVolumeSpin": {
       "properties": {
         "kind": { "const": "volume.spin" },
+        "wavefunction_ref": {
+          "type": "string",
+          "description": "Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction."
+        },
         "members": {
           "type": "object",
           "additionalProperties": false,

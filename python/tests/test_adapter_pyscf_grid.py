@@ -119,6 +119,7 @@ def test_sections_kinds_and_links(written, case):
         for sid in [ids["density"], *([ids["spin"]] if open_shell else []), *ids["orbitals"]]:
             section = sections[sid]
             assert section["structure_ref"] == "structure" and section["group"] == "wf"
+            assert section["wavefunction_ref"] == "wf"
             grid = reader.json(sid, "grid")
             assert grid["structure_ref"] == "structure"
             assert set(grid) == {"origin", "voxel_vectors", "shape", "structure_ref"}
@@ -136,6 +137,18 @@ def test_sections_kinds_and_links(written, case):
         n_alpha, n_beta = mf.nelec
         assert ids["orbitals"] == [f"mo_alpha_{n_alpha - 1}", f"mo_alpha_{n_alpha}",
                                    "mo_alpha_0", f"mo_beta_{n_beta - 1}"]
+    # Each orbital names its row, and its spin channel when unrestricted
+    # (spec § 5.2, Volumes of a wavefunction); nothing else carries spin.
+    unrestricted = case == "uhf_sph"
+    for sid in ids["orbitals"]:
+        section = sections[sid]
+        assert section["mo_index"] == int(sid.rsplit("_", 1)[1])
+        if unrestricted:
+            assert section["spin"] == sid.split("_")[1]
+        else:
+            assert "spin" not in section
+    for sid in [ids["density"], *([ids["spin"]] if open_shell else [])]:
+        assert "mo_index" not in sections[sid] and "spin" not in sections[sid]
 
 
 @requires_pyscf
@@ -392,9 +405,10 @@ def test_refusals(tmp_path):
                                                                  [0, 0, 1]]})
         with pytest.raises(ValueError, match="spacing"):
             add_density_grid(writer, mf, spacing=0.0)
-        # wavefunction_ref=None writes no group, and the archive still validates.
+        # wavefunction_ref=None writes no group and no reference, and the
+        # archive still validates.
         ids = add_density_grid(writer, mf, spacing=0.5, wavefunction_ref=None)
     with Reader(tmp_path / "x.qvf") as reader:
         section = next(s for s in reader.raw_manifest["sections"] if s["id"] == ids["density"])
-    assert "group" not in section
+    assert "group" not in section and "wavefunction_ref" not in section
     assert validate_qvf(tmp_path / "x.qvf")["findings"] == []
