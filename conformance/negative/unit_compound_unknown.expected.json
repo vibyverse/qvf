@@ -1,0 +1,14 @@
+{
+  "archive": "unit_compound_unknown.qvf",
+  "description": "A volume.density grid whose units object declares 'e_per_angstrom3'. It follows the spelling rule of the compound unit names, but the vocabulary of spec \u00a7 4.3 is a closed list and does not hold it, so it is not a unit name. Every validator warns (W_UNIT_UNKNOWN), and one with a JSON Schema engine also rejects the payload (E_PAYLOAD_SCHEMA).",
+  "expect": [
+    {
+      "code": "W_UNIT_UNKNOWN",
+      "severity": "warning"
+    },
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

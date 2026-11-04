@@ -1,0 +1,206 @@
+{
+  "archive": "units_compound_molecular.qvf",
+  "description": "Compound unit names (spec \u00a7 4.3) on a molecule: a density grid in e_per_bohr3, a Laplacian grid in e_per_bohr5, a potential in hartree_per_e and an electric field (volume.vector) in hartree_per_e_bohr. Trajectory velocities and gradient restate angstrom_per_fs and hartree_per_bohr, QTAIM rho and laplacian are declared in e_per_bohr3 and e_per_bohr5, a quadrupole restates debye_angstrom and a polarizability e2_bohr2_per_hartree, and a custom atom_properties role in ev_per_angstrom. Every value is stored in its declared unit and nothing is converted.",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "atom_properties",
+    "properties.electric",
+    "structure",
+    "topology.qtaim",
+    "trajectory",
+    "volume.density",
+    "volume.laplacian",
+    "volume.potential",
+    "volume.vector"
+  ],
+  "checks": [
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "units",
+        "data"
+      ],
+      "equals": "e_per_bohr3"
+    },
+    {
+      "section": "rho",
+      "member": "data",
+      "binary_index": [
+        1,
+        1,
+        1
+      ],
+      "equals": 0.35,
+      "tol": 1e-12
+    },
+    {
+      "section": "lap",
+      "member": "grid",
+      "json_pointer": [
+        "units",
+        "data"
+      ],
+      "equals": "e_per_bohr5"
+    },
+    {
+      "section": "lap",
+      "member": "data",
+      "binary_index": [
+        1,
+        1,
+        1
+      ],
+      "equals": -1.2,
+      "tol": 1e-12
+    },
+    {
+      "section": "esp",
+      "member": "grid",
+      "json_pointer": [
+        "units",
+        "data"
+      ],
+      "equals": "hartree_per_e"
+    },
+    {
+      "section": "efield",
+      "member": "grid",
+      "json_pointer": [
+        "units",
+        "data"
+      ],
+      "equals": "hartree_per_e_bohr"
+    },
+    {
+      "section": "efield",
+      "member": "data",
+      "binary_index": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "equals": 0.04,
+      "tol": 1e-12
+    },
+    {
+      "section": "md",
+      "member": "metadata",
+      "json_pointer": [
+        "units",
+        "velocities"
+      ],
+      "equals": "angstrom_per_fs"
+    },
+    {
+      "section": "md",
+      "member": "metadata",
+      "json_pointer": [
+        "units",
+        "gradient"
+      ],
+      "equals": "hartree_per_bohr"
+    },
+    {
+      "section": "md",
+      "member": "gradient",
+      "binary_index": [
+        0,
+        0,
+        2
+      ],
+      "equals": 0.0123,
+      "tol": 1e-12
+    },
+    {
+      "section": "md",
+      "member": "velocities",
+      "binary_index": [
+        1,
+        0,
+        2
+      ],
+      "equals": 0.001,
+      "tol": 1e-12
+    },
+    {
+      "section": "aim",
+      "member": "critical_points",
+      "json_pointer": [
+        "units",
+        "rho"
+      ],
+      "equals": "e_per_bohr3"
+    },
+    {
+      "section": "aim",
+      "member": "critical_points",
+      "json_pointer": [
+        "units",
+        "laplacian"
+      ],
+      "equals": "e_per_bohr5"
+    },
+    {
+      "section": "aim",
+      "member": "critical_points",
+      "json_pointer": [
+        "points",
+        0,
+        "laplacian"
+      ],
+      "equals": -2.5361,
+      "tol": 1e-12
+    },
+    {
+      "section": "electric",
+      "member": "properties",
+      "json_pointer": [
+        "units",
+        "quadrupole"
+      ],
+      "equals": "debye_angstrom"
+    },
+    {
+      "section": "electric",
+      "member": "properties",
+      "json_pointer": [
+        "units",
+        "polarizability"
+      ],
+      "equals": "e2_bohr2_per_hartree"
+    },
+    {
+      "section": "electric",
+      "member": "properties",
+      "json_pointer": [
+        "quadrupole",
+        "matrix",
+        1,
+        1
+      ],
+      "equals": 1.96,
+      "tol": 1e-12
+    },
+    {
+      "section": "atom_properties",
+      "member": "meta",
+      "json_pointer": [
+        "custom.gradient_ev_angstrom",
+        "units"
+      ],
+      "equals": "ev_per_angstrom"
+    },
+    {
+      "section": "atom_properties",
+      "member": "custom.gradient_ev_angstrom",
+      "binary_index": [
+        0,
+        2
+      ],
+      "equals": 0.25,
+      "tol": 1e-12
+    }
+  ]
+}

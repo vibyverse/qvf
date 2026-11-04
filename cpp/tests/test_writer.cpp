@@ -1094,9 +1094,15 @@ int main() {
             }
             return false;
         };
-        CHECK(kUnitCount == 25 && unit_name(Unit::Wavenumber) == "cm-1" &&
-                  unit_name(Unit::Dimensionless) == "dimensionless",
+        CHECK(kUnitCount == 45 && unit_name(Unit::Wavenumber) == "cm-1" &&
+                  unit_name(Unit::Dimensionless) == "dimensionless" &&
+                  static_cast<std::size_t>(Unit::Dimensionless) == 24,
               "unit_name");
+        CHECK(unit_name(Unit::HartreePerBohr) == "hartree_per_bohr" &&
+                  unit_name(Unit::ReciprocalAngstrom) == "angstrom-1" &&
+                  parse_unit("e_per_bohr3") == Unit::ElementaryChargePerBohr3 &&
+                  !parse_unit("hartree/bohr") && !parse_unit("e_per_angstrom3"),
+              "compound unit names are closed names");
         bool round_trip = true;
         for (std::size_t i = 0; i < kUnitCount; ++i) {
             const Unit u = static_cast<Unit>(i);
@@ -1157,7 +1163,7 @@ int main() {
               }),
               "grid units.origin must restate bohr");
         Grid unknown = g;
-        unknown.units["data"] = "e_per_bohr3";
+        unknown.units["data"] = "e_per_angstrom3";
         CHECK(throws([&] {
                   uw.add_volume("volume.density", unknown,
                                 tensor_f32(std::vector<double>(8, 0.1), {2, 2, 2}), "", "",

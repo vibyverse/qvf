@@ -841,7 +841,7 @@ static void test_unit_names() {
     expect_only("grid units: unknown name",
                 units_archive("", "volume.density", "grid",
                               R"({"origin":[0,0,0],"voxel_vectors":[[1,0,0],[0,1,0],[0,0,1]],)"
-                              R"("shape":[1,1,1],"units":{"data":"e_per_bohr3"}})"),
+                              R"("shape":[1,1,1],"units":{"data":"e_per_angstrom3"}})"),
                 "W_UNIT_UNKNOWN", Limits{}, warn);
     expect_only("spectrum x_units", units_archive("", "spectra.uvvis", "spectrum",
                                                   R"({"frequencies":[1],"intensities":[1],)"
