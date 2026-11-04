@@ -52,7 +52,7 @@ Candidate CI checks:
 - **Single-header amalgamation**: `cpp/qvf_single.hpp` is generated and must
   match its sources.
 - **Generated tables**: the kind, unit and finding-code tables and the
-  compiled JSON Schema (C++, TypeScript, Python), and the kind catalogue
+  compiled JSON Schema (C++, TypeScript, Python, Rust), and the kind catalogue
   `docs/kinds.md`, are generated from the schema by `scripts/gen_kinds.py`
   and must match it.
 
