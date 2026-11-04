@@ -45,6 +45,8 @@ HTML_OUTPUT            = html
 GENERATE_TREEVIEW      = YES
 SEARCHENGINE           = YES
 GENERATE_LATEX         = NO
+# Class and include graphs use the built-in renderer, so Graphviz is not needed.
+HAVE_DOT               = NO
 TIMESTAMP              = NO
 
 QUIET                  = YES

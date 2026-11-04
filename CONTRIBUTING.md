@@ -128,8 +128,36 @@ reference under `api/cpp-reference/`; install Doxygen first, or set
 warning fails strict mode. The headers keep plain `//` and `/* */` comments:
 `scripts/doxygen_filter.py` presents a comment block directly above a
 declaration, and a trailing comment after a member, to Doxygen as
-documentation, so keep a header's comment next to what it describes. CI does
-not build or publish the site.
+documentation, so keep a header's comment next to what it describes. A
+reference to an overloaded or template member names it without `()`, since
+Doxygen reads `add()` as the overload without parameters. The Doxyfile sets
+`HAVE_DOT = NO`, so Graphviz is not needed. `validation.anchors` in
+`mkdocs.yml` makes a link to a missing heading anchor fail strict mode too.
+CI does not build or publish the site.
+
+### Publishing the documentation site
+
+Publication is a maintainer action. `.github/workflows/docs-pages.yml` builds
+the site in strict mode, with Doxygen, and deploys it to GitHub Pages. It runs
+only when a maintainer dispatches it (Actions, "Docs site", Run workflow) from
+`main`. No push, tag or schedule starts it, and the release workflow does not
+call it.
+
+One-time repository settings before the first dispatch:
+
+1. Settings, Pages, Build and deployment: set Source to **GitHub Actions**.
+   This creates the `github-pages` environment the deploy job uses.
+2. Settings, Environments, `github-pages`: keep the deployment branch rule
+   at `main` (the default), so only `main` can publish.
+3. For a custom domain, set it under Settings, Pages and keep `site_url` in
+   `mkdocs.yml` equal to the final address. The workflow publishes the site
+   under `docs/` of the Pages base address with a forwarding root page, which
+   matches the current `site_url` (`https://vibyverse.com/qvf/docs/`) when the
+   Pages base is `https://vibyverse.com/qvf/`. With the default GitHub domain
+   the site is at `https://vibyverse.github.io/qvf/docs/`.
+
+Before dispatching, run `mkdocs build --strict` locally with Doxygen installed
+and check the links of the built site.
 
 ### Private operator configuration
 
