@@ -244,7 +244,11 @@ publication or a second review as a gate on ordinary source changes.
    installation from outside the source checkout and exercise static/shared
    C/C++ clients. If the [local Conan recipe](packaging/conan/README.md) is
    included, run its `test_package` under the native-build lock and retain the
-   recipe revision/profile. Claim Fortran support only for compiler/platform
+   recipe revision/profile. If the [vcpkg overlay port](packaging/vcpkg/README.md)
+   is included, refresh its tag archive SHA512 after the tag exists, install it
+   for a static and a shared triplet and build its out-of-tree consumers.
+   Build `npm pack` in `js/` and import the tarball from a scratch project.
+   Claim Fortran support only for compiler/platform
    combinations actually checked; installed modules are compiler-specific.
 5. **Release and publish through the approved path.** Only the authorized owner
    creates the immutable tag after acceptance. Inspect the actual publication

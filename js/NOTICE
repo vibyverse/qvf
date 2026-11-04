@@ -1,0 +1,23 @@
+qvf-writer — a standalone QVF (Quantum Visualization Format) writer toolkit
+Copyright 2026 vibe-qc authors <mpei@vibe-qc.com>
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The QVF format itself was designed as part of the vibe-qc project
+(https://vibe-qc.com, MPL-2.0). This toolkit is an independent, permissively
+licensed reference implementation of the QVF producer contract, provided so
+that any quantum-chemistry code can emit .qvf archives without depending on
+vibe-qc. The canonical format specification and JSON Schema are reproduced
+here under spec/.
+
+--------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------
+
+None. The C++ library has zero third-party dependencies: the ZIP container
+writer, the DEFLATE compressor (RFC 1951), CRC-32, SHA-256, and JSON emitter
+are all original implementations authored for this toolkit and licensed under
+Apache-2.0 (see cpp/src/qvf_zip.hpp, cpp/src/qvf_deflate.hpp,
+cpp/src/qvf_sha256.hpp, cpp/include/qvf/json.hpp).
+The only build/runtime requirement is a C++17 standard library. The Python
+reference writer depends only on the Python standard library and NumPy.
