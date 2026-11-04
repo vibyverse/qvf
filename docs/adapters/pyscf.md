@@ -258,6 +258,95 @@ The scalar mean field the adapter writes never used them, so the written
 projectors are still the complete potential of that calculation. The
 `x_pyscf_spin_orbit_omitted` marker records that the named ECP has more.
 
+## Densities and orbitals on a grid
+
+`add_density_grid` and `add_orbital_grid` evaluate the SCF result on a
+regular grid and add it as volume sections (spec § 5.2). Add the SCF
+sections first, because the volumes refer to them:
+
+```python
+import pyscf
+from pyscf import gto, scf
+from qvf import Writer, validate_qvf
+from qvf.adapters.pyscf import add_density_grid, add_orbital_grid, add_scf
+
+mol = gto.M(atom="O 0 0 0; H 0 0 0.97", basis="def2-svp", spin=1)
+mf = scf.UHF(mol).run()
+with Writer("oh-grid.qvf", program="PySCF", version=pyscf.__version__) as writer:
+    add_scf(writer, mf)
+    add_density_grid(writer, mf)                     # density and spin density
+    add_orbital_grid(writer, mf, ["homo", "lumo"])   # alpha set
+    add_orbital_grid(writer, mf, ["homo"], spin="beta")
+assert validate_qvf("oh-grid.qvf")["findings"] == []
+```
+
+| Function | QVF kind | Holds | Unit |
+|---|---|---|---|
+| `add_density_grid` | `volume.density` | ρ(r) of `mf.make_rdm1()`, both spins | e/bohr³ |
+| `add_density_grid` (open shell) | `volume.spin` | ρ_α − ρ_β | e/bohr³ |
+| `add_orbital_grid` | `volume.orbital`, one per orbital | ψ_i(r), PySCF's sign | bohr^(−3/2) |
+
+`volume.spin` is written by default for UHF, UKS, ROHF and ROKS references
+and never for RHF or RKS (`spin=True` then raises, `spin=False` omits it).
+`add_orbital_grid` takes 0-based orbital rows, the rows of the coefficient
+member of `wavefunction.gto`, or the names `"homo"` and `"lumo"`. An
+unrestricted reference selects its set with `spin="alpha"` or `"beta"`.
+Section ids are `mo_<row>`, or `mo_<spin>_<row>` for an unrestricted set,
+and the labels name the row, the spin and HOMO or LUMO.
+
+**Grid.** By default `molecular_grid(mol)` builds an axis-aligned box that
+reaches `DEFAULT_GRID_MARGIN_BOHR = 4.0` bohr beyond the outermost nuclei on
+every side, sampled with `DEFAULT_GRID_SPACING_BOHR = 0.2` bohr steps. The
+box edge is rounded up to whole steps and centred on the nuclei. Pass
+`spacing=` and `margin=` to change it, or `shape=[nx, ny, nz]` to sample the
+box exactly as PySCF's `tools.cubegen.Cube(mol, nx, ny, nz, margin=...)`
+does: origin at the lower corner and `shape[a] − 1` steps across each edge.
+Any other grid, including non-orthogonal voxel vectors, is given as
+`grid={"origin": ..., "voxel_vectors": ..., "shape": ...}` in bohr, the
+fields of the grid payload. Point `(i, j, k)` is
+`origin + i·v_0 + j·v_1 + k·v_2`, stored in row-major `[i][j][k]` order. The
+grids are finite boxes, so `periodic` and `includes_endpoint` are not written.
+
+**Evaluation.** Values come from `pyscf.dft.numint.eval_ao` and `eval_rho`
+(orbitals as `ao @ C`) in blocks of `chunk` points. The default block holds
+2²³ AO values (64 MiB), so memory does not grow with the grid. All orbitals
+of one call share one AO evaluation. Data are stored as float32, the format
+default, or as float64 with `dtype="float64"`.
+
+**Links.** Every volume carries `structure_ref` at section and grid level.
+QVF v1 has no field that points from a volume to a `wavefunction.gto`
+section, so the wavefunction id (`wavefunction_ref`, default `"wf"`, which
+must already be in the writer) is written as the section `group` (§ 4.1),
+which a viewer may use to show the volumes beside their orbitals. Pass
+`wavefunction_ref=None` to write no group. A dedicated reference would be a
+format change and is not part of this adapter.
+
+**Integration accuracy.** The grid sum `Σ f(r) ΔV` is a check, not an
+accurate quadrature, for an all-electron density. A uniform grid aliases the
+tight core primitives (α up to 2266 bohr⁻² for O in def2-SVP), and the error
+changes sign with the grid's offset from the nuclei. Measured with a
+4 bohr margin:
+
+| System | Spacing / bohr | ∫ρ − N / e | ∫(ρ_α − ρ_β) − 2S | ∫ψ²_HOMO − 1 |
+|---|---|---|---|---|
+| H₂O RHF/def2-SVP | 0.10 | −0.015 | | −1.0e-4 |
+| H₂O RHF/def2-SVP | 0.15 | −0.015 | | −7.5e-5 |
+| H₂O RHF/def2-SVP | 0.20 | −0.061 | | −1.3e-4 |
+| H₂O RHF/def2-SVP | 0.30 | −0.71 | | +1.5e-3 |
+| OH UHF/def2-SVP | 0.15 | +0.012 | −1.4e-5 | −5.9e-5 |
+| OH UHF/def2-SVP | 0.20 | −0.22 | −3.9e-4 | +1.6e-6 |
+
+The density error is about twice that of the O 1s orbital. Valence
+orbitals and the spin density are smooth and converge to about 1e-4 at
+0.2 bohr. Diffuse virtual orbitals are limited by the box instead: the
+def2-SVP LUMO of water loses 2 % outside a 4 bohr margin and 12 % outside
+3 bohr. Without a tight core the sum converges in the spacing and only the
+box limits it: H₂ RHF and H₃ UHF in def2-SVP integrate to within 5e-5 e
+with 0.25 bohr steps and a 6 bohr margin, against 2e-3 to 9e-3 e with a
+4 bohr margin. Use 0.1 to 0.15 bohr for quantitative integration of a
+density with heavy-atom cores, and a margin of 6 bohr or more for diffuse
+orbitals.
+
 ## How the AO conventions map
 
 These are the three places where a PySCF archive could silently disagree with
@@ -360,10 +449,22 @@ before the target is opened. Error cases include
 unconverged roots and X amplitudes changed by PySCF's NTO helper. These are
 conversion checks, not a new scientific accuracy claim for either engine.
 
+`python/tests/test_adapter_pyscf_grid.py` checks the grid output for water
+RHF (spherical) and RKS (Cartesian) and the OH radical in UHF and ROHF on
+0.15 bohr grids. Every archive validates with no finding. The density, the
+spin density and the HOMO, LUMO, lowest and β HOMO orbitals integrate within
+the bounds above. On sampled points, including the densest ones near the
+nuclei, the stored values equal ρ, ρ_α − ρ_β and ψ evaluated from the
+archive's own `basis`, density matrices and coefficients with the Appendix A
+evaluator of `test_adapter_pyscf.py`, to float32 precision. With `shape` and
+`margin` the points equal `tools.cubegen.Cube.get_coords()` to 1e-12 bohr,
+the values equal `cubegen.density` and `cubegen.orbital`, and the written
+cube file, imported through `qvf.convert.import_cube`, has the archive's
+grid. A skewed explicit grid and a small `chunk` give the same values.
+
 ## Not yet covered
 
-Later WP-62 tranches: restricted-open and spin-flip response, densities on a
-grid (`volume.density`) and periodic
+Later WP-62 tranches: restricted-open and spin-flip response and periodic
 Γ-point calculations. Spin-orbit ECP terms (omitted, see above), solvent models (refused), GHF and
 relativistic two-component wavefunctions (refused) and ghost atoms (refused)
 are not mapped either.
