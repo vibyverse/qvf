@@ -178,7 +178,7 @@ The library other codes link. Core first, then the facades, then every binding o
 
 - ✅ **WP-60** JavaScript/TypeScript reader (`@qvf/core`) — enables web viewers and notebooks
 - ⬜ **WP-61** Rust crate — independent implementation certified by the corpus
-- 🔨 **WP-62** PySCF adapter — molecular SCF/DFT (#23), explicit spherical signs (#24), closed-shell TDA/TDHF/TDDFT states, spectra and singlet-TDA NTOs (#25), and singlet full-response NTOs retaining X+Y and non-unit weights (#26) are on main (Unreleased), with optional adapter coverage in candidate CI ([guide](docs/adapters/pyscf.md)). Triplet NTOs, unrestricted response, grid densities, periodic Γ-point calculations and ECP projectors remain.
+- 🔨 **WP-62** PySCF adapter — molecular SCF/DFT (#23), explicit spherical signs (#24), closed-shell TDA/TDHF/TDDFT states, spectra and singlet-TDA NTOs (#25), and singlet full-response NTOs retaining X+Y and non-unit weights (#26) are on main (Unreleased), with optional adapter coverage in candidate CI ([guide](docs/adapters/pyscf.md)). Scalar ECP projectors are written too. Triplet NTOs, unrestricted response, grid densities and periodic Γ-point calculations remain.
 - ⬜ **WP-63** vibe-qc links libqvf instead of carrying its own implementation (maintainer note; after WP-42/43/46 stabilise; not high priority)
 - 🔨 **WP-64** Docs site with generated API reference and kind catalogue: the generated kind catalogue (`docs/kinds.md`, checked by `gen_kinds.py --check`) the mkdocs site configuration (`mkdocs.yml`, strict local build) the mkdocstrings Python API reference and the Doxygen C++/C API reference landed; publishing remains
 - ⬜ **WP-65** Julia binding (demand-driven)
