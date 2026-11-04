@@ -11,8 +11,9 @@ a molecular ``gto.Mole`` (``RHF``, ``UHF``, ``ROHF``, ``RKS``, ``UKS``,
 ``ROKS``, including their density-fitted and second-order variants), in a
 spherical or a Cartesian basis.
 
-``add_td`` and ``write_td`` add molecular closed-shell TDA/TDHF/TDDFT
-states and UV-visible sticks beside that SCF reference. Singlet and triplet
+``add_td`` and ``write_td`` add molecular TDA/TDHF/TDDFT states of
+closed-shell RHF/RKS and open-shell UHF/UKS references and UV-visible
+sticks beside that SCF reference. Singlet and triplet
 TDA and full response also carry paired natural transition orbitals. Full
 response retains both X and Y; triplet NTOs are written as alpha and beta
 spin-orbital channels (see ``add_td``).
@@ -697,7 +698,7 @@ def write_scf(mf, target, *, calculation: str | None = None, **options) -> dict[
     return ids
 
 
-# -- molecular closed-shell excited states ------------------------------------
+# -- molecular excited states (RHF/RKS and UHF/UKS references) -----------------
 
 def _td_real(value, name, shape=None):
     np = _np()
@@ -808,8 +809,12 @@ class _PreparedTD:
                     # _add_td writes the beta particles with the opposite sign.
                     transition = transition / math.sqrt(2)
                 u, singular, vh = np.linalg.svd(transition, full_matrices=False)
-                self.ntos.append((coeff[:, occupied] @ u, coeff[:, virtual] @ vh.T,
-                                  (singular * singular).tolist()))
+                hole, particle = coeff[:, occupied] @ u, coeff[:, virtual] @ vh.T
+                weights = (singular * singular).tolist()
+                if self.singlet:
+                    self.ntos.append((hole, particle, weights))
+                else:
+                    self.ntos.append(((hole, hole), (particle, -particle), (weights, weights)))
         dipoles = _td_real(td.transition_dipole(), "transition dipoles", (n, 3))
         strengths = _td_real(td.oscillator_strength(gauge="length"), "oscillator strengths", (n,))
         if (strengths < 0).any():
@@ -820,6 +825,131 @@ class _PreparedTD:
         self.reference = _Prepared(mf)
 
 
+class _PreparedUTD:
+    """Check an unrestricted (UHF/UKS) response result before writing."""
+
+    def __init__(self, td, ntos):
+        _pyscf()
+        from pyscf.tdscf import uhf, uks
+        from ..units import HARTREE_IN_EV
+        np = _np()
+        if not isinstance(td, (uhf.TDA, uhf.TDHF)) or isinstance(td, (uks.dRPA, uks.dTDA)):
+            raise NotImplementedError("the TD adapter supports molecular UHF/UKS TDA and TDHF/TDDFT")
+        if getattr(td, "with_solvent", None) is not None:
+            raise NotImplementedError("solvent response is not mapped by the TD adapter")
+        mf = td._scf
+        _check_scf(mf)
+        if _spin_kind(mf) != "unrestricted":
+            raise NotImplementedError("unrestricted response needs a UHF/UKS reference; "
+                                      "restricted-open (ROHF/ROKS) response is not mapped")
+        if not mf.converged:
+            raise ValueError("the SCF reference must be converged")
+        if td.mol is not mf.mol:
+            raise ValueError("TD and SCF results must refer to the same molecule")
+        nmo = len(np.asarray(mf.mo_energy[0]))
+        occ = _td_real(mf.mo_occ, "MO occupations", (2, nmo))
+        if not np.isin(occ, [0, 1]).all():
+            raise NotImplementedError("fractional occupations are not supported")
+        coeff = _td_real(mf.mo_coeff, "MO coefficients", (2, mf.mol.nao_nr(), nmo))
+        _td_real(mf.mo_energy, "MO energies", (2, nmo))
+        reference_energy = float(_td_real(mf.e_tot, "SCF energy", ()))
+        masks = [np.asarray(m) for m in td.get_frozen_mask()]
+        if len(masks) != 2 or any(m.dtype.kind != "b" or m.shape != (nmo,) for m in masks):
+            raise ValueError("the frozen-orbital masks must match the reference MO rows")
+        if masks[0].sum() != masks[1].sum():
+            # PySCF sizes both spin blocks from the alpha mask.
+            raise NotImplementedError("different alpha and beta frozen-orbital counts are not supported")
+        spaces = [(np.flatnonzero(m & (o == 1)), np.flatnonzero(m & (o == 0)))
+                  for m, o in zip(masks, occ)]
+        if not any(len(i) and len(a) for i, a in spaces):
+            raise ValueError("the TD result needs active occupied and virtual orbitals")
+        energies = _td_real(td.e, "excitation energies")
+        if energies.ndim != 1 or not len(energies) or (energies <= 0).any():
+            raise ValueError("the TD result needs a non-empty array of positive excitation energies")
+        n = len(energies)
+        if not isinstance(td.xy, (list, tuple)) or len(td.xy) != n:
+            raise ValueError("X/Y amplitudes must have one pair per excited state")
+        converged = np.asarray(td.converged)
+        if converged.dtype.kind != "b" or converged.shape != (n,) or not converged.all():
+            raise ValueError("every exported TD root must be converged")
+        # CasidaTDDFT inherits both TDHF and TDA; it is a full-response method.
+        self.tda = isinstance(td, uhf.TDA) and not isinstance(td, uhf.TDHF)
+        if ntos is not None and not isinstance(ntos, bool):
+            raise TypeError("ntos must be True, False or None")
+        self.with_ntos = True if ntos is None else ntos
+        self.method = "tddft" if _is_ks(mf) else ("cis" if self.tda else "tdhf")
+        self.mf = mf
+        self.states, self.ntos = [], []
+        shapes = [(len(i), len(a)) for i, a in spaces]
+        for k, (energy, xy) in enumerate(zip(energies, td.xy), 1):
+            if (not isinstance(xy, (tuple, list)) or len(xy) != 2
+                    or any(not isinstance(v, (tuple, list)) or len(v) != 2 for v in xy)):
+                raise ValueError(f"state {k}: expected ((Xa, Xb), (Ya, Yb)) amplitudes")
+            xs, ys = [], []
+            for c, label in enumerate(("alpha", "beta")):
+                x = _td_real(xy[0][c], f"state {k} {label} X amplitudes", shapes[c])
+                y = _td_real(xy[1][c], f"state {k} {label} Y amplitudes")
+                if y.shape == () and y == 0:
+                    y = np.zeros(shapes[c])
+                elif y.shape != shapes[c]:
+                    raise ValueError(f"state {k}: {label} Y amplitudes must match X or be scalar zero")
+                if self.tda and np.any(y != 0):
+                    raise ValueError(f"state {k}: TDA must have zero Y amplitudes")
+                xs.append(x)
+                ys.append(y)
+            weights = [x * x - y * y for x, y in zip(xs, ys)]
+            norm = float(sum(w.sum() for w in weights))
+            if not math.isclose(norm, 1.0, rel_tol=1e-6, abs_tol=1e-8):
+                raise ValueError(f"state {k}: X/Y amplitudes must retain PySCF normalization "
+                                 "sum(X^2-Y^2)=1 over both spins; do not renormalize them")
+            # Unrestricted states are not spin eigenfunctions: no multiplicity.
+            state = {
+                "index": k,
+                "excitation_energy": {"value": float(energy * HARTREE_IN_EV), "units": "ev"},
+                "total_energy": {"value": reference_energy + float(energy), "units": "hartree"},
+                "contributions": [
+                    {"from_mo": int(i), "to_mo": int(a), "spin": label,
+                     "weight": float(w[u, v] / norm)}
+                    for label, (occupied, virtual), w in zip(("alpha", "beta"), spaces, weights)
+                    for u, i in enumerate(occupied) for v, a in enumerate(virtual)],
+            }
+            self.states.append(state)
+            if self.with_ntos:
+                # Per spin channel, the spin-orbital transition: X / sqrt(norm)
+                # for TDA (both spins sum to one) and X + Y unscaled for full
+                # response, the same convention as the restricted triplet channels.
+                holes, particles, pair_weights = [], [], []
+                for c, (occupied, virtual) in enumerate(spaces):
+                    t = xs[c] / math.sqrt(norm) if self.tda else xs[c] + ys[c]
+                    if min(t.shape) == 0:
+                        holes.append(np.zeros((coeff.shape[1], 0)))
+                        particles.append(np.zeros((coeff.shape[1], 0)))
+                        pair_weights.append([])
+                        continue
+                    u, singular, vh = np.linalg.svd(t, full_matrices=False)
+                    holes.append(coeff[c][:, occupied] @ u)
+                    particles.append(coeff[c][:, virtual] @ vh.T)
+                    pair_weights.append((singular * singular).tolist())
+                self.ntos.append((tuple(holes), tuple(particles), tuple(pair_weights)))
+        dipoles = _td_real(td.transition_dipole(), "transition dipoles", (n, 3))
+        strengths = _td_real(td.oscillator_strength(gauge="length"), "oscillator strengths", (n,))
+        if (strengths < 0).any():
+            raise ValueError("oscillator strengths must be nonnegative")
+        for state, dipole, strength in zip(self.states, dipoles, strengths):
+            state["transition_dipole"] = dipole.tolist()
+            state["oscillator_strength"] = float(strength)
+        self.reference = _Prepared(mf)
+
+
+def _prepare_td(td, ntos):
+    """Check a restricted or unrestricted response result before writing."""
+    _pyscf()
+    from pyscf.tdscf import uhf
+    if isinstance(td, uhf.TDBase):
+        return _PreparedUTD(td, ntos)
+    return _PreparedTD(td, ntos)
+
+
 def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
     ids = add_scf(writer, p.mf, **scf_options)
     ref = p.reference
@@ -827,17 +957,18 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
     for state, (hole, particle, weights) in zip(p.states, p.ntos):
         for role, coefficients, output in (("hole", hole, holes),
                                             ("particle", particle, particles)):
-            zeros = [0.0] * len(weights)
-            if p.singlet:
-                orbitals = dict(mo_coefficients=ref.map.coefficients(coefficients),
-                                occupations=weights, energies=zeros, spin="restricted")
-            else:
-                beta = -coefficients if role == "particle" else coefficients
+            if isinstance(coefficients, tuple):  # alpha and beta spin-orbital channels
+                (ca, cb), (wa, wb) = coefficients, weights
                 orbitals = dict(
-                    mo_coefficients_alpha=ref.map.coefficients(coefficients),
-                    mo_coefficients_beta=ref.map.coefficients(beta),
-                    occupations_alpha=weights, occupations_beta=weights,
-                    energies_alpha=zeros, energies_beta=zeros, spin="unrestricted")
+                    mo_coefficients_alpha=ref.map.coefficients(ca),
+                    mo_coefficients_beta=ref.map.coefficients(cb),
+                    occupations_alpha=wa, occupations_beta=wb,
+                    energies_alpha=[0.0] * len(wa), energies_beta=[0.0] * len(wb),
+                    spin="unrestricted")
+            else:
+                orbitals = dict(mo_coefficients=ref.map.coefficients(coefficients),
+                                occupations=weights, energies=[0.0] * len(weights),
+                                spin="restricted")
             sid = writer.add_wavefunction_gto(
                 ref.map.shells, **orbitals,
                 pure=ref.map.pure, structure_ref=ids["structure"],
@@ -865,7 +996,7 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
 
 def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = "uvvis",
            nto_prefix: str = "nto", ntos: bool | None = None, **scf_options) -> dict[str, Any]:
-    """Add a closed-shell molecular PySCF TDA/TDHF/TDDFT result.
+    """Add a molecular PySCF TDA/TDHF/TDDFT result of an RHF/RKS or UHF/UKS reference.
 
     Adds the SCF reference through ``add_scf`` (``scf_options`` are its
     arguments), an ``excited_states`` table, and length-gauge UV-visible
@@ -874,10 +1005,9 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     to rows of the full reference wavefunction. Contributions are the
     normalized X²−Y² weights, including negative terms when present.
 
-    ``ntos=None`` and ``True`` write paired NTOs for singlet and triplet TDA
-    and full response; ``False`` omits them. Unrestricted/open-shell
-    references, complex amplitudes, solvent and direct-RPA variants are not
-    mapped. Source arrays are not changed and no SCF or response iterations
+    ``ntos=None`` and ``True`` write paired NTOs for every supported result;
+    ``False`` omits them. Restricted-open (ROHF/ROKS) references, spin-flip,
+    complex amplitudes, solvent and direct-RPA variants are not mapped. Source arrays are not changed and no SCF or response iterations
     are run. NTO energies are zero and their occupations are squared
     singular-value transition weights.
 
@@ -898,6 +1028,15 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     spins equals the singlet-path sum. The alpha minus beta pair contraction
     is the spin (``S_z``) transition. The reference stays restricted.
 
+    For a UHF/UKS reference, contributions carry ``spin`` and index the
+    alpha or beta coefficient rows, normalized over both spins. States have
+    no ``multiplicity``: unrestricted response states are not spin
+    eigenfunctions. Each NTO spin channel holds that spin's transition,
+    ``X_s`` (TDA, with PySCF's unit two-spin norm) or ``X_s + Y_s`` (full
+    response, unscaled), in the unrestricted NTO layout of spec § 5.3. An
+    empty occupied or virtual space gives an empty channel. The alpha plus
+    beta pair contraction reproduces PySCF's transition dipole.
+
     Root provenance/energies and the optional ``job.spec`` describe the
     **SCF reference**, not the excitation calculation. The excitation
     method and TDA flag are in the states' metadata; state totals are the
@@ -908,7 +1047,7 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     Returns the ``add_scf`` IDs plus ``excited_states``, ``spectrum`` and
     ordered lists ``nto_holes`` / ``nto_particles`` (empty when omitted).
     """
-    return _add_td(writer, _PreparedTD(td, ntos), states_id=states_id,
+    return _add_td(writer, _prepare_td(td, ntos), states_id=states_id,
                    spectrum_id=spectrum_id, nto_prefix=nto_prefix, scf_options=scf_options)
 
 
@@ -923,7 +1062,7 @@ def write_td(td, target, *, calculation: str | None = None,
     excitation method, reference method, functional and basis. The target
     is a path or binary sink, as for ``write_scf``.
     """
-    p = _PreparedTD(td, ntos)
+    p = _prepare_td(td, ntos)
     from ..writer import Writer
     if calculation is None:
         method = p.method + ("-tda" if p.tda and p.method != "cis" else "")

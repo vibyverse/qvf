@@ -348,8 +348,3 @@ def test_invalid_source_is_rejected_before_writing(results, tmp_path, bad_input)
         write_td(td, path)
     assert path.read_bytes() == b"original"
 
-
-def test_unrestricted_reference_is_explicitly_unsupported(references, tmp_path):
-    td = references["rhf"].to_uhf().TDA()
-    with pytest.raises(NotImplementedError, match="RHF/RKS"):
-        write_td(td, tmp_path / "unsupported.qvf")
