@@ -427,7 +427,10 @@ speed, behind the same API.
 `@qvf/core`: pure TypeScript reader + validator over `fflate` (inflate) and
 WebCrypto (sha256), ESM, browser and Node, typed accessors returning
 `Float32Array`/`Float64Array` views with shape. Certified by running the
-conformance corpus in CI. A writer follows when a web producer exists.
+conformance corpus in CI. A `Writer` with the typed builders of the Python
+writer (structure, trajectory, wavefunction.gto, volume.*, excited_states,
+spectra.*, reaction.scheme) writes archives in memory or to a streaming sink
+(see `js/README.md`).
 
 ### Rust
 
