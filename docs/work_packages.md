@@ -442,8 +442,11 @@ response are exported with spin-labelled contributions and per-spin NTO
 channels. Grid output adds `volume.density`, `volume.spin` and
 `volume.orbital` (`add_density_grid`, `add_orbital_grid`). Scalar ECP
 projectors (`basis.ecp[].projectors`) are written from `mol._ecpbas`.
-Spin-orbit terms are omitted. Restricted-open and spin-flip response remain
-deferred; PBC Γ-point → periodic structure + Γ wavefunction remains.
+Spin-orbit terms are omitted. Excited-state transition densities are written
+as `volume.transition_density` on request. Periodic Γ-point SCF/DFT writes a
+periodic structure and a Γ wavefunction (spec § 5.3 Γ-point overlap note).
+Restricted-open and spin-flip response, k-point sampling and periodic
+response remain deferred.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone
