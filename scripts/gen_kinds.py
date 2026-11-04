@@ -167,6 +167,21 @@ UNIT_IDENTIFIERS: dict[str, str] = {
     "ps": "Picosecond",
     "atm": "Atmosphere",
     "e": "ElementaryCharge",
+    "angstrom-1": "ReciprocalAngstrom",
+    "gpa-1": "ReciprocalGigapascal",
+    "angstrom_per_fs": "AngstromPerFemtosecond",
+    "ev_per_angstrom": "ElectronVoltPerAngstrom",
+    "hartree_per_e": "HartreePerElementaryCharge",
+    "hartree_per_e_bohr": "HartreePerElementaryChargeBohr",
+    "e_per_bohr3": "ElementaryChargePerBohr3",
+    "e_per_bohr4": "ElementaryChargePerBohr4",
+    "e_per_bohr5": "ElementaryChargePerBohr5",
+    "e_bohr": "ElementaryChargeBohr",
+    "e_bohr2": "ElementaryChargeBohr2",
+    "e2_bohr2_per_hartree": "ElementaryCharge2Bohr2PerHartree",
+    "e3_bohr3_per_hartree2": "ElementaryCharge3Bohr3PerHartree2",
+    "c_per_m2": "CoulombPerMeter2",
+    "states_per_ev": "StatesPerElectronVolt",
 }
 
 

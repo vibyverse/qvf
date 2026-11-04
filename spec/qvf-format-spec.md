@@ -893,7 +893,7 @@ units as the contract (they may convert for display).
 | `volume.potential.data` | hartree / e (atomic units of potential) |
 | `volume.rdg.data` | dimensionless, s(r) = \|∇ρ\| / (2(3π²)^⅓ ρ^⅔) |
 | `volume.transition_density.data` | e / bohr³ (the transition density of one excitation, § 5.2) |
-| `volume.laplacian.data` | e / bohr⁵ (∇²ρ); the vocabulary has no unit name for it, so `grid.units.data` is not declared |
+| `volume.laplacian.data` | e / bohr⁵ (∇²ρ), unit name `e_per_bohr5` |
 | `volume.vector.data`, `volume.complex.data`, `volume.series.data` | the unit of the sampled field, declared as `grid.units.data` when the vocabulary names it; vector components are Cartesian, in the frame of `origin` |
 | `volume.series` `axis.values` | `axis.units`; dimensionless when absent |
 | periodic `volume.*.grid` axis `a` | `voxel_vectors[a] × (shape[a] − 1)` (`includes_endpoint` true, the default) or `voxel_vectors[a] × shape[a]` (false) equals lattice vector `a` of the grid's structure, in bohr (§ 5.2) |
@@ -973,6 +973,38 @@ units; it changes none: every unit of the table above keeps its meaning.
 | `radian` | plane angle | the SI radian |
 | `degree` | plane angle | π / 180 rad |
 | `dimensionless` | — | a pure number, such as a normalized intensity |
+| `angstrom-1` | reciprocal length | 1 Å⁻¹ = 10¹⁰ m⁻¹ |
+| `gpa-1` | compliance (reciprocal pressure) | 1 GPa⁻¹ = 10⁻⁹ Pa⁻¹ |
+| `angstrom_per_fs` | velocity | 1 Å / fs = 10⁵ m s⁻¹ |
+| `hartree_per_bohr` | force, energy gradient | E_h / a₀ = 8.2387234983 × 10⁻⁸ N = 51.422067476 eV / Å (CODATA 2018) |
+| `hartree_per_bohr2` | force constant, Hessian | E_h / a₀² = 1556.8931028 J m⁻² (CODATA 2018) |
+| `hartree_per_bohr3` | stress, energy density | E_h / a₀³ = 2.9421015697 × 10¹³ Pa (CODATA 2018) |
+| `ev_per_angstrom` | force, energy gradient | 1 eV / Å = 1.602176634 × 10⁻⁹ N (exact) |
+| `hartree_per_e` | electric potential | E_h / e = 27.211386245988 V (CODATA 2018) |
+| `hartree_per_e_bohr` | electric field | E_h / (e a₀) = 5.1422067476 × 10¹¹ V m⁻¹ (CODATA 2018) |
+| `e_per_bohr3` | charge density, electron density | e / a₀³ = 1.0812023846 × 10¹² C m⁻³ (CODATA 2018) |
+| `e_per_bohr4` | density gradient | e / a₀⁴ = 2.0431763921 × 10²² C m⁻⁴ (CODATA 2018) |
+| `e_per_bohr5` | density Laplacian | e / a₀⁵ = 3.8610438054 × 10³² C m⁻⁵ (CODATA 2018) |
+| `e_bohr` | electric dipole moment | e a₀ = 8.4783536255 × 10⁻³⁰ C m = 2.5417464732 D (CODATA 2018) |
+| `e_bohr2` | electric quadrupole moment | e a₀² = 4.4865515246 × 10⁻⁴⁰ C m² (CODATA 2018) |
+| `debye_angstrom` | electric quadrupole moment | 1 D Å = 10⁻³¹ / c C m² ≈ 3.335641 × 10⁻⁴⁰ C m² |
+| `debye_angstrom2` | electric octupole moment | 1 D Å² = 10⁻⁴¹ / c C m³ ≈ 3.335641 × 10⁻⁵⁰ C m³ |
+| `e2_bohr2_per_hartree` | polarizability | e² a₀² / E_h = 1.6487772744 × 10⁻⁴¹ C² m² J⁻¹ (CODATA 2018) |
+| `e3_bohr3_per_hartree2` | first hyperpolarizability | e³ a₀³ / E_h² = 3.2063613061 × 10⁻⁵³ C³ m³ J⁻² (CODATA 2018) |
+| `c_per_m2` | surface charge density, piezoelectric stress coefficient | 1 C m⁻² |
+| `states_per_ev` | density of states | 1 eV⁻¹, a count of states per eV |
+
+**Compound names.** The names after `dimensionless` name compound units,
+and their spelling follows the names before them: unit names are joined
+with `_` for a product (`e_bohr`), the denominator follows a single `_per_`
+(`kcal_per_mol`, `hartree_per_e_bohr` for hartree / (e · bohr)), a power
+of 2 or more is a trailing digit (`a3`, `bohr3`, `e_per_bohr5`), and a lone
+reciprocal ends in `-1` (`cm-1`, `angstrom-1`). The rule explains the names
+and keeps later ones consistent. It is not a grammar: the vocabulary stays a
+closed list, a consumer **MUST NOT** parse a name to derive a unit, and a
+string that the rule would produce but the list does not hold, such as
+`ev_per_angstrom2` or `hartree/bohr`, is not a unit name. The factors given
+for these names are the SI values of the constants already in this table.
 
 **Legacy spellings.** Archives written before this vocabulary carry three
 other spellings in the `units` of a `{value, units}` object (`scf_energy`,
@@ -1013,7 +1045,11 @@ single unit name (§ 5.2).
   `angstrom` (a reaction path's is `bohr`). The payload definitions encode
   these fixed units, so
   a validator that runs the JSON Schema check reports the contradiction as
-  `E_PAYLOAD_SCHEMA` (§ 6).
+  `E_PAYLOAD_SCHEMA` (§ 6). The grid payload is shared by every `volume.*`
+  kind, so the schema cannot fix `grid.units.data` per kind: a
+  `volume.density` grid restates `e_per_bohr3`, a `volume.laplacian` grid
+  `e_per_bohr5` and a `volume.potential` grid `hartree_per_e`, and another
+  name there contradicts the table, which v1 validators do not detect.
 * Where a payload leaves the unit open (a spectrum's x axis, QTAIM
   positions, the scan axes), a declaration chooses it, within the quantity
   the field holds: a position takes a length.
@@ -1625,8 +1661,8 @@ and that `state_index` is the `index` of one of its states (§ 6).
 `data[i][j][k]` is ∇²ρ at `r(i, j, k)` in e / bohr⁵: negative where the
 density concentrates charge and positive where it depletes it, the map
 QTAIM reads valence-shell charge concentrations from. The vocabulary of § 4.3
-has no unit name for e / bohr⁵, so a producer does not declare
-`grid.units.data` for it (§ 9).
+names e / bohr⁵ `e_per_bohr5`, and a producer **MAY** declare it as
+`grid.units.data`, which then only restates it.
 
 #### `volume.vector` and `volume.complex`
 
@@ -2296,7 +2332,7 @@ they **MUST** describe the same atoms. Per-frame arrays are in frame order.
 | `ensemble` | `"nve"`, `"nvt"`, `"npt"`, `"nph"` or `"custom"` | no | Thermodynamic ensemble of a molecular-dynamics run. | — |
 | `timestep_fs` | number > 0 | no | Time between consecutive frames; frame `k` is at `k × timestep_fs` when the section has no `times` member. | fs |
 | `precision` | `"float64"` or `"float32"` | no | Precision of `coords`; absent means `float64`. It **MUST** agree with the member's `dtype`; float32 `coords` require `"float32"`. | — |
-| `units` | object | no | Declared units (§ 4.3, *Declared units*), keyed by a field of this payload or a member role of the section. The units of this section remain the contract, so a declaration restates them: `energies` `hartree`, `coords` `angstrom`, `times` and `timestep_fs` `fs`, and for a `trajectory` `lattice` `angstrom`, `cell_volumes` `a3` and `temperatures` `kelvin` (for `reaction.path`, `lattice` `bohr`). `velocities` (Å/fs) and `gradient` (hartree/bohr) have no unit name in the vocabulary and are not declared. | — |
+| `units` | object | no | Declared units (§ 4.3, *Declared units*), keyed by a field of this payload or a member role of the section. The units of this section remain the contract, so a declaration restates them: `energies` `hartree`, `coords` `angstrom`, `times` and `timestep_fs` `fs`, `velocities` `angstrom_per_fs`, `gradient` `hartree_per_bohr`, and for a `trajectory` `lattice` `angstrom`, `cell_volumes` `a3` and `temperatures` `kelvin` (for `reaction.path`, `lattice` `bohr`). | — |
 
 **`reaction.path` `metadata` payload** — schema'd as
 `$defs/ReactionPathMetadataPayload` (typed-open), which also extends
@@ -2549,7 +2585,7 @@ Payload `mesh` (`$defs/FermiMeshPayload`, strict; no field is required):
 | `band_indices` | array of integers ≥ 0 | Index, in the producer's full band list, of each band along the last axis of `energies`. | — |
 | `lattice_vectors` | `[3, 3]` numbers | Real-space cell, rows, in the convention of `structure.lattice_vectors` (§ 4.3). | Å |
 | `reciprocal_lattice` | `[3, 3]` numbers | b1, b2, b3 as rows, including the 2π factor: a_i · b_j = 2π δ_ij. | Å⁻¹ |
-| `units` | object | Optional declaration, field name or member role → unit name (§ 4.3, *Declared units*): `fermi_energy_ev` and `energies` are `ev`, `lattice_vectors` is `angstrom`. | — |
+| `units` | object | Optional declaration, field name or member role → unit name (§ 4.3, *Declared units*): `fermi_energy_ev` and `energies` are `ev`, `lattice_vectors` is `angstrom` and `reciprocal_lattice` is `angstrom-1`. | — |
 
 #### `phonon_bands`
 
@@ -2736,10 +2772,10 @@ subject to maintainer decision 2 ("QTAIM position unit") in
 `docs/format_review.md`, and a later revision of this section will record
 that decision. Producers **SHOULD** therefore declare `units.position`
 explicitly, and a consumer **MUST** read positions in a declared unit. `rho`
-and `laplacian` have no fixed unit in v1, and the unit names of § 4.3 do not
-yet include a unit of electron density or of its Laplacian, so a producer
-cannot declare them; a consumer that does not know the producer's
-convention presents them as written.
+and `laplacian` have no fixed unit in v1. Producers **SHOULD** declare them
+as `units.rho` and `units.laplacian`, in atomic units `e_per_bohr3` and
+`e_per_bohr5` (§ 4.3). A consumer that finds no declaration and does not
+know the producer's convention presents them as written.
 
 #### `structure.symmetry`
 
@@ -3237,8 +3273,10 @@ f and R are not. In the length gauge f = (2/3) ΔE |μ|², with the excitation
 energy ΔE in hartree and the transition dipole μ in atomic units. The
 rotatory strength unit is the one quantum-chemistry programs print as
 "10⁻⁴⁰ cgs"; the vocabulary of § 4.3 has no name for it, nor for the atomic
-units of the dipoles, so this table fixes the units of these three fields and
-`meta.units` does not declare them.
+unit of the magnetic transition dipole, so this table fixes the units of
+these two fields and `meta.units` does not declare them. The electric
+transition dipole is in `e_bohr`, which `meta.units.transition_dipole` may
+restate.
 
 Each contribution (`$defs/ExcitedStateContribution`, strict):
 
@@ -3265,7 +3303,7 @@ Payload `meta` (`$defs/ExcitedStatesMeta`, strict; no field is required):
 | `n_states` | integer ≥ 0 | Number of states; when present it **MUST** equal the length of `states`. |
 | `tda` | boolean | `true`: the Tamm–Dancoff approximation was used. |
 | `spin_flip` | boolean | `true`: the states come from a spin-flip calculation. |
-| `units` | object | Declared units (§ 4.3), keyed by a field of the states, each value a unit name: `excitation_energy` and `total_energy` restate the `units` of those objects of every state, and `oscillator_strength` is `"dimensionless"`. The dipoles and `rotatory_strength_cgs` are not declared (above). |
+| `units` | object | Declared units (§ 4.3), keyed by a field of the states, each value a unit name: `excitation_energy` and `total_energy` restate the `units` of those objects of every state, `oscillator_strength` is `"dimensionless"` and `transition_dipole` is `"e_bohr"`. `transition_magnetic_dipole` and `rotatory_strength_cgs` are not declared (above). |
 
 **Linked sections.** The table of states is the hub of an excited-state
 calculation:
@@ -3315,9 +3353,8 @@ Conventions common to the three kinds:
 * **Units are fixed**; the tables give them (§ 4.3). The optional `units`
   object of each payload maps a field name to a unit name and may only restate
   the unit that is fixed, as for the other payloads (§ 4.3, *Declared units*).
-  It can name only the fields whose unit is in the vocabulary: a compound unit
-  such as debye · Å or GPa⁻¹ has no name there (§ 9), so those fields are fixed
-  by their table alone.
+  Every fixed unit of these payloads has a unit name, compound ones included
+  (`debye_angstrom`, `gpa-1`, `c_per_m2`, …; § 4.3).
 * **One section, one state.** A section holds the properties of one geometry
   and, for an electric field response, one frequency. A producer with several
   (a static and a dynamic polarizability, say) writes several sections with
@@ -3337,7 +3374,7 @@ of `dipole`, `quadrupole`, `octupole`, `polarizability` and
 | `octupole` | object | `tensor` (27 numbers, row-major `[3, 3, 3]`, **required**): element `(a, b, c)` is at index `9a + 3b + c`; `convention` (`"buckingham"` or `"cartesian"`; absent means `"cartesian"`). | debye · Å² |
 | `polarizability` | object | `matrix` (3 × 3, **required**): α_ab; `frequency_ev` (number ≥ 0; `0`, the default, is the static polarizability); `isotropic` (number): ⅓ tr α. | atomic units, e² a₀² / E_h; `frequency_ev` in eV |
 | `hyperpolarizability` | object | `tensor` (27 numbers, row-major `[3, 3, 3]`, **required**): β_abc; `frequencies_ev` (`[2]` numbers, default `[0, 0]`): the photon energies ω₁, ω₂ of β(−(ω₁ + ω₂); ω₁, ω₂). | atomic units, e³ a₀³ / E_h²; `frequencies_ev` in eV |
-| `units` | object | Declared units: `dipole` is `debye`, `origin` is `bohr`. | — |
+| `units` | object | Declared units: `dipole` is `debye`, `origin` is `bohr`, `quadrupole` is `debye_angstrom`, `octupole` is `debye_angstrom2`, `polarizability` is `e2_bohr2_per_hartree` and `hyperpolarizability` is `e3_bohr3_per_hartree2`. | — |
 
 With the charges q_i of the nuclei and of the electrons (the electron's is −e)
 at the positions r_i, taken relative to `origin`, the multipole moments are:
@@ -3381,7 +3418,7 @@ required):
 | `youngs_modulus_gpa` | number | Young's modulus E. | GPa |
 | `poisson_ratio` | number | Poisson's ratio ν. | — |
 | `average` | `"voigt"`, `"reuss"` or `"hill"` | The averaging scheme the four isotropic numbers come from: Voigt (uniform strain, from the stiffness), Reuss (uniform stress, from the compliance) or Hill (the arithmetic mean of the two). Absent means that the scheme is not stated; a producer **SHOULD** state it whenever it writes a modulus, because the schemes differ for an anisotropic crystal. | — |
-| `units` | object | Declared units: `stiffness` and the three moduli are `gpa`, `poisson_ratio` is `dimensionless`. | — |
+| `units` | object | Declared units: `stiffness` and the three moduli are `gpa`, `compliance` is `gpa-1`, `poisson_ratio` is `dimensionless`. | — |
 
 A validator checks that `stiffness` and, when present, `compliance` are
 **symmetric**: entries `[I][J]` and `[J][I]` differ by at most 1e-6 times the
@@ -3401,7 +3438,7 @@ Payload `properties` (`$defs/DielectricPropertiesPayload`, strict;
 | `static` | 3 × 3 numbers | The static dielectric tensor ε₀. | — |
 | `born_charges` | array of 3 × 3 numbers | The Born effective charge tensor Z\* of each atom, one per atom in the atom order of the structure: `Z*[i][j]` is the polarization along `i` per unit displacement of the atom along `j` (equivalently the force on the atom along `j` per unit field along `i`), in units of the elementary charge. | e |
 | `piezoelectric` | 3 × 6 numbers | The piezoelectric stress tensor e_iα = ∂P_i/∂ε_α, row `i` the polarization component and column α the Voigt strain index, at zero field with the ions relaxed. | C / m² |
-| `units` | object | Declared units: `electronic`, `ionic` and `static` are `dimensionless`, `born_charges` is `e`. | — |
+| `units` | object | Declared units: `electronic`, `ionic` and `static` are `dimensionless`, `born_charges` is `e`, `piezoelectric` is `c_per_m2`. | — |
 
 Two rules need the payload as a whole, so a validator checks them (§ 6):
 
@@ -4099,11 +4136,13 @@ These are acknowledged limitations of v1, not defects:
    positions (§ 5.7) is provisional pending a maintainer decision; producers
    should declare `units.position`.
 7. **Unit names of compound quantities.** The unit vocabulary of § 4.3
-   names the units that QVF payloads declare today. It has no name yet for
-   compound units such as an electron density (e·bohr⁻³), its Laplacian
-   (e·bohr⁻⁵, `volume.laplacian`), a reciprocal length (Å⁻¹) or a density
-   of states (states·eV⁻¹), so such fields cannot be declared; their units are those of § 4.3 and the payload tables. A
-   later revision may add names, which is an additive change.
+   names the compound units that QVF fields are fixed in or commonly take
+   (`e_per_bohr3`, `angstrom-1`, `states_per_ev`, `hartree_per_bohr`, …),
+   as a closed list. It has no name for the atomic unit of a magnetic dipole
+   (e ħ / mₑ), the 10⁻⁴⁰ cgs rotatory strength, the Bohr magneton, an orbital
+   amplitude (bohr^(−3/2)), a mass weighted Hessian or an atomic unit of
+   velocity, so those fields keep the units of § 4.3 and the payload tables
+   and are not declared. Adding a name is an additive change.
 8. **Two-dimensional drawings.** v1 has no canonical kind for an editable
    drawing of molecules or of a scheme: the drawing formats in use (Ketcher's
    KET, ChemDraw's CDXML, the 2-D coordinates of an MDL molfile) are
