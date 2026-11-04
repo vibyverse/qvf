@@ -847,6 +847,7 @@ class _PreparedTD:
         self.mf = mf
         self.states = []
         self.ntos = []
+        self.tdms = []
         shape = (len(occupied), len(virtual))
         for k, (energy, xy) in enumerate(zip(energies, td.xy), 1):
             if not isinstance(xy, (tuple, list)) or len(xy) != 2:
@@ -874,6 +875,14 @@ class _PreparedTD:
                     for u, i in enumerate(occupied) for v, a in enumerate(virtual)],
             }
             self.states.append(state)
+            # Spin-summed AO transition density matrix: 2(X+Y) in the MO
+            # basis for a singlet (PySCF's transition dipole is 2 sum (X+Y) mu).
+            # A triplet's spin-summed transition density vanishes.
+            if self.singlet:
+                d = coeff[:, occupied] @ (2.0 * (x + y)) @ coeff[:, virtual].T
+                self.tdms.append(0.5 * (d + d.T))
+            else:
+                self.tdms.append(None)
             if self.with_ntos:
                 # Martin, JCP 118, 4775 (2003), eqs. 4-10; Herbert (2023),
                 # doi:10.1016/B978-0-323-91738-4.00005-1, eq. 3.51.
@@ -960,7 +969,7 @@ class _PreparedUTD:
         self.with_ntos = True if ntos is None else ntos
         self.method = "tddft" if _is_ks(mf) else ("cis" if self.tda else "tdhf")
         self.mf = mf
-        self.states, self.ntos = [], []
+        self.states, self.ntos, self.tdms = [], [], []
         shapes = [(len(i), len(a)) for i, a in spaces]
         for k, (energy, xy) in enumerate(zip(energies, td.xy), 1):
             if (not isinstance(xy, (tuple, list)) or len(xy) != 2
@@ -995,6 +1004,10 @@ class _PreparedUTD:
                     for u, i in enumerate(occupied) for v, a in enumerate(virtual)],
             }
             self.states.append(state)
+            # Spin-summed AO transition density matrix: sum over s of X_s + Y_s.
+            d = sum(coeff[c][:, i] @ (xs[c] + ys[c]) @ coeff[c][:, a].T
+                    for c, (i, a) in enumerate(spaces))
+            self.tdms.append(0.5 * (d + d.T))
             if self.with_ntos:
                 # Per spin channel, the spin-orbital transition: X / sqrt(norm)
                 # for TDA (both spins sum to one) and X + Y unscaled for full
@@ -1031,9 +1044,66 @@ def _prepare_td(td, ntos):
     return _PreparedTD(td, ntos)
 
 
-def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
+_DENSITY_OPTIONS = ("grid", "spacing", "shape", "margin", "dtype", "chunk", "prefix")
+
+
+def _density_options(p, transition_densities):
+    """Normalize ``transition_densities`` and refuse it before anything is written."""
+    if transition_densities is None or transition_densities is False:
+        return None
+    if transition_densities is True:
+        options = {}
+    elif isinstance(transition_densities, dict):
+        unknown = set(transition_densities) - set(_DENSITY_OPTIONS)
+        if unknown:
+            raise TypeError(f"unknown transition_densities options: {sorted(unknown)}")
+        options = dict(transition_densities)
+    else:
+        raise TypeError("transition_densities must be True, False or a dict of grid options")
+    if any(t is None for t in p.tdms):
+        raise ValueError("the spin-summed transition density of a triplet M_S = 0 state "
+                         "vanishes; write its NTOs instead")
+    options.setdefault("spacing", DEFAULT_GRID_SPACING_BOHR)
+    options.setdefault("margin", DEFAULT_GRID_MARGIN_BOHR)
+    options.setdefault("dtype", "float32")
+    options.setdefault("prefix", "tdens")
+    origin, vectors, dims = _grid_spec(p.mf.mol, options.get("grid"), options["spacing"],
+                                       options.get("shape"), options["margin"])
+    options["spec"] = (origin, vectors, dims)
+    return options
+
+
+def _add_transition_densities(writer, p, options, *, states_id, ids):
+    from pyscf.dft import numint
+    mol = p.mf.mol
+    origin, vectors, dims = options["spec"]
+
+    def fields(ao):  # PySCF AOs with PySCF-basis matrices
+
+        return [numint.eval_rho(mol, ao, d, xctype="LDA", hermi=1) for d in p.tdms]
+
+    values = _on_grid(mol, origin, vectors, dims, fields, len(p.tdms), options.get("chunk"))
+    out = []
+    for state, slab in zip(p.states, values):
+        sid = writer.add_volume(
+            "volume.transition_density", slab, origin.tolist(), vectors.tolist(),
+            label=f"Transition density, state {state['index']}", dtype=options["dtype"],
+            section_id=f"{options['prefix']}_{state['index']}",
+            structure_ref=ids["structure"], excited_states_ref=states_id,
+            state_index=state["index"])
+        writer.annotate_section(sid, structure_ref=ids["structure"], group=ids["wavefunction"])
+        state["density_ref"] = sid
+        out.append(sid)
+    return out
+
+
+def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options,
+            densities=None):
     ids = add_scf(writer, p.mf, **scf_options)
     ref = p.reference
+    ids["transition_densities"] = (
+        _add_transition_densities(writer, p, densities, states_id=states_id, ids=ids)
+        if densities is not None else [])
     ecp = _ecp_entries(ref.mol, scf_options.get("ecp_projectors", True))
     holes, particles = [], []
     for state, (hole, particle, weights) in zip(p.states, p.ntos):
@@ -1077,7 +1147,8 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
 
 
 def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = "uvvis",
-           nto_prefix: str = "nto", ntos: bool | None = None, **scf_options) -> dict[str, Any]:
+           nto_prefix: str = "nto", ntos: bool | None = None,
+           transition_densities: bool | dict = False, **scf_options) -> dict[str, Any]:
     """Add a molecular PySCF TDA/TDHF/TDDFT result of an RHF/RKS or UHF/UKS reference.
 
     Adds the SCF reference through ``add_scf`` (``scf_options`` are its
@@ -1126,25 +1197,43 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     not a complete request for repeating TD response. Pass ``job_spec=False``
     to omit the reference request.
 
-    Returns the ``add_scf`` IDs plus ``excited_states``, ``spectrum`` and
-    ordered lists ``nto_holes`` / ``nto_particles`` (empty when omitted).
+    ``transition_densities=True`` (or a dict of grid options: ``grid``,
+    ``spacing``, ``shape``, ``margin``, ``dtype``, ``chunk`` as for
+    ``add_density_grid``, and the section-id ``prefix``, default
+    ``"tdens"``) also writes each state's spin-summed transition density
+    ρ₀ₙ(r) as a ``volume.transition_density`` on one shared grid, in
+    e/bohr³, linked by ``excited_states_ref``/``state_index`` and named by
+    the state's ``density_ref``. Its AO matrix is ``2 (X + Y)`` in the MO
+    basis for a restricted singlet and ``Σ_s (X_s + Y_s)`` for UHF/UKS, in
+    PySCF's normalization, so its first moment is PySCF's transition
+    dipole. A triplet's spin-summed transition density vanishes, so the
+    option is refused for triplet results. The default is ``False``,
+    because grids are large.
+
+    Returns the ``add_scf`` IDs plus ``excited_states``, ``spectrum``, the
+    ordered lists ``nto_holes`` / ``nto_particles`` (empty when omitted) and
+    ``transition_densities`` (empty unless requested).
     """
-    return _add_td(writer, _prepare_td(td, ntos), states_id=states_id,
-                   spectrum_id=spectrum_id, nto_prefix=nto_prefix, scf_options=scf_options)
+    p = _prepare_td(td, ntos)
+    densities = _density_options(p, transition_densities)
+    return _add_td(writer, p, states_id=states_id, spectrum_id=spectrum_id,
+                   nto_prefix=nto_prefix, scf_options=scf_options, densities=densities)
 
 
 def write_td(td, target, *, calculation: str | None = None,
              states_id: str = "excited_states", spectrum_id: str = "uvvis",
              nto_prefix: str = "nto", ntos: bool | None = None,
+             transition_densities: bool | dict = False,
              **scf_options) -> dict[str, Any]:
     """Write a complete archive for a PySCF TD result, with ``add_td`` options.
 
-    Source-result checks finish before the target is opened. The source
-    program/version is PySCF's; the default calculation label includes the
-    excitation method, reference method, functional and basis. The target
-    is a path or binary sink, as for ``write_scf``.
+    Source-result and option checks finish before the target is opened. The
+    source program/version is PySCF's; the default calculation label
+    includes the excitation method, reference method, functional and basis.
+    The target is a path or binary sink, as for ``write_scf``.
     """
     p = _prepare_td(td, ntos)
+    densities = _density_options(p, transition_densities)
     from ..writer import Writer
     if calculation is None:
         method = p.method + ("-tda" if p.tda and p.method != "cis" else "")
@@ -1154,7 +1243,7 @@ def write_td(td, target, *, calculation: str | None = None,
     with Writer(target, program="PySCF", version=str(_pyscf().__version__),
                 calculation=calculation) as writer:
         return _add_td(writer, p, states_id=states_id, spectrum_id=spectrum_id,
-                       nto_prefix=nto_prefix, scf_options=scf_options)
+                       nto_prefix=nto_prefix, scf_options=scf_options, densities=densities)
 
 
 # -- densities and orbitals on a regular grid ----------------------------------

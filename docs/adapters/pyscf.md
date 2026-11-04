@@ -347,6 +347,36 @@ with 0.25 bohr steps and a 6 bohr margin, against 2e-3 to 9e-3 e with a
 density with heavy-atom cores, and a margin of 6 bohr or more for diffuse
 orbitals.
 
+## Transition densities of excited states
+
+`write_td(td, path, transition_densities=True)` also writes the
+spin-summed transition density ρ₀ₙ(r) of every state as a
+`volume.transition_density` section (spec § 5.2), in e/bohr³, on one grid
+shared by all states. Each section carries `excited_states_ref` and
+`state_index`, and the state's `density_ref` names it. A dict instead of
+`True` sets the grid options of `add_density_grid` (`grid`, `spacing`,
+`shape`, `margin`, `dtype`, `chunk`) and the section-id `prefix` (default
+`tdens`, giving `tdens_1`, `tdens_2`, ...). The default is `False`, because
+grids are large.
+
+```python
+ids = write_td(full, "h2-tddft-densities.qvf",
+               transition_densities={"spacing": 0.25, "dtype": "float32"})
+print(ids["transition_densities"])  # one section id per state
+```
+
+The AO matrix of ρ₀ₙ is `2 (X + Y)` in the MO basis for a restricted
+singlet and `Σ_s (X_s + Y_s)` for UHF/UKS, in PySCF's own normalization.
+Its first moment is therefore PySCF's length-gauge transition dipole
+exactly, sign included, and it integrates to zero. In terms of the stored
+NTO pairs, ρ₀ₙ(r) = c Σ_k √λ_k h_k(r) p_k(r), with c = √2 for a restricted
+singlet and c = 1 summed over both spin channels for UHF/UKS. The spin-summed
+transition density of a restricted triplet (M_S = 0) vanishes identically,
+so the option is refused for triplet results: their NTOs carry the spin
+transition instead. As for the other grids, QVF v1 has no field linking a
+volume to its wavefunction, so the reference `wavefunction.gto` id is
+written as the section `group`.
+
 ## How the AO conventions map
 
 These are the three places where a PySCF archive could silently disagree with
@@ -444,7 +474,16 @@ checks every spin-labelled contribution, rebuilds each channel's transition
 from the archive orbitals and overlap alone, and reproduces PySCF's
 transition dipoles from the pairs. A closed-shell UHF TDA of water is
 compared with the restricted singlet path: each channel carries half of the
-restricted weights. ROHF references and malformed amplitudes are refused
+restricted weights.
+
+`python/tests/test_adapter_pyscf_tdens.py` writes transition densities for
+RHF TDA and TDHF (water) and UHF TDA and TDHF (NH₂). At sampled points the
+stored values equal the density rebuilt from the archive's own NTO pairs
+through the Appendix A evaluator (relative 1e-8). On the 0.3 bohr test grid
+the integral is within 1 % of ∫|ρ₀ₙ| and the first moment within 0.01 |μ| +
+0.001 au of PySCF's transition dipole. The measured values are 0.55 % and
+0.0013 au, limited by the quadrature of the tight O 1s functions. Triplet
+results and unknown options are refused before the target is opened. ROHF references and malformed amplitudes are refused
 before the target is opened. Error cases include
 unconverged roots and X amplitudes changed by PySCF's NTO helper. These are
 conversion checks, not a new scientific accuracy claim for either engine.
