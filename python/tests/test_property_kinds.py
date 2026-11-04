@@ -659,15 +659,21 @@ def test_unknown_declared_unit_is_a_warning_everywhere(tmp_path, monkeypatch):
 
 def test_schema_fixes_the_declarable_units():
     fixed = {
-        "ElectricPropertiesPayload": {"dipole": "debye", "origin": "bohr"},
-        "ElasticPropertiesPayload": {"stiffness": "gpa", "bulk_modulus_gpa": "gpa",
+        "ElectricPropertiesPayload": {"dipole": "debye", "origin": "bohr",
+                                      "quadrupole": "debye_angstrom",
+                                      "octupole": "debye_angstrom2",
+                                      "polarizability": "e2_bohr2_per_hartree",
+                                      "hyperpolarizability": "e3_bohr3_per_hartree2"},
+        "ElasticPropertiesPayload": {"stiffness": "gpa", "compliance": "gpa-1",
+                                     "bulk_modulus_gpa": "gpa",
                                      "shear_modulus_gpa": "gpa",
                                      "youngs_modulus_gpa": "gpa",
                                      "poisson_ratio": "dimensionless"},
         "DielectricPropertiesPayload": {"electronic": "dimensionless",
                                         "ionic": "dimensionless",
                                         "static": "dimensionless",
-                                        "born_charges": "e"},
+                                        "born_charges": "e",
+                                        "piezoelectric": "c_per_m2"},
     }
     from qvf_units import fixed_units
     for defname, expected in fixed.items():

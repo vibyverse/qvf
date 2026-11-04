@@ -86,6 +86,9 @@ def _parser():
     command.add_argument("--no-endpoint", action="store_true", help="cube import spans n voxels rather than n-1")
     command.add_argument("--spin", choices=("restricted", "restricted_open", "unrestricted"),
                          help="required spin interpretation for Molden import")
+    command.add_argument("--molden-dialect", default=None,
+                         choices=("standard", "renormalize", "orca", "turbomole", "cfour", "psi4-1.3", "xtb"),
+                         help="Molden import: producer convention (default standard)")
     command = commands.add_parser("prepare-job", help="preserve one geometry/drawing in an explicit pending job")
     command.add_argument("archive")
     command.add_argument("-o", "--output", required=True, help="new archive (never overwritten)")
@@ -203,6 +206,8 @@ def _execute(args):
             raise ValueError("--expand-symmetry and --expand-ncs apply only to PDB import")
         if args.input_format != "molden" and args.spin is not None:
             raise ValueError("--spin applies only to Molden import")
+        if args.input_format != "molden" and args.molden_dialect is not None:
+            raise ValueError("--molden-dialect applies only to Molden import")
         if args.input_format == "qvf" and args.output_format in ("espresso-xml", "espresso-cube"):
             raise ValueError(f"{args.output_format} is an import-only format")
         if args.input_format == "qvf" and args.output_format != "qvf":
@@ -261,7 +266,8 @@ def _execute(args):
             elif args.input_format == "cif":
                 result = convert.import_cif(args.input, args.output, block=args.block)
             elif args.input_format == "molden":
-                result = convert.import_molden(args.input, args.output, spin=args.spin)
+                result = convert.import_molden(args.input, args.output, spin=args.spin,
+                                               dialect=args.molden_dialect or "standard")
             else:
                 result = convert.import_xyz(args.input, args.output)
         else:

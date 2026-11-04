@@ -65,8 +65,36 @@ def _table_after(text, heading):
 def test_module_reads_the_schema_vocabulary():
     assert UNITS == tuple(DEFS["UnitName"]["enum"])
     assert LEGACY_UNITS == tuple(DEFS["LegacyUnitName"]["enum"])
-    assert len(UNITS) == len(set(UNITS)) == 25
+    assert len(UNITS) == len(set(UNITS)) == 45
     assert not set(UNITS) & set(LEGACY_UNITS)
+
+
+# The 25 names of the first vocabulary (2026-10-08). Later names are appended,
+# so every earlier name keeps its place and its meaning.
+_FIRST_VOCABULARY = (
+    "angstrom", "bohr", "hartree", "ev", "kcal_per_mol", "kj_per_mol", "cm-1",
+    "nm", "debye", "mhz", "hz", "ppm", "km_per_mol", "a3", "bohr3", "gpa", "fs",
+    "ps", "kelvin", "atm", "e", "amu", "radian", "degree", "dimensionless")
+
+
+def test_vocabulary_only_grows_at_the_end():
+    assert UNITS[:len(_FIRST_VOCABULARY)] == _FIRST_VOCABULARY
+
+
+def test_compound_names_follow_the_spelling_rule():
+    """Spec § 4.3, "Compound names": unit names joined by `_`, one `_per_`
+    before the denominator, a power as a trailing digit, a lone reciprocal as
+    `-1`. The rule describes the closed list. It is not a parser."""
+    base = {"angstrom", "bohr", "hartree", "ev", "debye", "gpa", "fs", "e",
+            "c", "m", "states"}
+    factor = r"(?:%s)[2-9]?" % "|".join(sorted(base, key=len, reverse=True))
+    product = rf"{factor}(?:_{factor})*"
+    rule = re.compile(rf"^(?:{product}(?:_per_{product})?|{factor}-1)$")
+    for name in UNITS[len(_FIRST_VOCABULARY):]:
+        assert rule.match(name), name
+    # Rule-shaped strings outside the list are not unit names.
+    for name in ("e_per_angstrom3", "ev_per_angstrom2", "bohr-1", "hartree/bohr"):
+        assert not is_unit(name), name
 
 
 def test_spec_table_is_the_schema_enum():
@@ -160,7 +188,8 @@ def test_fixed_units_follow_the_schema():
     # The two trajectory-family payloads share TrajectoryMetadataCommon and
     # differ in the convention of their `lattice` member (spec § 4.3).
     common = {"energies": "hartree", "coords": "angstrom", "times": "fs",
-              "timestep_fs": "fs"}
+              "timestep_fs": "fs", "velocities": "angstrom_per_fs",
+              "gradient": "hartree_per_bohr"}
     assert fixed_units("TrajectoryMetadataCommon") == common
     assert fixed_units("TrajectoryMetadataPayload") == {
         **common, "lattice": "angstrom", "cell_volumes": "a3",

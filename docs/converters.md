@@ -746,12 +746,64 @@ Export writes coordinates in bohr to avoid a second angstrom conversion.
 
 ECP/core sections, ghosts, Slater functions, h and higher shells, complex or
 spinor coefficients, periodic geometry, transition-weight occupations and
-unknown sections are refused. Non-unit shell scale factors and unnormalized
-input contractions are refused instead of guessing a producer's dialect.
+unknown sections are refused. Non-unit shell scale factors are refused, and
+unnormalized input contractions are refused unless an explicit producer
+dialect (below) accounts for them.
 Export requires a basis for every atom, contiguous shells per atom and one
 convention each for d, f and g, and writes the matching flags. PySCF-written
 f and g files give the same orbital values at off-axis points after import
 and after export. More than one wavefunction requires `--section`.
+
+### Molden dialects (Unreleased)
+
+Programs that write Molden files deviate from the format description in
+documented ways. Import never guesses the producer from orbital norms or the
+title: name it with `dialect=` (Python) or `--molden-dialect` (CLI). The
+default is `standard`. Each dialect maps the written values onto standard
+Molden before the Appendix A conversion above, and the report records it.
+The ORCA, Turbomole, CFOUR and Psi4 rules are the documented corrections in
+[IOData](https://github.com/theochem/iodata) 1.0.1 (`iodata/formats/molden.py`).
+In this table N_i is the Appendix A.1 primitive norm and Π is
+(2l_x−1)!!·(2l_y−1)!!·(2l_z−1)!! for one Cartesian component.
+
+| Dialect | Producers | Written values, mapped back on import |
+|---|---|---|
+| `standard` | Molden format description, PySCF `tools.molden`, Psi4 1.4 and later, Molpro, Multiwfn | Normalized contractions, unit-normalized AOs, Molden phases. Squared contraction norms must be within 1e-5 of one. |
+| `renormalize` | Any producer with unnormalized contractions and standard AOs | Every contraction is rescaled to unit norm, as the Molden program does when it reads a file. Norms are reported. |
+| `orca` | ORCA `orca_2mkl -molden` | Each contraction coefficient is multiplied by the norm of the Cartesian primitive (0,0,0), (1,0,0), (1,1,0), (1,1,1) or (2,1,1) for s, p, d, f, g. The spherical f and g components m = ±3 and g components m = ±4 have the opposite sign. Cartesian d, f and g shells are refused. |
+| `turbomole` | Turbomole `tm2molden` | Cartesian d, f and g contraction coefficients are divided by √3, √15 and √105. |
+| `cfour` | CFOUR up to 2.1 | Cartesian d, f and g MO coefficients are multiplied by 1/√Π. |
+| `psi4-1.3` | Psi4 up to 1.3.2 | Cartesian d, f and g MO coefficients are multiplied by √((2l−1)!!/Π), so they refer to axially normalized AOs. |
+| `xtb` | xTB `printmold` (used by `qvf export-xtb`) | Contraction coefficients include N_i, and odd-l MO coefficients have the opposite sign (xTB evaluates R_atom − r). |
+
+After the mapping, the squared contraction norm check applies to every
+dialect except `renormalize`, so a wrong dialect choice is refused when the
+norms disagree. A refusal names the contraction and its norm, and suggests
+`orca` when the title names ORCA. Psi4 1.0 and earlier, which multiplied
+primitive norms into the contraction coefficients, has no dialect.
+
+These text forms are accepted in every dialect:
+
+| Item | Accepted forms |
+|---|---|
+| Header | `[Molden Format]` in any letter case, followed by optional `[Title]` text |
+| Units | `[Atoms] AU`, `Angs`, `(AU)` or `(Angs)` in any letter case |
+| Atom labels | An element symbol in any case, optionally followed by a tag such as `O1` or `HE12` (Molpro style). The atomic number must match the element |
+| Angular flags | `[5D]`, `[5D7F]`, `[5D10F]`, `[7F]`, `[9G]`, and `[6D]`, `[10F]`, `[15G]`, alone or combined, before or after `[GTO]`, one per line, in any letter case. Absent flags mean Cartesian |
+| `[GTO]` | Atom lines `n 0` or `n`, with or without blank lines between atoms and at the end, shell scale `1.00`, `1.0` or absent |
+| Numbers | Fortran exponents with `D` or `d`, as in `0.2000D+01`, everywhere |
+| `[MO]` | `Sym=`, `Ene=`, `Spin=` and `Occup=` in any order and letter case, each once per orbital. `Sym` labels are kept as written (`1a1`, `1.1`, `a'`). Occupations may be fractional |
+
+These inputs are refused with a message saying what QVF cannot represent:
+
+- negative occupations (for example natural-orbital occupations from a
+  correlated calculation) and occupations above 2 (restricted) or 1
+  (unrestricted), with no clipping,
+- nuclear charges that differ from the element (ECP effective cores, ghosts,
+  point charges),
+- `[core]` and `[Pseudo]` sections, whose ECP parameters are not in the file,
+- missing `Sym`, `Ene`, `Spin` or `Occup` keys and sparse coefficient lists,
+- h and higher shells, Slater functions and unknown sections.
 
 Import reports omitted comments/title text. Export reports its selected spin,
 contraction norms, omitted sections/members and generated `A` symmetry labels
@@ -778,6 +830,7 @@ report = export_xyz("molecule.qvf", "geometry.xyz", extended=True)
 report = import_cube("field.cube", "field.qvf", kind="volume.generic")
 report = export_cube("field.qvf", "field-export.cube", section="volume")
 report = import_molden("orbitals.molden", "orbitals.qvf", spin="restricted")
+report = import_molden("orca.molden", "orca.qvf", spin="restricted", dialect="orca")
 ```
 
 Import text is capped at 64 MiB. Geometry/grid importers limit coordinate/scalar
@@ -785,7 +838,8 @@ values to five million; Molden limits coefficient matrices to five million
 entries and contractions to 512 primitives each.
 These initial converters parse bounded inputs in memory; they are not a
 replacement for the streaming QVF reader/writer for large datasets. QVF
-reader limits also apply on export. Remaining WP-48 work: Molden h shells
-and ECP sections, XSF animation, bonds to symmetry mates, centrosymmetric
-space groups in the PDB expansion, mmCIF assemblies, writing `REMARK 350`
-back, QE `space_group` input and pp.x `filplot` files. No QVF schema, canonical kind or finding code changes.
+reader limits also apply on export. Remaining WP-48 work: Molden h shells,
+ECP sections and natural-orbital occupations outside 0 to 2, XSF animation,
+bonds to symmetry mates, centrosymmetric space groups in the PDB expansion,
+mmCIF assemblies, writing `REMARK 350` back, QE `space_group` input and pp.x
+`filplot` files. No QVF schema, canonical kind or finding code changes.

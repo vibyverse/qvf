@@ -33,14 +33,16 @@ _SCALAR_KINDS = {"volume." + name for name in (
     "generic", "laplacian", "transition_density")}
 
 
-def import_molden(source, destination, *, spin):
-    """Import normalized molecular real s/p/d orbitals with an explicit spin.
+def import_molden(source, destination, *, spin, dialect="standard"):
+    """Import molecular real s to g orbitals with an explicit spin and dialect.
 
     ``spin`` is restricted, restricted_open or unrestricted; it cannot be
-    inferred from an Alpha-only Molden file. See docs/converters.md.
+    inferred from an Alpha-only Molden file. ``dialect`` names the producer
+    convention (standard, renormalize, orca, turbomole, cfour, psi4-1.3 or
+    xtb); it is never guessed. See docs/converters.md.
     """
     from ._molden import import_molden as convert
-    return convert(source, destination, spin=spin)
+    return convert(source, destination, spin=spin, dialect=dialect)
 
 
 def export_molden(source, destination, *, section=None):

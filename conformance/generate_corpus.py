@@ -4648,6 +4648,161 @@ def build_reaction_energies():
        "parsed output files with source (spec § 5.14, Reaction energies).")
 
 
+def build_compound_units():
+    """Compound unit names of spec § 4.3, declared where the format fixes the
+    unit (they restate it) and where a payload leaves it open (they choose
+    it). Each declaration changes no value: the numbers are what the same
+    archive without the declarations would hold."""
+    water = [{"symbol": "O", "position": [0.0, 0.0, 0.1173], "atomic_number": 8},
+             {"symbol": "H", "position": [0.0, 0.7572, -0.4692], "atomic_number": 1},
+             {"symbol": "H", "position": [0.0, -0.7572, -0.4692], "atomic_number": 1}]
+    origin = [-1.0, -1.0, -1.0]
+    step = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    rho = np.full((3, 3, 3), 0.05)
+    rho[1, 1, 1] = 0.35
+    lap = np.full((3, 3, 3), 0.02)
+    lap[1, 1, 1] = -1.2
+    pot = np.full((3, 3, 3), 0.1)
+    pot[1, 1, 1] = 0.9
+    field = np.zeros((3, 3, 3, 3))
+    field[2, 1, 1] = [0.04, 0.0, 0.0]
+    coords = np.array([[[a["position"][c] for c in range(3)] for a in water]] * 2)
+    coords[1, 0, 2] += 0.002
+    velocities = np.zeros((2, 3, 3))
+    velocities[1, 0, 2] = 0.001                       # Angstrom/fs
+    gradient = np.zeros((2, 3, 3))
+    gradient[0, 0, 2] = 0.0123                        # hartree/bohr
+    gradient[1, 0, 2] = -0.0047
+    quad = np.diag([-1.86, 1.96, -0.10])              # debye Angstrom
+    alpha = np.diag([8.64, 9.15, 9.45])               # atomic units
+
+    w = QvfWriter(_PROGRAM, _VERSION, "units-compound-molecular")
+    w.add_structure(water)
+    w.add_density(rho, origin, step, dtype="float64",
+                  units={"origin": "bohr", "data": "e_per_bohr3"},
+                  section_id="rho")
+    w.add_volume("volume.laplacian", lap, origin, step, dtype="float64",
+                 units={"data": "e_per_bohr5"}, section_id="lap")
+    w.add_volume("volume.potential", pot, origin, step, dtype="float64",
+                 units={"data": "hartree_per_e"}, section_id="esp")
+    w.add_volume("volume.vector", field, origin, step, dtype="float64",
+                 units={"data": "hartree_per_e_bohr"}, section_id="efield")
+    w.add_trajectory({"symbols": ["O", "H", "H"], "kind": "md",
+                      "timestep_fs": 0.5}, coords,
+                     velocities=velocities, gradient=gradient,
+                     times=[0.0, 0.5],
+                     units={"coords": "angstrom", "times": "fs",
+                            "velocities": "angstrom_per_fs",
+                            "gradient": "hartree_per_bohr"},
+                     section_id="md")
+    w.add_topology_qtaim({"points": [
+        {"type": "bcp", "position": [0.0, 1.0911, -0.6762], "rho": 0.3653,
+         "laplacian": -2.5361, "atom_pair": [0, 1]}]},
+        units={"position": "bohr", "rho": "e_per_bohr3",
+               "laplacian": "e_per_bohr5"}, section_id="aim")
+    w.add_electric_properties({
+        "origin": "center_of_mass",
+        "quadrupole": {"matrix": quad, "traceless": True,
+                       "convention": "buckingham"},
+        "polarizability": {"matrix": alpha, "frequency_ev": 0.0},
+        "units": {"quadrupole": "debye_angstrom",
+                  "polarizability": "e2_bohr2_per_hartree"}})
+    w.add_atom_properties(custom={"gradient_ev_angstrom": (
+        [[0.0, 0.0, 0.25], [0.0, 0.12, -0.125], [0.0, -0.12, -0.125]],
+        {"units": "ev_per_angstrom", "kind": "vector",
+         "description": "Energy gradient dE/dR from a producer that works in "
+                        "eV and Angstrom, with illustrative values."})})
+    _write("units_compound_molecular", w, [
+        {"section": "rho", "member": "grid",
+         "json_pointer": ["units", "data"], "equals": "e_per_bohr3"},
+        {"section": "rho", "member": "data", "binary_index": [1, 1, 1],
+         "equals": 0.35, "tol": 1e-12},
+        {"section": "lap", "member": "grid",
+         "json_pointer": ["units", "data"], "equals": "e_per_bohr5"},
+        {"section": "lap", "member": "data", "binary_index": [1, 1, 1],
+         "equals": -1.2, "tol": 1e-12},
+        {"section": "esp", "member": "grid",
+         "json_pointer": ["units", "data"], "equals": "hartree_per_e"},
+        {"section": "efield", "member": "grid",
+         "json_pointer": ["units", "data"], "equals": "hartree_per_e_bohr"},
+        {"section": "efield", "member": "data", "binary_index": [2, 1, 1, 0],
+         "equals": 0.04, "tol": 1e-12},
+        {"section": "md", "member": "metadata",
+         "json_pointer": ["units", "velocities"], "equals": "angstrom_per_fs"},
+        {"section": "md", "member": "metadata",
+         "json_pointer": ["units", "gradient"], "equals": "hartree_per_bohr"},
+        {"section": "md", "member": "gradient", "binary_index": [0, 0, 2],
+         "equals": 0.0123, "tol": 1e-12},
+        {"section": "md", "member": "velocities", "binary_index": [1, 0, 2],
+         "equals": 0.001, "tol": 1e-12},
+        {"section": "aim", "member": "critical_points",
+         "json_pointer": ["units", "rho"], "equals": "e_per_bohr3"},
+        {"section": "aim", "member": "critical_points",
+         "json_pointer": ["units", "laplacian"], "equals": "e_per_bohr5"},
+        {"section": "aim", "member": "critical_points",
+         "json_pointer": ["points", 0, "laplacian"], "equals": -2.5361,
+         "tol": 1e-12},
+        {"section": "electric", "member": "properties",
+         "json_pointer": ["units", "quadrupole"], "equals": "debye_angstrom"},
+        {"section": "electric", "member": "properties",
+         "json_pointer": ["units", "polarizability"],
+         "equals": "e2_bohr2_per_hartree"},
+        {"section": "electric", "member": "properties",
+         "json_pointer": ["quadrupole", "matrix", 1, 1], "equals": 1.96,
+         "tol": 1e-12},
+        {"section": "atom_properties", "member": "meta",
+         "json_pointer": ["custom.gradient_ev_angstrom", "units"],
+         "equals": "ev_per_angstrom"},
+        {"section": "atom_properties", "member": "custom.gradient_ev_angstrom",
+         "binary_index": [0, 2], "equals": 0.25, "tol": 1e-12},
+    ], "Compound unit names (spec § 4.3) on a molecule: a density grid in "
+       "e_per_bohr3, a Laplacian grid in e_per_bohr5, a potential in "
+       "hartree_per_e and an electric field (volume.vector) in "
+       "hartree_per_e_bohr. Trajectory velocities and gradient restate "
+       "angstrom_per_fs and hartree_per_bohr, QTAIM rho and laplacian are "
+       "declared in e_per_bohr3 and e_per_bohr5, a quadrupole restates "
+       "debye_angstrom and a polarizability e2_bohr2_per_hartree, "
+       "and a custom atom_properties role in ev_per_angstrom. Every value is "
+       "stored in its declared unit and nothing is converted.")
+
+    a = 4.12
+    c11, c12, c44 = 36.4, 8.8, 8.0                    # GPa
+    stiffness = np.zeros((6, 6))
+    for i in range(3):
+        stiffness[i, i] = c11
+        stiffness[3 + i, 3 + i] = c44
+        for j in range(3):
+            if i != j:
+                stiffness[i, j] = c12
+    compliance = np.linalg.inv(stiffness)             # 1/GPa
+    piezo = np.zeros((3, 6))
+    piezo[0, 4] = piezo[1, 3] = 0.15                  # C/m^2
+    w = QvfWriter(_PROGRAM, _VERSION, "units-compound-periodic")
+    w.add_structure(
+        [{"symbol": "Cs", "position": [0.0, 0.0, 0.0], "atomic_number": 55},
+         {"symbol": "Cl", "position": [a / 2, a / 2, a / 2], "atomic_number": 17}],
+        pbc=[True, True, True],
+        lattice_vectors=[[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]])
+    w.add_elastic_properties(stiffness, compliance=compliance,
+                             units={"stiffness": "gpa", "compliance": "gpa-1"})
+    w.add_dielectric_properties(np.eye(3) * 2.62, piezoelectric=piezo,
+                                units={"electronic": "dimensionless",
+                                       "piezoelectric": "c_per_m2"})
+    _write("units_compound_periodic", w, [
+        {"section": "elastic", "member": "properties",
+         "json_pointer": ["units", "compliance"], "equals": "gpa-1"},
+        {"section": "elastic", "member": "properties",
+         "json_pointer": ["compliance", 0, 0], "equals": float(compliance[0, 0]),
+         "tol": 1e-12},
+        {"section": "dielectric", "member": "properties",
+         "json_pointer": ["units", "piezoelectric"], "equals": "c_per_m2"},
+        {"section": "dielectric", "member": "properties",
+         "json_pointer": ["piezoelectric", 0, 4], "equals": 0.15, "tol": 1e-12},
+    ], "Compound unit names (spec § 4.3) on a crystal: an elastic compliance "
+       "restating gpa-1 and a piezoelectric tensor restating c_per_m2, the "
+       "units spec § 5.13 fixes for them.")
+
+
 if __name__ == "__main__":
     build()
     build_zero_spin()
@@ -4655,3 +4810,4 @@ if __name__ == "__main__":
     build_biomolecule_identity()
     build_secondary_structure_ranges()
     build_reaction_energies()
+    build_compound_units()
