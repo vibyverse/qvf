@@ -15533,7 +15533,9 @@ LocalHeader ZipReader::local_header(const Entry& e) const {
         fail("truncated local header");
     const std::vector<uint8_t> var =
         impl_->bytes_at(var_off, static_cast<size_t>(namelen) + extralen);
-    if (namelen != e.name.size() || std::memcmp(var.data(), e.name.data(), namelen) != 0)
+    // An empty name and extra field leave `var` empty (its data() may be null).
+    if (namelen != e.name.size() ||
+        (namelen != 0 && std::memcmp(var.data(), e.name.data(), namelen) != 0))
         fail("entry " + qname(e.name) + ": local header name differs from the central directory");
     LocalHeader lh;
     lh.data_offset = var_off + namelen + extralen;
