@@ -66,5 +66,6 @@ the C++ driver for linking. Shared-library runtime discovery follows the
 consumer's platform or Conan run environment.
 
 The recipe does not package compiler-specific Fortran modules. Fortran users
-should follow the [separate binding guide](../../docs/fortran.md). Registry
-publication, vcpkg recipes and broader platform acceptance remain WP-49 work.
+should follow the [separate binding guide](../../docs/fortran.md). A
+[vcpkg overlay port](../vcpkg/README.md) is available separately. Registry
+publication and broader platform acceptance remain WP-49 work.

@@ -6,6 +6,7 @@ import pytest
 np = pytest.importorskip("numpy")
 pyscf = pytest.importorskip("pyscf")
 from pyscf import dft, gto, lib, scf
+from pyscf.tdscf.rhf import TDA, TDHF
 
 from qvf import Reader, Writer, validate_qvf
 from qvf.adapters.pyscf import add_td, method_name, write_td
@@ -55,10 +56,13 @@ def results(references):
         "frozen-full": references["minimal"].TDHF(),
         "frozen": references["rhf"].TDA(),
         "triplet": references["rhf"].TDA(),
+        "triplet-full": references["response"].TDHF(),
+        "triplet-rks": references["hybrid"].TDDFT(),
     }
     variants["frozen"].frozen = [0, 7]  # includes a virtual MO: no contiguous-index shortcut
     variants["frozen-full"].frozen = [0, 5]
-    variants["triplet"].singlet = False
+    for name in ("triplet", "triplet-full", "triplet-rks"):
+        variants[name].singlet = False
     for name, td in variants.items():
         td.nstates = 2
         td.conv_tol = 1e-8
@@ -69,7 +73,7 @@ def results(references):
 
 @pytest.mark.parametrize("case", ["rhf-tda", "rhf-full", "rks-tda", "rks-full",
                                   "casida", "cartesian", "minimal", "frozen", "triplet",
-                                  "minimal-full", "frozen-full"])
+                                  "triplet-full", "triplet-rks", "minimal-full", "frozen-full"])
 def test_roundtrip_preserves_source_and_linked_results(results, tmp_path, case):
     td = results[case]
     mf = td._scf
@@ -99,10 +103,10 @@ def test_roundtrip_preserves_source_and_linked_results(results, tmp_path, case):
         np.testing.assert_allclose(np.array(positions) * BOHR_PER_ANGSTROM, geometry, atol=1e-14)
         payload = reader.json(ids["excited_states"], "states")
         spectrum = reader.json(ids["spectrum"], "spectrum")
-        tda = not case.endswith("-full") and case != "casida"
+        tda = isinstance(td, TDA) and not isinstance(td, TDHF)
         assert payload["meta"]["tda"] is tda
         assert payload["meta"]["method"] == (
-            "tddft" if case.startswith("rks") or case == "casida" else "cis" if tda else "tdhf")
+            "tddft" if isinstance(mf, dft.rks.KohnShamDFT) else "cis" if tda else "tdhf")
         assert payload["meta"]["n_states"] == len(td.e)
         assert payload["meta"]["reference_state"] == "SCF reference"
         assert spectrum["states_ref"] == ids["excited_states"]
@@ -137,29 +141,26 @@ def test_roundtrip_preserves_source_and_linked_results(results, tmp_path, case):
             np.testing.assert_allclose([c["weight"] for c in contributions], expected.ravel(), atol=1e-14)
             assert sum(c["weight"] for c in contributions) == pytest.approx(1)
 
-        if td.singlet:
-            assert len(ids["nto_holes"]) == len(td.e) == len(ids["nto_particles"])
-            c = reader.tensor(ids["wavefunction"], "mo_coefficients").numpy()
-            s = reader.tensor(ids["wavefunction"], "overlap").numpy()
-            for k, (hole_id, particle_id) in enumerate(zip(ids["nto_holes"], ids["nto_particles"])):
-                assert payload["states"][k]["nto_ref"] == hole_id
-                h = reader.tensor(hole_id, "mo_coefficients").numpy()
-                p = reader.tensor(particle_id, "mo_coefficients").numpy()
-                hm = reader.json(hole_id, "mo_metadata")
-                pm = reader.json(particle_id, "mo_metadata")
-                weights = np.array(hm["occupations"])
-                assert hm["occupations"] == pm["occupations"]
+        assert len(ids["nto_holes"]) == len(td.e) == len(ids["nto_particles"])
+        c = reader.tensor(ids["wavefunction"], "mo_coefficients").numpy()
+        s = reader.tensor(ids["wavefunction"], "overlap").numpy()
+        r = mf.mol.intor_symmetric("int1e_r", comp=3)
+        for k, (hole_id, particle_id) in enumerate(zip(ids["nto_holes"], ids["nto_particles"])):
+            assert payload["states"][k]["nto_ref"] == hole_id
+            hm = reader.json(hole_id, "mo_metadata")
+            pm = reader.json(particle_id, "mo_metadata")
+            x, y = td.xy[k]
+            # The singlet-path matrix: normalized X for TDA, sqrt(2)(X+Y) otherwise.
+            singlet_path = x / np.linalg.norm(x) if tda else np.sqrt(2) * (x + y)
+            pairs = _nto_channels(reader, hole_id, particle_id)
+            assert [ch for ch, *_ in pairs] == (["alpha", "beta"] if not td.singlet else [None])
+            total = 0.0
+            moments = []
+            for channel, h, p, weights, energies in pairs:
                 assert len(weights) == min(len(occupied), len(virtual))
-                if tda:
-                    assert weights.sum() == pytest.approx(1)
-                else:
-                    assert weights.sum() == pytest.approx(2 * np.sum((td.xy[k][0] + td.xy[k][1]) ** 2))
                 assert np.all(weights[:-1] >= weights[1:])
-                for meta, role in [(hm, "hole"), (pm, "particle")]:
-                    assert meta["orbital_kind"] == "nto" and meta["nto_role"] == role
-                    assert meta["occupation_semantics"] == "transition_weight"
-                    assert meta["state_ref"] == ids["excited_states"] and meta["state_index"] == k + 1
-                    assert meta["energies"] == [0.0] * len(weights)
+                assert energies == [0.0] * len(weights)
+                total += weights.sum()
                 np.testing.assert_allclose(h @ s @ h.T, np.eye(len(weights)), atol=1e-10)
                 np.testing.assert_allclose(p @ s @ p.T, np.eye(len(weights)), atol=1e-10)
                 np.testing.assert_allclose(h @ s @ p.T, 0, atol=1e-10)
@@ -168,21 +169,51 @@ def test_roundtrip_preserves_source_and_linked_results(results, tmp_path, case):
                 u = c[occupied] @ s @ h.T
                 v = c[virtual] @ s @ p.T
                 reconstructed = (u * np.sqrt(weights)) @ v.T
-                x, y = td.xy[k]
-                expected_transition = x / np.linalg.norm(x) if tda else np.sqrt(2) * (x + y)
-                np.testing.assert_allclose(reconstructed, expected_transition, atol=1e-10)
+                expected = (singlet_path if td.singlet else
+                            singlet_path / np.sqrt(2) * (1 if channel == "alpha" else -1))
+                np.testing.assert_allclose(reconstructed, expected, atol=1e-10)
                 # Contract the archived pairs through source AO integrals.
                 # The origin shift cancels because hole and particle spaces
-                # are orthogonal. PySCF's singlet moment includes sqrt(2).
-                r = mf.mol.intor_symmetric("int1e_r", comp=3)
+                # are orthogonal.
                 hole_ao = mf.mo_coeff[:, occupied] @ u
                 particle_ao = mf.mo_coeff[:, virtual] @ v
-                moment = np.sqrt(2) * np.einsum("pk,xpq,qk,k->x", hole_ao, r,
-                                               particle_ao, np.sqrt(weights))
-                np.testing.assert_allclose(moment, td.transition_dipole()[k], atol=1e-9)
-        else:
-            assert ids["nto_holes"] == ids["nto_particles"] == []
-            assert all("nto_ref" not in state for state in payload["states"])
+                moments.append(np.einsum("pk,xpq,qk,k->x", hole_ao, r,
+                                         particle_ao, np.sqrt(weights)))
+            if tda:
+                assert total == pytest.approx(1)
+            else:
+                assert total == pytest.approx(2 * np.sum((x + y) ** 2))
+            for meta, role in [(hm, "hole"), (pm, "particle")]:
+                assert meta["orbital_kind"] == "nto" and meta["nto_role"] == role
+                assert meta["occupation_semantics"] == "transition_weight"
+                assert meta["state_ref"] == ids["excited_states"] and meta["state_index"] == k + 1
+                assert meta["spin"] == ("restricted" if td.singlet else "unrestricted")
+            if td.singlet:
+                # PySCF's singlet moment includes sqrt(2) for the two spins.
+                np.testing.assert_allclose(np.sqrt(2) * moments[0], td.transition_dipole()[k], atol=1e-9)
+            else:
+                # The triplet charge transition (alpha + beta) vanishes, as
+                # PySCF's zero triplet dipole says; alpha - beta does not.
+                np.testing.assert_allclose(moments[0] + moments[1], 0, atol=1e-12)
+                np.testing.assert_allclose(td.transition_dipole()[k], 0, atol=1e-14)
+
+
+def _nto_channels(reader, hole_id, particle_id):
+    """(channel, hole rows, particle rows, weights, energies) per spin channel."""
+    hm = reader.json(hole_id, "mo_metadata")
+    pm = reader.json(particle_id, "mo_metadata")
+    if hm["spin"] == "restricted":
+        assert hm["occupations"] == pm["occupations"]
+        return [(None, reader.tensor(hole_id, "mo_coefficients").numpy(),
+                 reader.tensor(particle_id, "mo_coefficients").numpy(),
+                 np.array(hm["occupations"]), hm["energies"])]
+    out = []
+    for ch in ("alpha", "beta"):
+        assert hm[ch]["occupations"] == pm[ch]["occupations"]
+        out.append((ch, reader.tensor(hole_id, f"mo_coefficients_{ch}").numpy(),
+                    reader.tensor(particle_id, f"mo_coefficients_{ch}").numpy(),
+                    np.array(hm[ch]["occupations"]), hm[ch]["energies"]))
+    return out
 
 
 def test_open_writer_ids_and_optional_reference_sections(results, tmp_path):
@@ -199,7 +230,7 @@ def test_open_writer_ids_and_optional_reference_sections(results, tmp_path):
         assert reader.json("states", "states")["states"][0]["nto_ref"] == "pair_1_hole"
 
 
-@pytest.mark.parametrize("case", ["rhf-tda", "rhf-full", "casida"])
+@pytest.mark.parametrize("case", ["rhf-tda", "rhf-full", "casida", "triplet"])
 def test_ntos_can_be_omitted(results, tmp_path, case):
     path = tmp_path / "no-ntos.qvf"
     ids = write_td(results[case], path, ntos=False)
@@ -207,13 +238,42 @@ def test_ntos_can_be_omitted(results, tmp_path, case):
     assert validate_qvf(path)["findings"] == []
 
 
-@pytest.mark.parametrize("case", ["triplet"])
-def test_unsupported_ntos_do_not_open_target(results, tmp_path, case):
-    path = tmp_path / "retained.qvf"
-    path.write_bytes(b"original")
-    with pytest.raises(NotImplementedError, match="singlet RHF/RKS"):
-        write_td(results[case], path, ntos=True)
-    assert path.read_bytes() == b"original"
+@pytest.mark.parametrize("kind", ["TDA", "TDHF"])
+def test_triplet_ntos_match_unrestricted_response(references, tmp_path, kind):
+    # Independent route: PySCF's spin-orbital UHF response of the same closed
+    # shell contains the M_S = 0 triplets with their own alpha/beta amplitudes.
+    mf = references["minimal"]
+    td = getattr(mf, kind)()
+    td.singlet = False
+    td.nstates = 2
+    td.conv_tol = 1e-12
+    td.kernel()
+    utd = getattr(mf.to_uhf(), kind)()
+    utd.nstates = 10
+    utd.conv_tol = 1e-12
+    utd.kernel()
+    path = tmp_path / "triplet.qvf"
+    ids = write_td(td, path, ntos=True)
+    assert validate_qvf(path)["findings"] == []
+    occupied, virtual = mf.mo_occ == 2, mf.mo_occ == 0
+    with Reader(path) as reader:
+        c = reader.tensor(ids["wavefunction"], "mo_coefficients").numpy()
+        s = reader.tensor(ids["wavefunction"], "overlap").numpy()
+        for k, energy in enumerate(td.e):
+            j = int(np.argmin(abs(utd.e - energy)))
+            assert utd.e[j] == pytest.approx(energy, abs=1e-8)
+            (xa, xb), (ya, yb) = utd.xy[j]
+            ya, yb = (np.zeros_like(xa), np.zeros_like(xb)) if np.ndim(ya) == 0 else (ya, yb)
+            channels = {}
+            for ch, h, p, weights, _ in _nto_channels(
+                    reader, ids["nto_holes"][k], ids["nto_particles"][k]):
+                u, v = c[occupied] @ s @ h.T, c[virtual] @ s @ p.T
+                channels[ch] = (u * np.sqrt(weights)) @ v.T
+            # Eigenvectors converge like sqrt(conv_tol); a sign or sqrt(2)
+            # error in the mapping would differ by about 0.1.
+            phase = np.sign(np.vdot(channels["alpha"], xa + ya))
+            np.testing.assert_allclose(phase * channels["alpha"], xa + ya, atol=1e-5)
+            np.testing.assert_allclose(phase * channels["beta"], xb + yb, atol=1e-5)
 
 
 def _copy_td(td):
@@ -288,8 +348,3 @@ def test_invalid_source_is_rejected_before_writing(results, tmp_path, bad_input)
         write_td(td, path)
     assert path.read_bytes() == b"original"
 
-
-def test_unrestricted_reference_is_explicitly_unsupported(references, tmp_path):
-    td = references["rhf"].to_uhf().TDA()
-    with pytest.raises(NotImplementedError, match="RHF/RKS"):
-        write_td(td, tmp_path / "unsupported.qvf")
