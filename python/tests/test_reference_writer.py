@@ -986,6 +986,27 @@ def _every_option_writer() -> QvfWriter:
               "units": {"excitation_energy": "ev", "total_energy": "hartree",
                         "oscillator_strength": "dimensionless"}},
         wavefunction_ref="wf_uhf", label="excited_states", section_id="tddft")
+    # X-ray and Mössbauer spectra (spec § 5.4).
+    w.add_xray_spectrum("spectra.xas", [530.1, 532.4], [0.01, 0.03], edge="K",
+                        element="O", atom_indices=[0], core_orbital="1s",
+                        line="K", intensity="oscillator_strength",
+                        energy_shift_ev=0.0, x_units="ev",
+                        y_units="dimensionless",
+                        peaks=[{"x": 530.1, "assignment": {"state_index": 1,
+                                                           "atom_index": 0}}],
+                        broadening={"type": "lorentzian", "fwhm": 0.2},
+                        states_ref="tddft", label="O K-edge",
+                        section_id="xas_o_k")
+    w.add_mossbauer([{"atom_index": 0, "symbol": "O", "label": "site",
+                      "isomer_shift_mm_s": 0.4,
+                      "quadrupole_splitting_mm_s": 1.1, "asymmetry": 0.2,
+                      "efg_au": np.diag([-0.4, -0.6, 1.0]),
+                      "contact_density_au": 11816.0, "hyperfine_field_t": 0.0,
+                      "linewidth_mm_s": 0.3, "population": 1.0}],
+                    isotope="57Fe", reference="alpha-Fe, 298 K",
+                    temperature_k=4.2,
+                    calibration={"alpha": -0.31, "beta": 2.82, "c": 11810.0},
+                    label="Mossbauer", section_id="mossbauer")
     w.add_spectrum("spectra.uvvis", payload={
         "frequencies": [7.4, 9.2], "intensities": [0.05, 0.0],
         "peaks": [{"x": 7.4, "assignment": {"state_index": 1}}],

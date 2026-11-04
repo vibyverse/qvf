@@ -4803,6 +4803,170 @@ def build_compound_units():
        "units spec § 5.13 fixes for them.")
 
 
+def build_xray_mossbauer():
+    """spectra_xas_tddft, spectra_xas_dscf, spectra_mossbauer: the X-ray
+    absorption and emission and the Mössbauer kinds (spec § 5.4, format
+    review P13). The numbers are synthetic but have the magnitudes of real
+    calculations: an Fe K pre-edge of tetrahedral [FeCl4]2- from three TDDFT
+    core excitations named through states_ref, its Kβ2,5 valence-to-core
+    emission, Cl K-edge ΔSCF sticks of two absorbers as cross sections, an Fe
+    L2,3 edge in hartree (PySCF style), and two Fe sites of a mixed-valence
+    pair with their isomer shifts, quadrupole splittings, EFG tensors and
+    hyperfine field."""
+    d = 2.29 / math.sqrt(3.0)
+    fecl4 = [{"symbol": "Fe", "position": [0.0, 0.0, 0.0], "atomic_number": 26}]
+    for sx, sy, sz in ((1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1)):
+        fecl4.append({"symbol": "Cl", "position": [sx * d, sy * d, sz * d],
+                      "atomic_number": 17})
+
+    # 1) Fe K pre-edge from TDDFT (ORCA OrbWin / Q-Chem TRNSS style).
+    w = QvfWriter(_PROGRAM, _VERSION, "FeCl4 K-edge TDDFT")
+    w.add_structure(fecl4, charge=-2, multiplicity=5)
+    energies = [7111.62, 7112.48, 7113.05]
+    fosc = [2.1e-5, 6.4e-5, 1.3e-5]
+    w.add_excited_states(
+        [{"index": i + 1, "excitation_energy": {"value": e, "units": "ev"},
+          "multiplicity": 5, "oscillator_strength": f,
+          "contributions": [{"from_mo": 0, "to_mo": 69 + i, "spin": "beta",
+                             "weight": 0.97}]}
+         for i, (e, f) in enumerate(zip(energies, fosc))],
+        meta={"method": "TDDFT (TDA), Fe 1s donor window", "n_states": 3,
+              "tda": True},
+        section_id="core_states")
+    w.add_xray_spectrum(
+        "spectra.xas", energies, fosc, edge="K", element="Fe",
+        atom_indices=[0], core_orbital="1s", intensity="oscillator_strength",
+        y_units="dimensionless", energy_shift_ev=151.3,
+        peaks=[{"x": e, "y": f, "label": f"1s -> state {i + 1}",
+                "assignment": {"state_index": i + 1, "atom_index": 0}}
+               for i, (e, f) in enumerate(zip(energies, fosc))],
+        broadening={"type": "lorentzian", "fwhm": 1.25, "units": "ev"},
+        states_ref="core_states", label="Fe K pre-edge")
+    w.add_xray_spectrum(
+        "spectra.xes", [7095.4, 7101.8, 7106.9, 7108.3],
+        [0.08, 0.21, 0.64, 1.0], edge="K", element="Fe", atom_indices=[0],
+        core_orbital="1s", line="Kβ2,5", intensity="normalized",
+        broadening={"type": "gaussian", "fwhm": 2.5},
+        label="Fe Kβ valence-to-core")
+    _write("spectra_xas_tddft", w, [
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["xray", "edge"], "equals": "K"},
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["xray", "intensity"], "equals": "oscillator_strength"},
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["xray", "energy_shift_ev"], "equals": 151.3,
+         "tol": 1e-12},
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["frequencies", 1], "equals": 7112.48, "tol": 1e-9},
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["states_ref"], "equals": "core_states"},
+        {"section": "spectra_xas", "member": "spectrum",
+         "json_pointer": ["peaks", 2, "assignment", "state_index"], "equals": 3},
+        {"section": "spectra_xes", "member": "spectrum",
+         "json_pointer": ["xray", "line"], "equals": "Kβ2,5"},
+        {"section": "spectra_xes", "member": "spectrum",
+         "json_pointer": ["intensities", 3], "equals": 1.0, "tol": 1e-12},
+    ], "Fe K pre-edge of tetrahedral [FeCl4]2- from three TDDFT core "
+       "excitations (eV, oscillator strengths, 151.3 eV shift applied), each "
+       "peak naming its state of the excited_states section through "
+       "states_ref and its absorber through atom_index, and the Fe Kβ2,5 "
+       "valence-to-core emission, normalized (spec § 5.4, X-ray absorption "
+       "and emission).")
+
+    # 2) Cl K-edge ΔSCF sticks of two absorbers; Fe L2,3 edge in hartree.
+    w = QvfWriter(_PROGRAM, _VERSION, "FeCl4 Cl K-edge dSCF")
+    w.add_structure(fecl4, charge=-2, multiplicity=5)
+    cl = [2822.31, 2822.35, 2824.90]
+    w.add_xray_spectrum(
+        "spectra.xas", cl, [0.42, 0.40, 0.11], edge="K", element="Cl",
+        atom_indices=[1, 2], core_orbital="1s", intensity="cross_section_mb",
+        x_units="ev", energy_shift_ev=0.0,
+        peaks=[{"x": cl[0], "label": "Cl1 1s -> Fe 3d (ΔSCF)",
+                "assignment": {"atom_index": 1}},
+               {"x": cl[1], "label": "Cl2 1s -> Fe 3d (ΔSCF)",
+                "assignment": {"atom_index": 2}},
+               {"x": cl[2], "label": "Cl1 1s -> Cl 4p (ΔSCF)",
+                "assignment": {"atom_index": 1}}],
+        broadening={"type": "gaussian", "fwhm": 0.6, "units": "ev"},
+        label="Cl K-edge, ΔSCF", section_id="xas_cl_k")
+    l23 = [26.0261, 26.0365, 26.4746]
+    w.add_xray_spectrum(
+        "spectra.xas", l23, [3.1, 4.4, 1.7], edge="L2,3", element="Fe",
+        atom_indices=[0], core_orbital="2p", intensity="arbitrary",
+        x_units="hartree", label="Fe L2,3 edge", section_id="xas_fe_l23")
+    _write("spectra_xas_dscf", w, [
+        {"section": "xas_cl_k", "member": "spectrum",
+         "json_pointer": ["xray", "intensity"], "equals": "cross_section_mb"},
+        {"section": "xas_cl_k", "member": "spectrum",
+         "json_pointer": ["xray", "atom_indices", 1], "equals": 2},
+        {"section": "xas_cl_k", "member": "spectrum",
+         "json_pointer": ["peaks", 1, "assignment", "atom_index"], "equals": 2},
+        {"section": "xas_cl_k", "member": "spectrum",
+         "json_pointer": ["intensities", 0], "equals": 0.42, "tol": 1e-12},
+        {"section": "xas_fe_l23", "member": "spectrum",
+         "json_pointer": ["xray", "edge"], "equals": "L2,3"},
+        {"section": "xas_fe_l23", "member": "spectrum",
+         "json_pointer": ["x_units"], "equals": "hartree"},
+        {"section": "xas_fe_l23", "member": "spectrum",
+         "json_pointer": ["frequencies", 0], "equals": 26.0261, "tol": 1e-12},
+    ], "Cl K-edge ΔSCF sticks of two chloride absorbers as cross sections in "
+       "megabarn (no y_units), each peak naming its absorber, and an Fe L2,3 "
+       "edge whose energies are declared in hartree, as a PySCF producer "
+       "writes them without converting (spec § 5.4).")
+
+    # 3) Mössbauer: two Fe sites, calibrated isomer shifts.
+    alpha, beta, c = -0.31, 2.82, 11810.0
+    def rho(delta):
+        return c + (delta - beta) / alpha
+    w = QvfWriter(_PROGRAM, _VERSION, "Fe(II)Fe(III) Mossbauer")
+    w.add_structure([
+        {"symbol": "Fe", "position": [0.0, 0.0, 0.0], "atomic_number": 26},
+        {"symbol": "O", "position": [1.75, 0.95, 0.0], "atomic_number": 8},
+        {"symbol": "Fe", "position": [3.5, 0.0, 0.0], "atomic_number": 26}])
+    w.add_mossbauer([
+        {"atom_index": 0, "symbol": "Fe", "label": "Fe(II) high spin",
+         "isomer_shift_mm_s": 0.90, "quadrupole_splitting_mm_s": 2.80,
+         "asymmetry": 0.25,
+         "efg_au": [[-0.6, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.6]],
+         "contact_density_au": rho(0.90), "linewidth_mm_s": 0.30,
+         "population": 0.6},
+        {"atom_index": 2, "symbol": "Fe", "label": "Fe(III) high spin",
+         "isomer_shift_mm_s": 0.45, "quadrupole_splitting_mm_s": -0.72,
+         "asymmetry": 0.6, "contact_density_au": rho(0.45),
+         "hyperfine_field_t": -48.0, "linewidth_mm_s": 0.28,
+         "population": 0.4}],
+        isotope="57Fe", reference="alpha-Fe, 298 K", temperature_k=4.2,
+        calibration={"alpha": alpha, "beta": beta, "c": c,
+                     "label": "synthetic linear calibration"})
+    sid = "spectra_mossbauer"
+    _write("spectra_mossbauer", w, [
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["isotope"], "equals": "57Fe"},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["sites", 0, "isomer_shift_mm_s"], "equals": 0.90,
+         "tol": 1e-12},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["sites", 1, "quadrupole_splitting_mm_s"],
+         "equals": -0.72, "tol": 1e-12},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["sites", 0, "efg_au", 2, 2], "equals": 1.6,
+         "tol": 1e-12},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["sites", 1, "hyperfine_field_t"], "equals": -48.0,
+         "tol": 1e-12},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["sites", 0, "contact_density_au"],
+         "equals": rho(0.90), "tol": 1e-9},
+        {"section": sid, "member": "spectrum",
+         "json_pointer": ["calibration", "alpha"], "equals": alpha,
+         "tol": 1e-12},
+    ], "57Fe Mössbauer parameters of a mixed-valence Fe(II)/Fe(III) pair at "
+       "4.2 K: isomer shifts against alpha-Fe and quadrupole splittings in "
+       "mm/s, asymmetry parameters, an EFG tensor in atomic units, contact "
+       "densities that the stated linear calibration maps onto the shifts, a "
+       "hyperfine field in tesla, linewidths and populations (spec § 5.4, "
+       "spectra.mossbauer).")
+
 if __name__ == "__main__":
     build()
     build_zero_spin()
@@ -4811,3 +4975,4 @@ if __name__ == "__main__":
     build_secondary_structure_ranges()
     build_reaction_energies()
     build_compound_units()
+    build_xray_mossbauer()

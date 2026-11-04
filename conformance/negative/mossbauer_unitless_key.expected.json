@@ -1,0 +1,10 @@
+{
+  "archive": "mossbauer_unitless_key.qvf",
+  "description": "A spectra.mossbauer site that names its isomer shift 'isomer_shift' without the unit; the strict payload accepts isomer_shift_mm_s only (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

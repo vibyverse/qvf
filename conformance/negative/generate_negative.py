@@ -2000,6 +2000,130 @@ for _defect in ("rows", "weights", "order", "negative", "metadata_rows", "energi
     case("nto_unrestricted_" + _defect)(_make_nto_case)
 
 
+# X-ray and Mössbauer spectra (spec § 5.4, format review P13). A 1-D X-ray
+# spectrum shares SpectrumPayload, so its one-length and states_ref rules are
+# checked with or without a JSON Schema engine; the xray block and the
+# Mössbauer payload are strict.
+
+_XAS_OK = {"frequencies": [7112.1, 7113.4], "intensities": [1.0e-4, 3.0e-4],
+           "xray": {"edge": "K", "element": "Fe", "atom_indices": [0],
+                    "core_orbital": "1s", "intensity": "oscillator_strength"}}
+
+
+def _xray_case(kind: str, **changes: Any) -> Archive:
+    payload = json.loads(json.dumps(_XAS_OK))
+    xray = changes.pop("xray", None)
+    if xray is not None:
+        payload["xray"].update(xray)
+    payload.update(changes)
+    return _payload_case(kind, kind.replace(".", "_"), "spectrum", payload)
+
+
+@case("xas_edge_label")
+def _():
+    a = _xray_case("spectra.xas", xray={"edge": "K-edge"})
+    return (a.to_bytes(),
+            "A spectra.xas xray block with edge 'K-edge'; the edge is an IUPAC "
+            "label such as K, L3 or L2,3 (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("xas_xray_unknown_key")
+def _():
+    a = _xray_case("spectra.xas", xray={"absorber": 0})
+    return (a.to_bytes(),
+            "A spectra.xas xray block with the unknown key 'absorber'; the "
+            "block is strict, and the absorbing atoms are atom_indices "
+            "(spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("xas_cross_section_y_units")
+def _():
+    a = _xray_case("spectra.xas", xray={"intensity": "cross_section_mb"},
+                   y_units="dimensionless")
+    return (a.to_bytes(),
+            "A spectra.xas payload whose intensities are cross sections in "
+            "megabarn but that declares y_units 'dimensionless'; cross "
+            "sections carry no y_units (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("xes_oscillator_strength_y_units")
+def _():
+    a = _xray_case("spectra.xes", xray={"line": "Kβ1,3"}, y_units="km_per_mol")
+    return (a.to_bytes(),
+            "A spectra.xes payload of oscillator strengths that declares "
+            "y_units 'km_per_mol'; oscillator strengths are dimensionless "
+            "(spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("xes_length_mismatch")
+def _():
+    a = _xray_case("spectra.xes", intensities=[1.0])
+    return (a.to_bytes(),
+            "A spectra.xes payload with two frequencies but one intensity; an "
+            "X-ray spectrum is a one-dimensional spectrum, whose arrays have "
+            "one length (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("xas_state_index_unresolved")
+def _():
+    a = _xray_case("spectra.xas", states_ref="es",
+                   peaks=[{"x": 7112.1, "assignment": {"state_index": 1,
+                                                       "atom_index": 0}},
+                          {"x": 7113.4, "assignment": {"state_index": 3,
+                                                       "atom_index": 0}}])
+    path = "es/states.json"
+    data = _json({"states": [
+        {"index": 1, "excitation_energy": {"value": 7112.1, "units": "ev"}},
+        {"index": 2, "excitation_energy": {"value": 7113.4, "units": "ev"}}]})
+    a.add_section({"id": "es", "kind": "excited_states",
+                   "members": {"states": json_member(path, data)}}, {path: data})
+    return (a.to_bytes(),
+            "A spectra.xas peak names state_index 3, but the excited_states "
+            "section its states_ref names has states 1 and 2 (spec § 5.4).",
+            _err("E_REF_UNRESOLVED"), None)
+
+
+def _mossbauer_case(site: dict, **root: Any) -> Archive:
+    payload: dict[str, Any] = {"isotope": "57Fe", **root}
+    payload.setdefault("sites", [site])
+    return _payload_case("spectra.mossbauer", "spectra_mossbauer", "spectrum",
+                         payload)
+
+
+@case("mossbauer_asymmetry_range")
+def _():
+    a = _mossbauer_case({"atom_index": 0, "isomer_shift_mm_s": 0.45,
+                         "quadrupole_splitting_mm_s": 1.2, "asymmetry": 1.4})
+    return (a.to_bytes(),
+            "A spectra.mossbauer site with asymmetry parameter 1.4; η lies "
+            "between 0 and 1 (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("mossbauer_unitless_key")
+def _():
+    a = _mossbauer_case({"atom_index": 0, "isomer_shift": 0.45})
+    return (a.to_bytes(),
+            "A spectra.mossbauer site that names its isomer shift "
+            "'isomer_shift' without the unit; the strict payload accepts "
+            "isomer_shift_mm_s only (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("mossbauer_no_sites")
+def _():
+    a = _mossbauer_case({}, sites=[])
+    return (a.to_bytes(),
+            "A spectra.mossbauer payload with an empty sites list; it needs at "
+            "least one site (spec § 5.4).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
 def build(out_dir: str = OUT) -> list[str]:
     os.makedirs(out_dir, exist_ok=True)
     written = []

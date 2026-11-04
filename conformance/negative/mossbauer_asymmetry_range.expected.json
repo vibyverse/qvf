@@ -1,0 +1,10 @@
+{
+  "archive": "mossbauer_asymmetry_range.qvf",
+  "description": "A spectra.mossbauer site with asymmetry parameter 1.4; \u03b7 lies between 0 and 1 (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

@@ -390,6 +390,18 @@ inline constexpr RoleInfo kRoles55[] = {
     {"thumbnail", true, Format::Opaque, nullptr, 0, -1, -1, "", false},
     {"image", false, Format::Opaque, nullptr, 0, -1, -1, "", false},
 };
+// spectra.xas ($defs/SectionSpectraXAS)
+inline constexpr RoleInfo kRoles56[] = {
+    {"spectrum", true, Format::Json, nullptr, 0, -1, -1, "SpectrumPayload", false},
+};
+// spectra.xes ($defs/SectionSpectraXES)
+inline constexpr RoleInfo kRoles57[] = {
+    {"spectrum", true, Format::Json, nullptr, 0, -1, -1, "SpectrumPayload", false},
+};
+// spectra.mossbauer ($defs/SectionSpectraMossbauer)
+inline constexpr RoleInfo kRoles58[] = {
+    {"spectrum", true, Format::Json, nullptr, 0, -1, -1, "MossbauerSpectrumPayload", false},
+};
 }  // namespace tables
 
 // Every canonical kind, in registry.json order.
@@ -450,8 +462,11 @@ inline constexpr KindInfo kKindInfos[] = {
     {"properties.dielectric", tables::kRoles53, 1, false},
     {"reaction.scheme", tables::kRoles54, 1, false},
     {"preview", tables::kRoles55, 2, false},
+    {"spectra.xas", tables::kRoles56, 1, false},
+    {"spectra.xes", tables::kRoles57, 1, false},
+    {"spectra.mossbauer", tables::kRoles58, 1, false},
 };
-inline constexpr std::size_t kKindCount = 56;
+inline constexpr std::size_t kKindCount = 59;
 
 // The canonical kind names (registry.json order); a vendor kind x_<...> is
 // not among them.
@@ -466,7 +481,8 @@ inline constexpr std::string_view kCanonicalKinds[] = {
     "structure.symmetry", "scf_history", "citations", "equation_of_state", "fermi_surface",
     "phonon_bands", "phonon_dos", "topology.qtaim", "run.record", "job.spec", "forces",
     "hessian", "excited_states", "volume.transition_density", "properties.electric",
-    "properties.elastic", "properties.dielectric", "reaction.scheme", "preview",
+    "properties.elastic", "properties.dielectric", "reaction.scheme", "preview", "spectra.xas",
+    "spectra.xes", "spectra.mossbauer",
 };
 
 // The KindInfo of a canonical kind, or nullptr (unknown or vendor kinds).
@@ -522,6 +538,9 @@ inline constexpr PayloadDef kPayloadDefs[] = {
     {"spectra.generic", "spectrum", "SpectrumPayload"},
     {"spectra.nmr", "spectrum", "NmrSpectrumPayload"},
     {"spectra.epr", "spectrum", "EprSpectrumPayload"},
+    {"spectra.xas", "spectrum", "SpectrumPayload"},
+    {"spectra.xes", "spectrum", "SpectrumPayload"},
+    {"spectra.mossbauer", "spectrum", "MossbauerSpectrumPayload"},
     {"bonds", "bonds", "BondsPayload"},
     {"structure", "bonds", "BondsPayload"},
     {"bond_orders", "bond_orders", "BondOrdersPayload"},

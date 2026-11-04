@@ -60,6 +60,9 @@ export const CANONICAL_KINDS: readonly string[] = [
   "properties.dielectric",
   "reaction.scheme",
   "preview",
+  "spectra.xas",
+  "spectra.xes",
+  "spectra.mossbauer",
 ];
 
 /** The `qvf_version` values a consumer opens (registry `readable_versions`). */

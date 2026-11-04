@@ -92,6 +92,135 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
+### 2026-11-04: X-ray absorption and emission and Mössbauer spectra (proposed)
+
+**Status.** Proposed, awaiting maintainer acceptance under "Change process"
+(add a new canonical kind directly when a clear ecosystem need exists and a
+reference consumer will render it). Format review P13 named `spectra.xas`
+and `spectra.mossbauer` as kinds added on demand, and its coverage matrix
+lists "Mössbauer, XAS/XES, other spectroscopies" as having no canonical
+carrier. Nothing here is accepted until the maintainer merges it.
+
+**Decision proposed.** Three canonical kinds, each with the one JSON member
+`spectrum` (spec § 5.4), appended to the end of `registry.json`
+`canonical_kinds` so that no existing kind changes its position.
+
+1. **`spectra.xas`** (X-ray absorption) and **`spectra.xes`** (X-ray
+   emission) are one-dimensional spectra on the shared
+   `$defs/SpectrumPayload`. § 4.3 gives their x axis in eV. Every existing
+   one-dimensional rule applies unchanged: one length for `frequencies`,
+   `intensities` and `x`, `x_units`/`y_units`/`broadening.units` as unit
+   names, and `states_ref` with `peaks[].assignment.state_index` resolved
+   against an `excited_states` section.
+2. `SpectrumPayload` gains the optional block **`xray`**
+   (`$defs/XraySpectrumBlock`, strict with `x_` keys): `edge` (required,
+   IUPAC notation `K`, `L1` to `L3`, `M1` to `M5`, `N1` to `N7`, `O1` to
+   `O5` and the unresolved pairs `L2,3`, `M2,3`, `M4,5`, `N2,3`, `N4,5`,
+   `N6,7`, `O2,3`, `O4,5`), `element`, `atom_indices` (distinct atom
+   indices), `core_orbital` (`1s`, `2p`, `2p3/2`), `line` (XES, free text
+   such as `Kβ2,5`), `intensity` (`oscillator_strength`,
+   `cross_section_mb`, `normalized`, `arbitrary`) and `energy_shift_ev`.
+   The peak `assignment` gains `atom_index`. Producers SHOULD write `xray`
+   in the two X-ray kinds.
+3. Two schema rules tie `y_units` to `xray.intensity`: cross sections
+   (megabarn) carry no `y_units`, and the other three quantities declare
+   `dimensionless` when they declare anything. A contradiction is
+   `E_PAYLOAD_SCHEMA`.
+4. **`spectra.mossbauer`** has the strict payload
+   `$defs/MossbauerSpectrumPayload`: `isotope` (`57Fe` when absent),
+   `reference`, `temperature_k`, `calibration` (`alpha`, `c` required,
+   `beta`, `label`, for δ = alpha (ρ(0) − c) + beta) and `sites` (at least
+   one), each site `$defs/MossbauerSite` with `atom_index` (required),
+   `symbol`, `label`, `isomer_shift_mm_s`, `quadrupole_splitting_mm_s`,
+   `asymmetry` (0 to 1), `efg_au` (3 × 3), `contact_density_au` (> 0),
+   `hyperfine_field_t`, `linewidth_mm_s` (> 0) and `population` (0 to 1).
+
+No finding code is added and no handwritten validator rule is new: the
+payload definitions carry the checks, and the reference validators already
+key their one-dimensional rules on the payload definition. Two places that
+listed the one-dimensional kinds by name (the C++ reader's `states_ref`
+collection and the C++ writer's unit check) now include the X-ray kinds.
+**No `qvf_version` bump.**
+
+**Sources.** The field set is the intersection of what these programs and
+methods print, so that each can be written without a vendor field:
+
+* ORCA 6 manual, the sections on X-ray absorption and emission spectra
+  and on Mössbauer parameters (`%tddft` with `OrbWin` or `XASLoc`,
+  DFT/ROCIS, `%eprnmr` with `rho` and `fgrad`): per transition an energy and an oscillator
+  strength split into electric dipole, magnetic dipole and quadrupole
+  parts. S. DeBeer George, T. Petrenko, F. Neese, *J. Phys. Chem. A*
+  **112**, 12936 (2008), TDDFT Fe K pre-edges. N. Lee, T. Petrenko,
+  U. Bergmann, F. Neese, S. DeBeer, *J. Am. Chem. Soc.* **132**, 9715
+  (2010), Kβ valence-to-core XES from ground-state orbitals.
+  M. Roemelt, D. Maganas, S. DeBeer, F. Neese, *J. Chem. Phys.* **138**,
+  204101 (2013), DFT/ROCIS L edges.
+* Q-Chem 6 (E. Epifanovsky et al., *J. Chem. Phys.* **155**, 084801
+  (2021)): TDDFT with a restricted excitation window
+  (N. A. Besley, F. A. Asmuruf, *Phys. Chem. Chem. Phys.* **12**, 12024
+  (2010)), CVS-ADC (J. Wenzel, M. Wormit, A. Dreuw, *J. Comput. Chem.*
+  **35**, 1900 (2014)) and ΔSCF core states with MOM
+  (N. A. Besley, A. T. B. Gilbert, P. M. W. Gill, *J. Chem. Phys.* **130**,
+  124308 (2009)).
+* PySCF (Q. Sun et al., *J. Chem. Phys.* **153**, 024109 (2020)): TDDFT on
+  a restricted occupied window and ΔSCF with `scf.addons.mom_occ`, with
+  energies in hartree, which `x_units: "hartree"` declares.
+* Review: P. Norman, A. Dreuw, *Chem. Rev.* **118**, 7208 (2018).
+  Notation: R. Jenkins, R. Manne, R. Robin, C. Senemaud, *X-Ray
+  Spectrom.* **20**, 149 (1991), IUPAC X-ray notation.
+* Mössbauer: F. Neese, *Inorg. Chim. Acta* **337**, 181 (2002) and
+  M. Römelt, S. Ye, F. Neese, *Inorg. Chem.* **48**, 784 (2009), the linear
+  isomer-shift calibration against ρ(0). P. Gütlich, E. Bill,
+  A. X. Trautwein, *Mössbauer Spectroscopy and Transition Metal Chemistry*
+  (Springer, 2011), the parameters, sign conventions and units.
+
+**Units the vocabulary cannot name.** The § 4.3 vocabulary, with the
+compound names of vibyverse/qvf#11 (accepted the same day, record below),
+has no area (megabarn), velocity (mm/s), magnetic flux density (tesla) or
+EFG unit (E_h / (e bohr²), which would be `hartree_per_e_bohr2`). The
+proposal uses only what main has and adds no unit name: cross sections are
+stated through `xray.intensity: cross_section_mb` with `y_units` absent,
+and the Mössbauer payload fixes its units by field name, as `spectra.epr`
+does with MHz, so it has no `units` object. The contact density is
+`e_per_bohr3`, now a name, but it is fixed by its field name as well, so
+that the payload has one convention. The #11 spelling rule cannot form a
+name for mm/s, because `mm` is not a unit name, so `megabarn`, `mm_per_s`
+and `tesla` would be new base names. Adding them later is additive, and
+the field names stay valid. Spec § 9 gains item 10 for this gap.
+
+**Readings to confirm.** (a) `xray` is SHOULD, not REQUIRED, in the X-ray
+kinds. Requiring it needs a second payload definition, which every
+reference validator would have to recognize as one-dimensional. SHOULD
+keeps the shared payload and its rules intact. (b) Adding the typed `xray`
+key and `assignment.atom_index` to the typed-open `SpectrumPayload` would
+reject an existing archive that already used those names with another
+type. No producer or corpus archive does, and `raman` and `uvvis` were
+added the same way. (c) ORCA's multipole split of the oscillator strength
+is not carried, and `intensities` holds the total. A later block such as
+`xray.components` is additive. (d) XPS binding energies get no kind and
+use `spectra.generic` with `x_units: "ev"`. (e) Not checked by a
+validator: atom indices against the structure (as for NMR and EPR), the
+sum of the populations, δ against `calibration`, and ΔE_Q and η against
+`efg_au`. (f) `quadrupole_splitting_mm_s` and `hyperfine_field_t` may be
+signed. (g) The registry `promotions` entries carry `"status":
+"proposed"`, which becomes an ordinary entry on acceptance.
+
+**Compatibility.** Every archive that was valid stays valid with the same
+meaning, and every frozen positive, negative and legacy archive keeps its
+verdict. Readers that do not know the three kinds treat them per the
+unsupported-kind rules. Producers: Python `add_xray_spectrum(kind, energies,
+intensities, edge=, …)` and `add_mossbauer(sites, …)`, and `add_spectrum`
+accepts the three kinds. C++: the generated typed kinds `SpectraXAS`,
+`SpectraXES`, `SpectraMossbauer` with `XraySpectrumBlock` and
+`MossbauerSite`, and `add_spectrum` with a JSON payload. The C ABI gains
+the generated `qvf_writer_add_spectra_xas`, `_xes` and `_mossbauer`
+entry points. The corpus gains `spectra_xas_tddft.qvf`,
+`spectra_xas_dscf.qvf` and `spectra_mossbauer.qvf`, and the negative corpus
+`xas_edge_label`, `xas_xray_unknown_key`, `xas_cross_section_y_units`,
+`xes_oscillator_strength_y_units`, `xes_length_mismatch`,
+`xas_state_index_unresolved`, `mossbauer_asymmetry_range`,
+`mossbauer_unitless_key` and `mossbauer_no_sites`.
+
 ### 2026-11-04: Compound unit names in the unit vocabulary
 
 **Status.** Accepted by the maintainer on 2026-11-04 under "Change

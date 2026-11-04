@@ -1,0 +1,86 @@
+{
+  "archive": "spectra_mossbauer.qvf",
+  "description": "57Fe M\u00f6ssbauer parameters of a mixed-valence Fe(II)/Fe(III) pair at 4.2 K: isomer shifts against alpha-Fe and quadrupole splittings in mm/s, asymmetry parameters, an EFG tensor in atomic units, contact densities that the stated linear calibration maps onto the shifts, a hyperfine field in tesla, linewidths and populations (spec \u00a7 5.4, spectra.mossbauer).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "spectra.mossbauer",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "isotope"
+      ],
+      "equals": "57Fe"
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "sites",
+        0,
+        "isomer_shift_mm_s"
+      ],
+      "equals": 0.9,
+      "tol": 1e-12
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "sites",
+        1,
+        "quadrupole_splitting_mm_s"
+      ],
+      "equals": -0.72,
+      "tol": 1e-12
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "sites",
+        0,
+        "efg_au",
+        2,
+        2
+      ],
+      "equals": 1.6,
+      "tol": 1e-12
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "sites",
+        1,
+        "hyperfine_field_t"
+      ],
+      "equals": -48.0,
+      "tol": 1e-12
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "sites",
+        0,
+        "contact_density_au"
+      ],
+      "equals": 11816.193548387097,
+      "tol": 1e-09
+    },
+    {
+      "section": "spectra_mossbauer",
+      "member": "spectrum",
+      "json_pointer": [
+        "calibration",
+        "alpha"
+      ],
+      "equals": -0.31,
+      "tol": 1e-12
+    }
+  ]
+}

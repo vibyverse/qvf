@@ -1,0 +1,89 @@
+{
+  "archive": "spectra_xas_tddft.qvf",
+  "description": "Fe K pre-edge of tetrahedral [FeCl4]2- from three TDDFT core excitations (eV, oscillator strengths, 151.3 eV shift applied), each peak naming its state of the excited_states section through states_ref and its absorber through atom_index, and the Fe K\u03b22,5 valence-to-core emission, normalized (spec \u00a7 5.4, X-ray absorption and emission).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "excited_states",
+    "spectra.xas",
+    "spectra.xes",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "edge"
+      ],
+      "equals": "K"
+    },
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "intensity"
+      ],
+      "equals": "oscillator_strength"
+    },
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "energy_shift_ev"
+      ],
+      "equals": 151.3,
+      "tol": 1e-12
+    },
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "frequencies",
+        1
+      ],
+      "equals": 7112.48,
+      "tol": 1e-09
+    },
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "states_ref"
+      ],
+      "equals": "core_states"
+    },
+    {
+      "section": "spectra_xas",
+      "member": "spectrum",
+      "json_pointer": [
+        "peaks",
+        2,
+        "assignment",
+        "state_index"
+      ],
+      "equals": 3
+    },
+    {
+      "section": "spectra_xes",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "line"
+      ],
+      "equals": "K\u03b22,5"
+    },
+    {
+      "section": "spectra_xes",
+      "member": "spectrum",
+      "json_pointer": [
+        "intensities",
+        3
+      ],
+      "equals": 1.0,
+      "tol": 1e-12
+    }
+  ]
+}

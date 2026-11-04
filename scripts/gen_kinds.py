@@ -118,6 +118,10 @@ PAYLOAD_DEFS: dict[tuple[str, str], str] = {
     ("spectra.generic", "spectrum"): "SpectrumPayload",
     ("spectra.nmr", "spectrum"): "NmrSpectrumPayload",
     ("spectra.epr", "spectrum"): "EprSpectrumPayload",
+    # Format review P13: X-ray and Mössbauer spectra
+    ("spectra.xas", "spectrum"): "SpectrumPayload",
+    ("spectra.xes", "spectrum"): "SpectrumPayload",
+    ("spectra.mossbauer", "spectrum"): "MossbauerSpectrumPayload",
     ("bonds", "bonds"): "BondsPayload",
     ("structure", "bonds"): "BondsPayload",
     ("bond_orders", "bond_orders"): "BondOrdersPayload",

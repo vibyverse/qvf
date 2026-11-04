@@ -78,6 +78,9 @@ Member formats: *json* is a JSON member checked against its payload definition, 
 - [`properties.dielectric`](#kind-properties-dielectric)
 - [`reaction.scheme`](#kind-reaction-scheme)
 - [`preview`](#kind-preview)
+- [`spectra.xas`](#kind-spectra-xas)
+- [`spectra.xes`](#kind-spectra-xes)
+- [`spectra.mossbauer`](#kind-spectra-mossbauer)
 
 <a id="kind-structure"></a>
 
@@ -3051,36 +3054,59 @@ Electronically excited states of one calculation (TD-DFT, CIS, ADC, EOM-CC and s
 |---|---|---|---|
 | `wavefunction_ref` |  | string | Id of the `wavefunction.gto` section of the reference state, usually the ground state, whose orbitals the `from_mo` and `to_mo` of the contributions index. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.12 (excited_states — excited states and transition properties). |
 
-**Example** (from `conformance/corpus/nto_unrestricted_empty_beta.qvf`, long arrays shortened)
+**Example** (from `conformance/corpus/spectra_xas_tddft.qvf`, long arrays shortened)
 
 Manifest section:
 
 ```json
 {
-  "id": "es",
+  "id": "core_states",
   "kind": "excited_states",
   "members": {
     "states": {
-      "path": "es/states.json",
+      "path": "core_states/states.json",
       "format": "json",
-      "sha256": "fff3be5e568ff82f71a348d3fa665c1e21d2d75791df7c988d96cb74277bf4dc",
-      "size": 161
+      "sha256": "1b9799c62ef5ab7df5412b909e55a4a4014dafa3a41c3ddb0d9ec90d85cdbe79",
+      "size": 1114
     }
   }
 }
 ```
 
-`states` payload (`es/states.json`):
+`states` payload (`core_states/states.json`):
 
 ```json
 {
   "states": [
     {
       "index": 1,
-      "excitation_energy": {"value": 4.0, "units": "ev"},
-      "nto_ref": "nto_hole"
+      "excitation_energy": {"value": 7111.62, "units": "ev"},
+      "multiplicity": 5,
+      "oscillator_strength": 2.1e-05,
+      "contributions": [
+        {"…": "4 keys"}
+      ]
+    },
+    {
+      "index": 2,
+      "excitation_energy": {"value": 7112.48, "units": "ev"},
+      "multiplicity": 5,
+      "oscillator_strength": 6.4e-05,
+      "contributions": [
+        {"…": "4 keys"}
+      ]
+    },
+    {
+      "index": 3,
+      "excitation_energy": {"value": 7113.05, "units": "ev"},
+      "multiplicity": 5,
+      "oscillator_strength": 1.3e-05,
+      "contributions": [
+        {"…": "4 keys"}
+      ]
     }
-  ]
+  ],
+  "meta": {"method": "TDDFT (TDA), Fe 1s donor window", "n_states": 3, "tda": true}
 }
 ```
 
@@ -3471,6 +3497,202 @@ Manifest section:
 }
 ```
 
+<a id="kind-spectra-xas"></a>
+
+## `spectra.xas`
+
+Schema definition: `$defs/SectionSpectraXAS`.
+
+One-dimensional X-ray absorption spectrum (XANES / NEXAFS): core excitations from TDDFT, CVS-ADC, CVS-EOM-CC or ROCIS, or ΔSCF sticks, with the edge and the absorbing atoms in the payload's `xray` block. The `spectrum` member's JSON payload is specified by `#/$defs/SpectrumPayload`; see QVF spec § 5.4 (Spectra).
+
+**Members**
+
+| Role | Required | Format | dtypes | Rank | Payload |
+|---|---|---|---|---|---|
+| `spectrum` | yes | json |  |  | [`SpectrumPayload`](#def-spectrumpayload) |
+
+**Example** (from `conformance/corpus/spectra_xas_dscf.qvf`, long arrays shortened)
+
+Manifest section:
+
+```json
+{
+  "id": "xas_cl_k",
+  "kind": "spectra.xas",
+  "members": {
+    "spectrum": {
+      "path": "spectra/xas_cl_k.json",
+      "format": "json",
+      "sha256": "1960be5698545ed1fe9bb7f0784ccc15186a599a006cc32a62fa588739223f46",
+      "size": 810
+    }
+  },
+  "label": "Cl K-edge, ΔSCF"
+}
+```
+
+`spectrum` payload (`spectra/xas_cl_k.json`):
+
+```json
+{
+  "frequencies": [2822.31, 2822.35, 2824.9],
+  "intensities": [0.42, 0.4, 0.11],
+  "xray": {
+    "edge": "K",
+    "element": "Cl",
+    "atom_indices": [1, 2],
+    "core_orbital": "1s",
+    "intensity": "cross_section_mb",
+    "energy_shift_ev": 0.0
+  },
+  "x_units": "ev",
+  "peaks": [
+    {
+      "x": 2822.31,
+      "label": "Cl1 1s -> Fe 3d (ΔSCF)",
+      "assignment": {"atom_index": 1}
+    },
+    {
+      "x": 2822.35,
+      "label": "Cl2 1s -> Fe 3d (ΔSCF)",
+      "assignment": {"atom_index": 2}
+    },
+    {
+      "x": 2824.9,
+      "label": "Cl1 1s -> Cl 4p (ΔSCF)",
+      "assignment": {"atom_index": 1}
+    }
+  ],
+  "broadening": {"type": "gaussian", "fwhm": 0.6, "units": "ev"}
+}
+```
+
+<a id="kind-spectra-xes"></a>
+
+## `spectra.xes`
+
+Schema definition: `$defs/SectionSpectraXES`.
+
+One-dimensional X-ray emission spectrum (core-to-core or valence-to-core), with the core hole and the emitting atoms in the payload's `xray` block. The `spectrum` member's JSON payload is specified by `#/$defs/SpectrumPayload`; see QVF spec § 5.4 (Spectra).
+
+**Members**
+
+| Role | Required | Format | dtypes | Rank | Payload |
+|---|---|---|---|---|---|
+| `spectrum` | yes | json |  |  | [`SpectrumPayload`](#def-spectrumpayload) |
+
+**Example** (from `conformance/corpus/spectra_xas_tddft.qvf`, long arrays shortened)
+
+Manifest section:
+
+```json
+{
+  "id": "spectra_xes",
+  "kind": "spectra.xes",
+  "members": {
+    "spectrum": {
+      "path": "spectra/spectra_xes.json",
+      "format": "json",
+      "sha256": "fcfbad10cc49eca04e15fe9b26e6a474f26bb813f896c2adce419b52c9a1e65c",
+      "size": 368
+    }
+  },
+  "label": "Fe Kβ valence-to-core"
+}
+```
+
+`spectrum` payload (`spectra/spectra_xes.json`):
+
+```json
+{
+  "frequencies": [7095.4, 7101.8, 7106.9, 7108.3],
+  "intensities": [0.08, 0.21, 0.64, 1.0],
+  "xray": {
+    "edge": "K",
+    "element": "Fe",
+    "atom_indices": [0],
+    "core_orbital": "1s",
+    "line": "Kβ2,5",
+    "intensity": "normalized"
+  },
+  "broadening": {"type": "gaussian", "fwhm": 2.5}
+}
+```
+
+<a id="kind-spectra-mossbauer"></a>
+
+## `spectra.mossbauer`
+
+Schema definition: `$defs/SectionSpectraMossbauer`.
+
+Mössbauer parameters per site: isomer shift, quadrupole splitting, asymmetry parameter and hyperfine field. Like spectra.nmr and spectra.epr, the payload is a single object-shaped `spectrum` JSON member, specified by `#/$defs/MossbauerSpectrumPayload`; see QVF spec § 5.4 (Spectra).
+
+**Members**
+
+| Role | Required | Format | dtypes | Rank | Payload |
+|---|---|---|---|---|---|
+| `spectrum` | yes | json |  |  | [`MossbauerSpectrumPayload`](#def-mossbauerspectrumpayload) |
+
+**Example** (from `conformance/corpus/spectra_mossbauer.qvf`, long arrays shortened)
+
+Manifest section:
+
+```json
+{
+  "id": "spectra_mossbauer",
+  "kind": "spectra.mossbauer",
+  "members": {
+    "spectrum": {
+      "path": "spectra/spectra_mossbauer.json",
+      "format": "json",
+      "sha256": "3d9e03db3ef5325e1f91c70d8aa81b1b0976947525ca74dfe1ede4de729840b5",
+      "size": 1065
+    }
+  }
+}
+```
+
+`spectrum` payload (`spectra/spectra_mossbauer.json`):
+
+```json
+{
+  "isotope": "57Fe",
+  "reference": "alpha-Fe, 298 K",
+  "temperature_k": 4.2,
+  "calibration": {"alpha": -0.31, "beta": 2.82, "c": 11810.0, "label": "synthetic linear calibration"},
+  "sites": [
+    {
+      "atom_index": 0,
+      "symbol": "Fe",
+      "label": "Fe(II) high spin",
+      "isomer_shift_mm_s": 0.9,
+      "quadrupole_splitting_mm_s": 2.8,
+      "asymmetry": 0.25,
+      "efg_au": [
+        ["… 3 items"],
+        ["… 3 items"],
+        ["… 3 items"]
+      ],
+      "contact_density_au": 11816.193548387097,
+      "linewidth_mm_s": 0.3,
+      "population": 0.6
+    },
+    {
+      "atom_index": 2,
+      "symbol": "Fe",
+      "label": "Fe(III) high spin",
+      "isomer_shift_mm_s": 0.45,
+      "quadrupole_splitting_mm_s": -0.72,
+      "asymmetry": 0.6,
+      "contact_density_au": 11817.645161290322,
+      "hyperfine_field_t": -48.0,
+      "linewidth_mm_s": 0.28,
+      "population": 0.4
+    }
+  ]
+}
+```
+
 ## Payload definitions
 
 The JSON payload definitions named in the member tables, in alphabetical order.
@@ -3847,6 +4069,22 @@ The JSON payload named by a `wavefunction.gto` section's `mo_metadata` member (c
 | `excitation_index` |  | integer | Deprecated; see QVF spec § 5.3 (wavefunction.gto). The excited state that natural transition orbitals describe, by the producer's own numbering. Producers SHOULD NOT write it: the canonical carrier is `state_index`, the state's `index` in the `excited_states` section that `state_ref` names. Kept so that archives which already carry it remain valid. |
 | `excitation_energy_ev` |  | number | Deprecated; see QVF spec § 5.3 (wavefunction.gto). The excitation energy, in eV, of the state that natural transition orbitals describe. Producers SHOULD NOT write it: the canonical carrier is the `excitation_energy` of the state that `state_index` names in the `excited_states` section that `state_ref` names. Kept so that archives which already carry it remain valid. |
 
+<a id="def-mossbauerspectrumpayload"></a>
+
+### `MossbauerSpectrumPayload`
+
+Used by: [`spectra.mossbauer`](#kind-spectra-mossbauer).
+
+The JSON payload named by a `spectra.mossbauer` section's `spectrum` member: the Mössbauer parameters of each resonant site. Strict: only the listed keys and keys that begin with `x_`, at the root and in every listed object. Units are fixed by the field names: velocities in mm/s, the hyperfine field in tesla, densities and field gradients in atomic units. See QVF spec § 5.4 (Spectra).
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `isotope` |  | string | Resonant nucleus, mass number first, e.g. '57Fe' or '119Sn'. Absent means '57Fe'. |
+| `reference` |  | string | Reference of the isomer shifts, e.g. 'alpha-Fe, 298 K'. |
+| `temperature_k` |  | number | Temperature the parameters refer to, in kelvin. |
+| `calibration` |  | object | The linear calibration that turned each site's `contact_density_au` into its `isomer_shift_mm_s`: δ = alpha (ρ(0) − c) + beta. |
+| `sites` | yes | array[1..] of [`MossbauerSite`](#def-mossbauersite) | One entry per resonant site. |
+
 <a id="def-nmrspectrumpayload"></a>
 
 ### `NmrSpectrumPayload`
@@ -4025,9 +4263,9 @@ The JSON payload named by a `scf_history` section's `iterations` member: one rec
 
 ### `SpectrumPayload`
 
-Used by: [`spectra.ir`](#kind-spectra-ir), [`spectra.raman`](#kind-spectra-raman), [`spectra.uvvis`](#kind-spectra-uvvis), [`spectra.ecd`](#kind-spectra-ecd), [`spectra.vcd`](#kind-spectra-vcd), [`spectra.generic`](#kind-spectra-generic).
+Used by: [`spectra.ir`](#kind-spectra-ir), [`spectra.raman`](#kind-spectra-raman), [`spectra.uvvis`](#kind-spectra-uvvis), [`spectra.ecd`](#kind-spectra-ecd), [`spectra.vcd`](#kind-spectra-vcd), [`spectra.generic`](#kind-spectra-generic), [`spectra.xas`](#kind-spectra-xas), [`spectra.xes`](#kind-spectra-xes).
 
-The JSON payload named by the `spectrum` member of a one-dimensional spectrum section: `spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd` or `spectra.generic`. It is an archive member, not part of manifest.json, so nothing in the manifest $refs this definition; a validator loads the member's bytes and checks them against it. Typed-open: the fields below are typed and the root stays open. `frequencies` carries the x axis in the unit QVF spec § 4.3 (Units and numeric conventions) gives the kind, unless `x_units` declares another; the name is kept for every kind, including those whose x values are energies. `frequencies`, `intensities` and, when present, `x` MUST have the same length. JSON Schema cannot express that rule, so a validator checks it separately; see QVF spec § 5.4 (Spectra) and § 6 (Validation semantics).
+The JSON payload named by the `spectrum` member of a one-dimensional spectrum section: `spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd`, `spectra.xas`, `spectra.xes` or `spectra.generic`. It is an archive member, not part of manifest.json, so nothing in the manifest $refs this definition; a validator loads the member's bytes and checks them against it. Typed-open: the fields below are typed and the root stays open. `frequencies` carries the x axis in the unit QVF spec § 4.3 (Units and numeric conventions) gives the kind, unless `x_units` declares another; the name is kept for every kind, including those whose x values are energies. `frequencies`, `intensities` and, when present, `x` MUST have the same length. JSON Schema cannot express that rule, so a validator checks it separately; see QVF spec § 5.4 (Spectra) and § 6 (Validation semantics).
 
 | Field | Required | Type | Description |
 |---|---|---|---|
@@ -4041,6 +4279,7 @@ The JSON payload named by the `spectrum` member of a one-dimensional spectrum se
 | `temperature_k` |  | number | Temperature the spectrum refers to, in kelvin. |
 | `raman` |  | object | Raman-specific data, meaningful in a `spectra.raman` payload. |
 | `uvvis` |  | object | UV-Vis-specific data, meaningful in a `spectra.uvvis` payload. |
+| `xray` |  | [`XraySpectrumBlock`](#def-xrayspectrumblock) | X-ray absorption or emission data, meaningful in a `spectra.xas` or `spectra.xes` payload, where producers SHOULD write it; see QVF spec § 5.4 (Spectra). |
 | `states_ref` |  | string | Id of the `excited_states` section whose states the peaks name: every `peaks[].assignment.state_index` is then the `index` of a state of that section. It must name a section of kind `excited_states` in this archive; see QVF spec § 5.4 (Spectra). |
 
 <a id="def-structurepayload"></a>
@@ -4418,6 +4657,26 @@ The orbitals of one spin channel of an unrestricted `mo_metadata` payload: per-M
 | `occupations` | yes | array of number | Occupation of each MO, in electrons (0 to 1 in a spin channel), or a squared singular-value transition weight when occupation_semantics is transition_weight. For unrestricted NTOs, the nonnegative weights are in non-increasing order, match the paired section per spin, and both spins together sum to 1 for a normalized state; see QVF spec § 5.3 (wavefunction.gto). |
 | `symmetry_labels` |  | array of string | Irreducible-representation label of each MO of the channel, parallel to its `energies`; validators check the length. |
 
+<a id="def-mossbauersite"></a>
+
+### `MossbauerSite`
+
+The Mössbauer parameters of one resonant site of a `MossbauerSpectrumPayload`; see QVF spec § 5.4 (Spectra).
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `atom_index` | yes | integer | 0-based index into the structure's atoms of the resonant nucleus. |
+| `symbol` |  | string | Element symbol of the atom, e.g. 'Fe'. |
+| `label` |  | string | Site label for display, e.g. 'Fe(II) high spin'. |
+| `isomer_shift_mm_s` |  | number | Isomer shift δ relative to `reference`, in mm/s. |
+| `quadrupole_splitting_mm_s` |  | number | Quadrupole splitting ΔE_Q = (e Q V_zz / 2) (1 + η²/3)^(1/2), in mm/s; signed with V_zz when the producer knows the sign. |
+| `asymmetry` |  | number | Asymmetry parameter η = (V_xx − V_yy) / V_zz of the electric field gradient, with \|V_zz\| ≥ \|V_yy\| ≥ \|V_xx\|; dimensionless. |
+| `efg_au` |  | array[3] of array[3] of number | Electric field gradient tensor at the nucleus in atomic units (E_h / (e bohr^2)): three rows in the Cartesian frame of the structure. |
+| `contact_density_au` |  | number | Electron density at the nucleus ρ(0), in e/bohr^3. |
+| `hyperfine_field_t` |  | number | Magnetic hyperfine field at the nucleus, in tesla; signed when the producer knows its direction relative to the electron spin. |
+| `linewidth_mm_s` |  | number | Full width at half maximum of each Lorentzian line, in mm/s. |
+| `population` |  | number | Fraction of the resonant nuclei at this site, the relative area of its subspectrum. |
+
 <a id="def-previewimage"></a>
 
 ### `PreviewImage`
@@ -4594,7 +4853,7 @@ One annotated peak of a `SpectrumPayload`. `x` and `width` are in the unit of th
 | `y` |  | number | Peak intensity. |
 | `width` |  | number | Full width at half maximum of the peak. |
 | `label` |  | string |  |
-| `assignment` |  | object | What the peak arises from. `mode_index` is a 0-based index into the modes of the archive's `vibrations` section; `state_index` identifies the electronic state the transition reaches: the `index` of a state of the `excited_states` section that the payload's `states_ref` names, or, without `states_ref`, as the producer numbers its states. |
+| `assignment` |  | object | What the peak arises from. `mode_index` is a 0-based index into the modes of the archive's `vibrations` section; `state_index` identifies the electronic state the transition reaches: the `index` of a state of the `excited_states` section that the payload's `states_ref` names, or, without `states_ref`, as the producer numbers its states. `atom_index` is a 0-based index into the structure's atoms: the absorbing or emitting atom of an X-ray line. |
 
 <a id="def-structureatom"></a>
 
@@ -4654,3 +4913,19 @@ Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `tim
 |---|---|---|---|
 | `value` | yes | number |  |
 | `units` | yes | one of 45 values or one of `"Eh"` \| `"eV"` \| `"Hartree"` | Unit of `value`: a unit name, or one of the legacy spellings that archives written before the vocabulary carry. Producers write the unit name; see QVF spec § 4.3 (Units and numeric conventions). |
+
+<a id="def-xrayspectrumblock"></a>
+
+### `XraySpectrumBlock`
+
+The `xray` block of a `spectra.xas` or `spectra.xes` payload: which core level of which atoms the spectrum probes, what its intensities are, and the energy shift already applied. Strict: only these keys and keys that begin with `x_`. See QVF spec § 5.4 (Spectra).
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `edge` | yes | string | The absorption edge (XAS) or the level of the core hole (XES) in IUPAC X-ray notation: `K`, `L1` to `L3`, `M1` to `M5`, `N1` to `N7` or `O1` to `O5`, or one of the unresolved spin-orbit pairs `L2,3`, `M2,3`, `M4,5`, `N2,3`, `N4,5`, `N6,7`, `O2,3`, `O4,5`. |
+| `element` |  | string | Chemical symbol of the absorbing (XAS) or emitting (XES) element, e.g. 'Fe'. |
+| `atom_indices` |  | array[1..] of integer | 0-based indices into the structure's atoms of the absorbing or emitting atoms whose transitions the spectrum contains. One entry for a single absorber; several when the spectrum sums equivalent or inequivalent absorbers, whose individual lines `peaks[].assignment.atom_index` can name. |
+| `core_orbital` |  | string | The core orbital excited (XAS) or holding the hole (XES), in spectroscopic n l notation with an optional j: '1s', '2p', '2p3/2', '3d5/2'. |
+| `line` |  | string | Emission line or region of an XES spectrum as the producer names it, e.g. 'Kα1', 'Kβ1,3', 'Kβ2,5' or 'valence-to-core'. Meaningful in `spectra.xes`. |
+| `intensity` |  | one of `"oscillator_strength"` \| `"cross_section_mb"` \| `"normalized"` \| `"arbitrary"` | What `intensities` holds: oscillator strengths (dimensionless), absorption or emission cross sections in megabarn (1 Mb = 1e-22 m^2, `y_units` absent), intensities normalized by the producer (dimensionless), or intensities on an arbitrary scale. |
+| `energy_shift_ev` |  | number | Constant shift in eV that the producer has already added to every x value and peak position, e.g. to align computed core excitations with experiment. Absent means not stated; 0 means unshifted. |

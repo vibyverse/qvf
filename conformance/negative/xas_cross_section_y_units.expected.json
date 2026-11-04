@@ -1,0 +1,10 @@
+{
+  "archive": "xas_cross_section_y_units.qvf",
+  "description": "A spectra.xas payload whose intensities are cross sections in megabarn but that declares y_units 'dimensionless'; cross sections carry no y_units (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

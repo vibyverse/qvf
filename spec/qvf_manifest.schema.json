@@ -369,6 +369,9 @@
         { "$ref": "#/$defs/SectionSpectraVCD" },
         { "$ref": "#/$defs/SectionSpectraNMR" },
         { "$ref": "#/$defs/SectionSpectraEPR" },
+        { "$ref": "#/$defs/SectionSpectraXAS" },
+        { "$ref": "#/$defs/SectionSpectraXES" },
+        { "$ref": "#/$defs/SectionSpectraMossbauer" },
         { "$ref": "#/$defs/SectionSpectraGeneric" },
         { "$ref": "#/$defs/SectionBands" },
         { "$ref": "#/$defs/SectionDOSTotal" },
@@ -1859,7 +1862,7 @@
       "type": "object",
       "additionalProperties": true,
       "required": ["frequencies", "intensities"],
-      "description": "The JSON payload named by the `spectrum` member of a one-dimensional spectrum section: `spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd` or `spectra.generic`. It is an archive member, not part of manifest.json, so nothing in the manifest $refs this definition; a validator loads the member's bytes and checks them against it. Typed-open: the fields below are typed and the root stays open. `frequencies` carries the x axis in the unit QVF spec § 4.3 (Units and numeric conventions) gives the kind, unless `x_units` declares another; the name is kept for every kind, including those whose x values are energies. `frequencies`, `intensities` and, when present, `x` MUST have the same length. JSON Schema cannot express that rule, so a validator checks it separately; see QVF spec § 5.4 (Spectra) and § 6 (Validation semantics).",
+      "description": "The JSON payload named by the `spectrum` member of a one-dimensional spectrum section: `spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd`, `spectra.xas`, `spectra.xes` or `spectra.generic`. It is an archive member, not part of manifest.json, so nothing in the manifest $refs this definition; a validator loads the member's bytes and checks them against it. Typed-open: the fields below are typed and the root stays open. `frequencies` carries the x axis in the unit QVF spec § 4.3 (Units and numeric conventions) gives the kind, unless `x_units` declares another; the name is kept for every kind, including those whose x values are energies. `frequencies`, `intensities` and, when present, `x` MUST have the same length. JSON Schema cannot express that rule, so a validator checks it separately; see QVF spec § 5.4 (Spectra) and § 6 (Validation semantics).",
       "properties": {
         "frequencies": {
           "type": "array",
@@ -1937,9 +1940,75 @@
             }
           }
         },
+        "xray": {
+          "$ref": "#/$defs/XraySpectrumBlock",
+          "description": "X-ray absorption or emission data, meaningful in a `spectra.xas` or `spectra.xes` payload, where producers SHOULD write it; see QVF spec § 5.4 (Spectra)."
+        },
         "states_ref": {
           "type": "string",
           "description": "Id of the `excited_states` section whose states the peaks name: every `peaks[].assignment.state_index` is then the `index` of a state of that section. It must name a section of kind `excited_states` in this archive; see QVF spec § 5.4 (Spectra)."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["xray"],
+            "properties": { "xray": { "required": ["intensity"], "properties": { "intensity": { "const": "cross_section_mb" } } } }
+          },
+          "then": { "not": { "required": ["y_units"] } },
+          "description": "Cross sections are in megabarn, which the unit vocabulary does not name, so `y_units` is absent; see QVF spec § 5.4 (Spectra)."
+        },
+        {
+          "if": {
+            "required": ["xray"],
+            "properties": { "xray": { "required": ["intensity"], "properties": { "intensity": { "enum": ["oscillator_strength", "normalized", "arbitrary"] } } } }
+          },
+          "then": { "properties": { "y_units": { "const": "dimensionless" } } },
+          "description": "Oscillator strengths and normalized or arbitrary intensities are pure numbers: a declared `y_units` is `dimensionless`; see QVF spec § 5.4 (Spectra)."
+        }
+      ]
+    },
+    "XraySpectrumBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "required": ["edge"],
+      "description": "The `xray` block of a `spectra.xas` or `spectra.xes` payload: which core level of which atoms the spectrum probes, what its intensities are, and the energy shift already applied. Strict: only these keys and keys that begin with `x_`. See QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "edge": {
+          "type": "string",
+          "pattern": "^(K|L[1-3]|L2,3|M[1-5]|M2,3|M4,5|N[1-7]|N2,3|N4,5|N6,7|O[1-5]|O2,3|O4,5)$",
+          "description": "The absorption edge (XAS) or the level of the core hole (XES) in IUPAC X-ray notation: `K`, `L1` to `L3`, `M1` to `M5`, `N1` to `N7` or `O1` to `O5`, or one of the unresolved spin-orbit pairs `L2,3`, `M2,3`, `M4,5`, `N2,3`, `N4,5`, `N6,7`, `O2,3`, `O4,5`."
+        },
+        "element": {
+          "type": "string",
+          "pattern": "^[A-Z][a-z]{0,2}$",
+          "description": "Chemical symbol of the absorbing (XAS) or emitting (XES) element, e.g. 'Fe'."
+        },
+        "atom_indices": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "0-based indices into the structure's atoms of the absorbing or emitting atoms whose transitions the spectrum contains. One entry for a single absorber; several when the spectrum sums equivalent or inequivalent absorbers, whose individual lines `peaks[].assignment.atom_index` can name."
+        },
+        "core_orbital": {
+          "type": "string",
+          "pattern": "^[1-7][spdf]([1357]/2)?$",
+          "description": "The core orbital excited (XAS) or holding the hole (XES), in spectroscopic n l notation with an optional j: '1s', '2p', '2p3/2', '3d5/2'."
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Emission line or region of an XES spectrum as the producer names it, e.g. 'Kα1', 'Kβ1,3', 'Kβ2,5' or 'valence-to-core'. Meaningful in `spectra.xes`."
+        },
+        "intensity": {
+          "enum": ["oscillator_strength", "cross_section_mb", "normalized", "arbitrary"],
+          "description": "What `intensities` holds: oscillator strengths (dimensionless), absorption or emission cross sections in megabarn (1 Mb = 1e-22 m^2, `y_units` absent), intensities normalized by the producer (dimensionless), or intensities on an arbitrary scale."
+        },
+        "energy_shift_ev": {
+          "type": "number",
+          "description": "Constant shift in eV that the producer has already added to every x value and peak position, e.g. to align computed core excitations with experiment. Absent means not stated; 0 means unshifted."
         }
       }
     },
@@ -1959,10 +2028,11 @@
         "label": { "type": "string" },
         "assignment": {
           "type": "object",
-          "description": "What the peak arises from. `mode_index` is a 0-based index into the modes of the archive's `vibrations` section; `state_index` identifies the electronic state the transition reaches: the `index` of a state of the `excited_states` section that the payload's `states_ref` names, or, without `states_ref`, as the producer numbers its states.",
+          "description": "What the peak arises from. `mode_index` is a 0-based index into the modes of the archive's `vibrations` section; `state_index` identifies the electronic state the transition reaches: the `index` of a state of the `excited_states` section that the payload's `states_ref` names, or, without `states_ref`, as the producer numbers its states. `atom_index` is a 0-based index into the structure's atoms: the absorbing or emitting atom of an X-ray line.",
           "properties": {
             "mode_index": { "type": "integer", "minimum": 0 },
-            "state_index": { "type": "integer", "minimum": 0 }
+            "state_index": { "type": "integer", "minimum": 0 },
+            "atom_index": { "type": "integer", "minimum": 0 }
           }
         }
       }
@@ -2188,6 +2258,146 @@
               "description": "Full zero-field-splitting tensor in MHz: three rows in the Cartesian frame of the structure."
             }
           }
+        }
+      }
+    },
+    "SectionSpectraXAS": {
+      "description": "One-dimensional X-ray absorption spectrum (XANES / NEXAFS): core excitations from TDDFT, CVS-ADC, CVS-EOM-CC or ROCIS, or ΔSCF sticks, with the edge and the absorbing atoms in the payload's `xray` block. The `spectrum` member's JSON payload is specified by `#/$defs/SpectrumPayload`; see QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "kind": { "const": "spectra.xas" },
+        "members": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spectrum"],
+          "properties": {
+            "spectrum": { "$ref": "#/$defs/JsonMember" }
+          }
+        }
+      }
+    },
+    "SectionSpectraXES": {
+      "description": "One-dimensional X-ray emission spectrum (core-to-core or valence-to-core), with the core hole and the emitting atoms in the payload's `xray` block. The `spectrum` member's JSON payload is specified by `#/$defs/SpectrumPayload`; see QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "kind": { "const": "spectra.xes" },
+        "members": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spectrum"],
+          "properties": {
+            "spectrum": { "$ref": "#/$defs/JsonMember" }
+          }
+        }
+      }
+    },
+    "SectionSpectraMossbauer": {
+      "description": "Mössbauer parameters per site: isomer shift, quadrupole splitting, asymmetry parameter and hyperfine field. Like spectra.nmr and spectra.epr, the payload is a single object-shaped `spectrum` JSON member, specified by `#/$defs/MossbauerSpectrumPayload`; see QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "kind": { "const": "spectra.mossbauer" },
+        "members": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spectrum"],
+          "properties": {
+            "spectrum": { "$ref": "#/$defs/JsonMember" }
+          }
+        }
+      }
+    },
+    "MossbauerSpectrumPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "required": ["sites"],
+      "description": "The JSON payload named by a `spectra.mossbauer` section's `spectrum` member: the Mössbauer parameters of each resonant site. Strict: only the listed keys and keys that begin with `x_`, at the root and in every listed object. Units are fixed by the field names: velocities in mm/s, the hyperfine field in tesla, densities and field gradients in atomic units. See QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "isotope": {
+          "type": "string",
+          "pattern": "^[0-9]{1,3}[A-Z][a-z]{0,2}$",
+          "default": "57Fe",
+          "description": "Resonant nucleus, mass number first, e.g. '57Fe' or '119Sn'. Absent means '57Fe'."
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Reference of the isomer shifts, e.g. 'alpha-Fe, 298 K'."
+        },
+        "temperature_k": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Temperature the parameters refer to, in kelvin."
+        },
+        "calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^x_": {} },
+          "required": ["alpha", "c"],
+          "description": "The linear calibration that turned each site's `contact_density_au` into its `isomer_shift_mm_s`: δ = alpha (ρ(0) − c) + beta.",
+          "properties": {
+            "alpha": { "type": "number", "description": "Slope, in mm/s per e/bohr^3." },
+            "beta": { "type": "number", "description": "Intercept, in mm/s. Absent means 0." },
+            "c": { "type": "number", "description": "Reference contact density, in e/bohr^3." },
+            "label": { "type": "string", "minLength": 1, "description": "Where the calibration comes from, e.g. the functional, basis set and reference set." }
+          }
+        },
+        "sites": {
+          "type": "array",
+          "minItems": 1,
+          "description": "One entry per resonant site.",
+          "items": { "$ref": "#/$defs/MossbauerSite" }
+        }
+      }
+    },
+    "MossbauerSite": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "required": ["atom_index"],
+      "description": "The Mössbauer parameters of one resonant site of a `MossbauerSpectrumPayload`; see QVF spec § 5.4 (Spectra).",
+      "properties": {
+        "atom_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based index into the structure's atoms of the resonant nucleus."
+        },
+        "symbol": { "type": "string", "description": "Element symbol of the atom, e.g. 'Fe'." },
+        "label": { "type": "string", "description": "Site label for display, e.g. 'Fe(II) high spin'." },
+        "isomer_shift_mm_s": {
+          "type": "number",
+          "description": "Isomer shift δ relative to `reference`, in mm/s."
+        },
+        "quadrupole_splitting_mm_s": {
+          "type": "number",
+          "description": "Quadrupole splitting ΔE_Q = (e Q V_zz / 2) (1 + η²/3)^(1/2), in mm/s; signed with V_zz when the producer knows the sign."
+        },
+        "asymmetry": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Asymmetry parameter η = (V_xx − V_yy) / V_zz of the electric field gradient, with |V_zz| ≥ |V_yy| ≥ |V_xx|; dimensionless."
+        },
+        "efg_au": {
+          "$ref": "#/$defs/Matrix3x3",
+          "description": "Electric field gradient tensor at the nucleus in atomic units (E_h / (e bohr^2)): three rows in the Cartesian frame of the structure."
+        },
+        "contact_density_au": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Electron density at the nucleus ρ(0), in e/bohr^3."
+        },
+        "hyperfine_field_t": {
+          "type": "number",
+          "description": "Magnetic hyperfine field at the nucleus, in tesla; signed when the producer knows its direction relative to the electron spin."
+        },
+        "linewidth_mm_s": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Full width at half maximum of each Lorentzian line, in mm/s."
+        },
+        "population": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of the resonant nuclei at this site, the relative area of its subspectrum."
         }
       }
     },

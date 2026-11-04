@@ -2954,8 +2954,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             excited_sections.push_back(DeferredSection{
                 i, sid, &s, has_doc, has_doc ? it->second : Json()});
         }
-        if (kind == "spectra.ir" || kind == "spectra.raman" || kind == "spectra.uvvis" ||
-            kind == "spectra.ecd" || kind == "spectra.vcd" || kind == "spectra.generic") {
+        if (is_spectrum_1d(kind)) {
             auto it = docs.find("spectrum");
             if (it != docs.end() && it->second.is_object() &&
                 it->second.contains("states_ref"))
