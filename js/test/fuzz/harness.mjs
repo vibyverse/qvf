@@ -99,7 +99,12 @@ async function checkReader(raw, limits, problems) {
   };
   const reader = await guard("QvfReader.fromBytes", () => lib.QvfReader.fromBytes(raw, limits));
   if (!reader) return;
+  const seen = new Set();
   for (const s of reader.sections) {
+    // Members are addressed by section id, which resolves to the first section
+    // of that id (duplicate ids are a validator finding, E_SECTION_ID_DUPLICATE).
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
     for (const [role, m] of Object.entries(s.members)) {
       if (m && m.format === "json") await guard("readJson", () => reader.readJson(s.id, role));
       else if (m && m.format === "binary" && "dtype" in m) await guard("readBinary", () => reader.readBinary(s.id, role));
