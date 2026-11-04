@@ -178,7 +178,7 @@ composition, and would be a separate decision.
 "Change process": no member, kind or default unit changes, nothing becomes
 required, and every archive the reference writers emitted before and every
 frozen corpus, negative and legacy archive validates with the verdict it had
-(`run_conformance.py`, the C++ and JavaScript runners). The new `const`
+(`conformance/run_conformance.py`, the C++ and JavaScript runners). The new `const`
 entries constrain keys that could previously hold any unit name, but no
 earlier unit name equals the unit the table fixes for them, so any earlier
 declaration of those keys already contradicted § 4.3 ("a declared unit that
