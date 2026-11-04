@@ -21,7 +21,7 @@ Deviations from the briefs that later packages should know: WP-41 emits
 `qvf::container::Limits`; both writers now write `manifest.json` last; the
 C++ validator and the JavaScript validator run the generated schema checker,
 so tests that isolate one semantic rule validate with the check disabled.
-WP-06 retains the existing schema `$id` pending hosting. WP-61 is in progress without a CI job.
+WP-06 retains the existing schema `$id` pending hosting; WP-61 needs a Rust toolchain.
 
 ## How to run a work package
 
@@ -412,17 +412,6 @@ with the shared finding codes, conformance runner over the corpus in CI
 typed kinds for structure/volume/wavefunction/trajectory/bands/spectra,
 conformance runner as an integration test, `qvf-cli` feature. Certified by
 the corpus; no C ABI dependency.
-**Status.** 🔨 Tranche 1: the `rust/` crate (edition 2021, declared MSRV
-1.74) reads manifests, raw members and little-endian tensors, and validates
-with every check of the JavaScript validator and the same Appendix B codes.
-The JSON Schema runs on the instruction table `scripts/gen_kinds.py` now
-also writes to `rust/src/generated.rs`. The ZIP layer is its own (ZIP64,
-data descriptors, duplicates seen before decompression) on `flate2`, with
-`serde_json` and `sha2`. `cargo test` runs the corpus (78/78), negative
-(118/118) and legacy (1/1) archives with no skips, and a one-off comparison
-found the same (code, severity, location) findings as the Python reference
-on all 197. The writer, typed kind records, the `qvf-cli` feature, an MSRV
-check and a CI job remain. See [the crate README](../rust/README.md).
 
 ### WP-62 · PySCF adapter (second producer) — M · Opus · ROADMAP Tier 2
 **Scope.** `python/qvf/adapters/pyscf.py` (optional dependency): molecule →

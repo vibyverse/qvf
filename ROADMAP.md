@@ -177,7 +177,7 @@ The library other codes link. Core first, then the facades, then every binding o
 ## Phase 4 — ecosystem
 
 - ✅ **WP-60** JavaScript/TypeScript reader (`@qvf/core`) — enables web viewers and notebooks
-- 🔨 **WP-61** Rust crate: `rust/` has a reader (manifests, raw members, little-endian tensors) and a validator that ports every check of the JavaScript validator, with the JSON Schema through the table `gen_kinds.py` generates. Its conformance test passes the corpus (78/78), negative (118/118) and legacy (1/1) archives with no skips, with the same findings as the Python reference on all 197. A writer, typed kinds, a `qvf-cli` feature and a CI job remain ([crate README](rust/README.md))
+- ⬜ **WP-61** Rust crate — independent implementation certified by the corpus
 - 🔨 **WP-62** PySCF adapter — molecular SCF/DFT (#23), explicit spherical signs (#24), closed-shell TDA/TDHF/TDDFT states, spectra and singlet-TDA NTOs (#25), singlet full-response NTOs retaining X+Y and non-unit weights (#26), and grid densities, spin densities and orbitals (`volume.*`) are on main (Unreleased), with optional adapter coverage in candidate CI ([guide](docs/adapters/pyscf.md)). Scalar ECP projectors are written too. Triplet NTOs, unrestricted response and periodic Γ-point calculations remain.
 - ⬜ **WP-63** vibe-qc links libqvf instead of carrying its own implementation (maintainer note; after WP-42/43/46 stabilise; not high priority)
 - 🔨 **WP-64** Docs site with generated API reference and kind catalogue: the generated kind catalogue (`docs/kinds.md`, checked by `gen_kinds.py --check`) the mkdocs site configuration (`mkdocs.yml`, strict local build) the mkdocstrings Python API reference and the Doxygen C++/C API reference landed; publishing remains
@@ -230,7 +230,7 @@ The 2026-10-10 pause has ended. The remaining work is:
   tranches await a later compatible release and explicit consumer adoption.
   The frozen releases take priority; no new version or release date is selected.
 - After the frozen releases, Phase 3 continues with WP-45 / WP-48, then packaging and broader platform checks. WP-46 supplies the Python `qvf` package while keeping `qvf_writer`, `qvf_reader`, `qvf_kinds`, `qvf_model` and `qvf_units` as compatibility imports. `pip install <checkout>/python` preserves those imports for consumers such as vibe-sketch.
-- Parked: WP-06 (hosting the retained schema `$id`), a CI job for the WP-61 Rust crate (it needs a Rust toolchain in CI), compound unit names such as hartree/bohr in the § 4.3 vocabulary, a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job), and a coverage-guided fuzzing run on Linux (WP-50).
+- Parked: WP-06 (hosting the retained schema `$id`), WP-61 (needs a Rust toolchain in CI), compound unit names such as hartree/bohr in the § 4.3 vocabulary, a CI job that runs the C++ / JavaScript / Python schema-checker parity test (it needs all three toolchains in one job), and a coverage-guided fuzzing run on Linux (WP-50).
 - Known consumer gap: no consumer renders `wavefunction.bloch` yet. The cc-pV6Z `l = 6` channel-export defect is fixed on vibe-qc main (#546); existing consumer releases may still need that fix. Fresh checks did not reproduce `space_group_number: 0`: absent symmetry is omitted and a genuine group 221 passes.
 
 ## Getting involved
