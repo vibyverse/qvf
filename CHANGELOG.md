@@ -179,6 +179,16 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
   number, and refuses values that do not fit the columns. Structures without
   it keep the synthetic `UNL` records. gemmi and RDKit read the exported
   files back in the optional tests. No schema, registry or validator change.
+- WP-62: `qvf.adapters.pyscf.add_density_grid` and `add_orbital_grid` write
+  the SCF density (`volume.density`), the spin density of open-shell
+  references (`volume.spin`) and selected orbitals (`volume.orbital`) on a
+  regular grid, evaluated in bounded blocks with PySCF's `numint`.
+  `molecular_grid` builds the default box (4 bohr margin, 0.2 bohr steps) or
+  the `tools.cubegen` grid for a given shape. Volumes name their structure
+  and carry the wavefunction id as `group`. Tests compare with the Appendix A
+  evaluator, `cubegen` and the electron count, with measured grid-dependent
+  tolerances in the guide. Existing kinds only; no schema, registry or
+  validator change.
 - WP-62 ECP projectors: the PySCF adapter writes the scalar radial functions
   of every ECP as `basis.ecp[].projectors`, read from the `ECPscalar`
   integral input. PySCF's `r^(n−2)` power and difference channels map
