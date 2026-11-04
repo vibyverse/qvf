@@ -387,7 +387,7 @@ def write_xtb(results, geometry, target, *, trajectory=None, wbo=None,
                 _binary(writer, "vibrations", "displacements", (x for mode in vectors for row in mode for x in row), [len(vectors), n, 3])
             if molden is not None:
                 archive = Path(work) / "orbitals.qvf"
-                report = import_molden(molden, archive, spin=spin, _unnormalized_primitives=True)
+                report = import_molden(molden, archive, spin=spin, dialect="xtb")
                 _copy_companion(writer, archive, atoms, "wavefunction", canonical_orbitals)
                 companion_reports.append(report); imported.append("wavefunction")
             for i, (path, kind) in enumerate(cubes):
