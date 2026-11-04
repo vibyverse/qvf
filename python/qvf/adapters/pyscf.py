@@ -11,6 +11,17 @@ a molecular ``gto.Mole`` (``RHF``, ``UHF``, ``ROHF``, ``RKS``, ``UKS``,
 ``ROKS``, including their density-fitted and second-order variants), in a
 spherical or a Cartesian basis.
 
+Periodic Γ-point (k = 0) calculations of a ``pbc.gto.Cell`` are written the
+same way (``pbc.scf.RHF``, ``UHF`` and ``pbc.dft.RKS``, ``UKS``, real
+orbitals): the cell as a periodic ``structure`` with ``pbc`` and
+``lattice_vectors``, the orbitals as a ``wavefunction.gto`` with
+``k_point`` ``[0, 0, 0]``. Its ``overlap`` member is the AO overlap of the
+spec, ``⟨χ_μ|χ_ν⟩`` of the cell's AOs without images. The Γ-point orbitals
+are orthonormal in the lattice-summed overlap ``Σ_T ⟨χ_μ|χ_ν(r − T)⟩``,
+which a consumer rebuilds from the basis and the lattice. The populations
+use it. GTH pseudopotentials are recorded by name and core count only.
+k-point sampling (``KRHF`` and the like) and a nonzero ``kpt`` are refused.
+
 ``add_td`` and ``write_td`` add molecular closed-shell TDA/TDHF/TDDFT
 states and UV-visible sticks beside that SCF reference. Singlet TDA and
 full response can also carry paired natural transition orbitals. Full
@@ -292,9 +303,33 @@ def _is_ks(mf):
     return isinstance(mf, dft.rks.KohnShamDFT)
 
 
+def _is_cell(mol):
+    """Whether ``mol`` is a periodic ``pbc.gto.Cell``."""
+    return hasattr(mol, "lattice_vectors")
+
+
+def _periodic_spin_kind(mf):
+    """'restricted' or 'unrestricted' for a supported Γ-point SCF of a cell."""
+    from pyscf.pbc.scf import ghf, hf, khf, rohf, uhf
+    if isinstance(mf, khf.KSCF):
+        raise NotImplementedError(
+            f"{type(mf).__name__}: k-point sampling is not mapped. The adapter writes "
+            f"Γ-point pbc.scf.RHF/UHF and pbc.dft.RKS/UKS objects (k-resolved "
+            f"orbitals belong in wavefunction.bloch, a later tranche)")
+    if isinstance(mf, uhf.UHF):
+        return "unrestricted"
+    if isinstance(mf, hf.RHF) and not isinstance(mf, (rohf.ROHF, ghf.GHF)):
+        return "restricted"
+    raise NotImplementedError(
+        f"{type(mf).__name__}: for periodic cells the PySCF adapter writes Γ-point "
+        f"RHF, UHF, RKS and UKS results only")
+
+
 def _spin_kind(mf):
     """'restricted', 'restricted_open' or 'unrestricted' for a supported SCF."""
     from pyscf import scf
+    if _is_cell(getattr(mf, "mol", None)):
+        return _periodic_spin_kind(mf)
     if isinstance(mf, scf.uhf.UHF):
         return "unrestricted"
     if isinstance(mf, scf.rohf.ROHF):
@@ -339,8 +374,9 @@ def basis_name(mol) -> str | None:
 
 
 def _check_molecule(mol):
-    if hasattr(mol, "lattice_vectors"):
-        raise NotImplementedError("periodic cells are a later WP-62 tranche")
+    if _is_cell(mol) and int(mol.dimension) not in (1, 2, 3):
+        raise NotImplementedError(f"a cell of dimension {mol.dimension} is not mapped, "
+                                  f"use a molecular gto.Mole")
     for i in range(mol.natm):
         if mol.atom_charge(i) == 0:
             raise ValueError(f"atom {i} ({mol.atom_symbol(i)}) is a ghost or dummy "
@@ -355,6 +391,22 @@ def _check_scf(mf):
         raise NotImplementedError("solvent models are not mapped by this tranche")
     _spin_kind(mf)
     _check_molecule(mf.mol)
+    if _is_cell(mf.mol):
+        _check_gamma(mf)
+
+
+def _check_gamma(mf):
+    """Refuse a periodic SCF that is not a real Γ-point result."""
+    np = _np()
+    kpt = np.asarray(getattr(mf, "kpt", np.zeros(3)), dtype=float).reshape(-1)
+    if kpt.shape != (3,) or np.abs(kpt).max() > 1e-12:
+        raise NotImplementedError(
+            f"kpt {kpt.tolist()} is not the Γ point. Orbitals at other k-points "
+            f"belong in wavefunction.bloch, a later tranche")
+    for name in ("mo_coeff", "mo_energy", "mo_occ"):
+        if np.iscomplexobj(np.asarray(getattr(mf, name))):
+            raise NotImplementedError(f"complex {name}: the adapter writes real "
+                                      f"Γ-point orbitals only")
 
 
 # -- prepared data shared by the sections --------------------------------------
@@ -367,7 +419,12 @@ class _Prepared:
         self.mol = mol = mf.mol
         self.spin = _spin_kind(mf)
         self.map = ao_map(mol)
+        # For a cell this is the AO overlap of spec § 5.3, without images.
+        # The Γ-point orbitals are orthonormal in the lattice sum, ``metric``.
         self.overlap = self.map.overlap(mol.intor_symmetric("int1e_ovlp"))
+        self.periodic = _is_cell(mol)
+        self.metric = (self.map.overlap(mol.pbc_intor("int1e_ovlp", hermi=1))
+                       if self.periodic else self.overlap)
         dm = np.asarray(mf.make_rdm1(), dtype=float)
         if dm.ndim == 3:  # UHF and ROHF return the alpha and beta densities
             self.dm_alpha = self.map.density(dm[0])
@@ -407,6 +464,11 @@ def add_structure(writer, mol, *, section_id: str = "structure",
     written in Å with the format's conversion factor (spec § 4.3), so a
     consumer recovers the bohr positions the integrals used. The section
     carries ``charge`` and ``multiplicity`` (``mol.spin + 1``).
+
+    For a ``pbc.gto.Cell`` the section is periodic: ``lattice_vectors`` are
+    the rows of ``cell.lattice_vectors()`` (bohr) in Å through ``Lattice``,
+    and ``pbc`` marks the first ``cell.dimension`` axes periodic, as PySCF
+    treats them. The positions are those of the cell, not wrapped.
     """
     _pyscf()
     from pyscf.data import elements
@@ -417,15 +479,39 @@ def add_structure(writer, mol, *, section_id: str = "structure",
         symbol = mol.atom_pure_symbol(i)
         atoms.append({"symbol": symbol, "atomic_number": int(elements.charge(symbol)),
                       "position": [float(x) / BOHR_PER_ANGSTROM for x in coords[i]]})
+    periodic: dict[str, Any] = {}
+    if _is_cell(mol):
+        from ..model import Lattice
+        rows_bohr = _np().asarray(mol.lattice_vectors(), dtype=float)
+        lattice = Lattice.from_columns_bohr(rows_bohr.T.tolist())
+        periodic = {"pbc": [i < int(mol.dimension) for i in range(3)],
+                    "lattice_vectors": lattice.rows_angstrom()}
     return writer.add_structure(atoms, charge=int(mol.charge),
                                 multiplicity=int(mol.spin) + 1,
-                                section_id=section_id, label=label)
+                                section_id=section_id, label=label, **periodic)
+
+
+def _pseudo_name(mol, i):
+    """The name of atom ``i``'s GTH pseudopotential in a cell, else None."""
+    if not _is_cell(mol) or mol.atom_symbol(i) not in (getattr(mol, "_pseudo", None) or {}):
+        return None
+    pseudo = mol.pseudo
+    name = pseudo if isinstance(pseudo, str) else (
+        pseudo.get(mol.atom_symbol(i), pseudo.get(mol.atom_pure_symbol(i)))
+        if isinstance(pseudo, dict) else None)
+    return name.strip() if isinstance(name, str) and name.strip() else "gth"
 
 
 def _ecp_entries(mol):
     entries = []
     for i in range(mol.natm):
         core = int(mol.atom_nelec_core(i))
+        gth = _pseudo_name(mol, i)
+        if gth is not None:
+            # A GTH potential is not the semi-local form of spec § 5.3: name
+            # and core count only, also for a zero core (hydrogen).
+            entries.append({"center": i, "n_core_electrons": core, "label": gth})
+            continue
         if core <= 0:
             continue
         entry: dict[str, Any] = {"center": i, "n_core_electrons": core}
@@ -464,6 +550,9 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label):
         labels = _symmetry_labels(p.mol, mf.mo_coeff)
         if density:
             kwargs["density_matrix"] = p.dm_total
+    if p.periodic:
+        kwargs["k_point"] = [0.0, 0.0, 0.0]
+        labels = None  # space-group labels are not point-group irreps
     sid = writer.add_wavefunction_gto(
         p.map.shells, spin=p.spin, pure=p.map.pure, structure_ref=structure_ref,
         overlap=p.overlap, n_electrons=int(p.mol.nelectron), ecp=_ecp_entries(p.mol),
@@ -487,6 +576,10 @@ def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
     written too; ECP projectors are not (the potential is named by its label
     and core count). The structure ``structure_ref`` names must already be
     in the writer. Returns the section id.
+
+    A Γ-point cell result adds ``k_point`` ``[0, 0, 0]``. Its ``overlap`` is
+    the AO overlap without images. The orbitals are orthonormal in the
+    lattice-summed overlap instead (see the module notes).
     """
     return _add_wavefunction(writer, _Prepared(mf), structure_ref=structure_ref,
                              section_id=section_id, density=density, label=label)
@@ -494,7 +587,7 @@ def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
 
 def _populations(p):
     np = _np()
-    s = p.overlap
+    s = p.metric
     eigenvalues, vectors = np.linalg.eigh(s)
     if eigenvalues.min() <= 0.0:
         raise ValueError("the AO overlap matrix is not positive definite")
@@ -554,7 +647,12 @@ def add_job_spec(writer, mf, *, structure_ref: str = "structure",
     ``charge`` and ``multiplicity`` are the molecule's; ``tasks`` is
     ``["single_point"]``; ``scf`` carries ``conv_tol``, ``max_cycle`` and the
     initial guess name. A ``disp`` setting becomes ``dispersion`` and an
-    X2C Hamiltonian ``relativistic: "x2c"``. Returns the section id.
+    X2C Hamiltonian ``relativistic: "x2c"``. A Γ-point cell result is a
+    ``"periodic"`` job with ``kpoints`` ``[1, 1, 1]`` and ``options`` naming
+    the FFT ``mesh``, the integral scheme (``fftdf``, ``gdf``, …), the
+    pseudopotential and the exact-exchange treatment ``exxdiv`` (``null``
+    for none).
+    Returns the section id.
     """
     _check_scf(mf)
     mol = mf.mol
@@ -577,7 +675,24 @@ def add_job_spec(writer, mf, *, structure_ref: str = "structure",
         kwargs["dispersion"] = disp.strip().lower()
     if getattr(mf, "with_x2c", None) is not None:
         kwargs["relativistic"] = "x2c"
+    if _is_cell(mol):
+        kwargs.update(job_type="periodic", kpoints=[1, 1, 1], options=_periodic_options(mf))
     return writer.add_job_spec(**kwargs)
+
+
+def _periodic_options(mf):
+    """PySCF settings of a Γ-point job that change its energy."""
+    cell = mf.mol
+    options: dict[str, Any] = {"mesh": [int(n) for n in cell.mesh],
+                               "integrals": type(mf.with_df).__name__.lower()}
+    pseudo = cell.pseudo
+    if isinstance(pseudo, str) and pseudo.strip():
+        options["pseudo"] = pseudo.strip()
+    elif isinstance(pseudo, dict) and pseudo:
+        options["pseudo"] = {str(k): str(v) for k, v in pseudo.items()}
+    exxdiv = getattr(mf, "exxdiv", None)  # exact-exchange divergence treatment
+    options["exxdiv"] = exxdiv if isinstance(exxdiv, str) else None
+    return options
 
 
 def _software(mf):
@@ -603,7 +718,10 @@ def set_scf_provenance(writer, mf) -> None:
     (``"converged"``, or ``"failed"`` for an unconverged SCF) and
     ``software``. ``energies`` restates ``e_tot`` as the total of that
     method, with the nuclear repulsion and the electronic energy (and a
-    dispersion correction, when PySCF reports one) as components.
+    dispersion correction, when PySCF reports one) as components. For a
+    cell, ``nuclear_repulsion`` is PySCF's Ewald energy of the point nuclei
+    (effective charges ``Z`` minus the pseudopotential core) per cell, and
+    ``total`` includes any exchange-divergence (Madelung) correction.
     """
     _check_scf(mf)
     mol = mf.mol
@@ -718,6 +836,8 @@ class _PreparedTD:
         from pyscf.tdscf import rhf, rks
         from ..units import HARTREE_IN_EV
         np = _np()
+        if _is_cell(getattr(td, "mol", None)) or _is_cell(getattr(getattr(td, "_scf", None), "mol", None)):
+            raise NotImplementedError("periodic response is not mapped by the TD adapter")
         if not isinstance(td, (rhf.TDA, rhf.TDHF)) or isinstance(td, (rks.dRPA, rks.dTDA)):
             raise NotImplementedError("the TD adapter supports molecular RHF/RKS TDA and TDHF/TDDFT")
         if getattr(td, "with_solvent", None) is not None:
