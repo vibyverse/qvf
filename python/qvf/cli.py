@@ -14,7 +14,7 @@ from . import operations
 
 _CONVERT_FORMATS = ("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar",
                     "chgcar", "espresso-in", "espresso-xml", "espresso-cube", "espresso-filplot", "aims",
-                    "molden")
+                    "molden", "fchk")
 
 
 def _json(value):
@@ -233,6 +233,8 @@ def _execute(args):
                 result = convert.export_cif(args.input, args.output, section=args.section)
             elif args.output_format == "molden":
                 result = convert.export_molden(args.input, args.output, section=args.section)
+            elif args.output_format == "fchk":
+                result = convert.export_fchk(args.input, args.output, section=args.section)
             else:
                 result = convert.export_xyz(args.input, args.output, section=args.section,
                                             extended=args.output_format == "extxyz")
@@ -272,6 +274,8 @@ def _execute(args):
             elif args.input_format == "molden":
                 result = convert.import_molden(args.input, args.output, spin=args.spin,
                                                dialect=args.molden_dialect or "standard")
+            elif args.input_format == "fchk":
+                result = convert.import_fchk(args.input, args.output)
             else:
                 result = convert.import_xyz(args.input, args.output)
         else:
