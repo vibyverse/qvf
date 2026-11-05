@@ -128,6 +128,16 @@ _VOLUME_DATA_SHAPES: dict[str, tuple[int, Optional[int], str]] = {
     "volume.complex": (4, 2, "[nx, ny, nz, 2]"),
     "volume.series": (4, None, "[n, nx, ny, nz]"),
 }
+# The unit name spec § 4.3 fixes for the grid `units.data` of a volume kind.
+# One grid payload serves every `volume.*` kind, so the schema cannot fix it
+# per kind; another unit name there is E_UNIT_CONTRADICTED.
+_VOLUME_DATA_UNITS: dict[str, str] = {
+    "volume.density": "e_per_bohr3",
+    "volume.transition_density": "e_per_bohr3",
+    "volume.potential": "hartree_per_e",
+    "volume.rdg": "dimensionless",
+    "volume.laplacian": "e_per_bohr5",
+}
 # The kinds a `volume.series` axis `trajectory_ref` may name (spec § 5.2).
 _SERIES_REF_KINDS = ("trajectory", "reaction.path")
 
@@ -265,6 +275,178 @@ def _size_problem(member: dict[str, Any], info: zipfile.ZipInfo) -> Optional[tup
     return None
 
 
+class ZipUnreadable(ValueError, zipfile.BadZipFile):
+    """An archive or entry that cannot be read (``E_ZIP_UNREADABLE``).
+
+    A ``ValueError`` like every other refusal of the readers, and a
+    ``zipfile.BadZipFile`` so that code catching the ``zipfile`` error keeps
+    working.
+    """
+
+
+def _end_record_problem(zf: zipfile.ZipFile) -> Optional[str]:
+    """Why the end of central directory record disagrees with the archive.
+
+    ``zipfile`` reads every record that fits in the central directory and
+    ignores the disk numbers and the entry count of the end record; the C++
+    and JavaScript readers refuse a multi-volume archive and an entry count
+    that differs from the records. Uses ``zipfile._EndRecData`` and answers
+    ``None`` when it is absent.
+    """
+    end_record = getattr(zipfile, "_EndRecData", None)
+    if end_record is None or zf.fp is None:
+        return None
+    endrec = end_record(zf.fp)
+    if not endrec:
+        return None
+    if endrec[1] != 0 or endrec[2] != 0:
+        return "multi-volume ZIP archives are not supported"
+    count = len(zf.infolist())
+    if endrec[3] != count or endrec[4] != count:
+        return (f"the end record counts {endrec[4]} entries, the central "
+                f"directory holds {count}")
+    return None
+
+
+def _open_zip(source: Any) -> zipfile.ZipFile:
+    """``zipfile.ZipFile(source)``, refusing any damage as ``ZipUnreadable``."""
+    try:
+        zf = zipfile.ZipFile(source, "r")
+    except MemoryError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - any parse failure: unreadable
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: not a readable zip: {exc}") from exc
+    try:
+        problem = _end_record_problem(zf)
+    except MemoryError:
+        zf.close()
+        raise
+    except Exception as exc:  # noqa: BLE001
+        problem = str(exc)
+    if problem:
+        zf.close()
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: not a readable zip: {problem}")
+    return zf
+
+
+def _inflates_past_end(source: Any, info: zipfile.ZipInfo) -> bool:
+    """Whether a DEFLATE entry read up to its declared size has more output.
+
+    ``zipfile`` stops at the declared size without looking further, so this
+    finishes the stream on the reader's own decompressor (bounded: one byte of
+    output at a time) and also reports a stream that ends before its final
+    block. It relies on ``ZipExtFile`` internals and answers ``False`` when
+    they are absent.
+    """
+    if info.compress_type != zipfile.ZIP_DEFLATED:
+        return False
+    d = getattr(source, "_decompressor", None)
+    fileobj = getattr(source, "_fileobj", None)
+    left = getattr(source, "_compress_left", None)
+    if d is None or fileobj is None or not isinstance(left, int) \
+            or not hasattr(d, "unconsumed_tail"):
+        return False
+    data = d.unconsumed_tail
+    while not d.eof:
+        if data:
+            if d.decompress(data, 1):
+                return True
+            data = d.unconsumed_tail
+            continue
+        if left <= 0:
+            return True                     # the stream has no final block
+        data = fileobj.read(min(left, 1 << 16))
+        if not data:
+            return True
+        left -= len(data)
+    source._compress_left = left
+    return False
+
+
+def _iter_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo, chunk_size: int = 1 << 20):
+    """Yield the uncompressed bytes of an entry in bounded chunks.
+
+    Never inflates past the size the central directory records: a stream that
+    is shorter, longer or damaged, a CRC-32 mismatch and an entry ``zipfile``
+    cannot decode raise ``ZipUnreadable`` (spec § 2.1, § 6.1). The last chunk
+    has been verified only when the iterator is exhausted.
+    """
+    label = f"ZIP entry {info.orig_filename!r}"
+    if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+        # zipfile would also decode bzip2, LZMA and Zstandard; QVF allows
+        # only STORE and DEFLATE (spec § 2.1), like the other readers.
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} uses compression method "
+                            f"{info.compress_type}, not STORE (0) or DEFLATE (8)")
+    if (info.compress_type == zipfile.ZIP_STORED
+            and info.compress_size != info.file_size):
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} is stored with "
+                            f"{info.compress_size} bytes but declares {info.file_size}")
+    try:
+        with zf.open(info) as source:
+            left = info.file_size
+            while left > 0:
+                chunk = source.read(min(chunk_size, left))
+                if not chunk:
+                    raise ZipUnreadable(
+                        f"E_ZIP_UNREADABLE: {label} inflates to "
+                        f"{info.file_size - left} bytes, not its declared "
+                        f"{info.file_size}")
+                left -= len(chunk)
+                yield chunk
+            # One more read finishes the entry: zipfile checks the CRC-32 there.
+            source.read(1)
+            if _inflates_past_end(source, info):
+                raise ZipUnreadable(
+                    f"E_ZIP_UNREADABLE: {label} does not end at its declared "
+                    f"{info.file_size} bytes")
+    except (ZipUnreadable, MemoryError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - any decoder failure: unreadable
+        raise ZipUnreadable(f"E_ZIP_UNREADABLE: {label} cannot be read: {exc}") from exc
+
+
+def _reason(exc: BaseException) -> str:
+    """An exception's message without the code and label ``_iter_entry`` adds."""
+    text = str(exc).removeprefix("E_ZIP_UNREADABLE: ")
+    return text.split(" cannot be read: ", 1)[-1] if text.startswith("ZIP entry ") else text
+
+
+def _read_entry(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
+    """The uncompressed bytes of an entry, read through ``_iter_entry``."""
+    return b"".join(_iter_entry(zf, info))
+
+
+def _reject_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not a JSON value (RFC 8259)")
+
+
+def _parse_json(raw: bytes) -> Any:
+    """Parse a JSON member or manifest: UTF-8 JSON as RFC 8259 defines it.
+
+    Unlike ``json.loads`` on bytes, this does not detect UTF-16 or UTF-32
+    and refuses the ``NaN``, ``Infinity`` and ``-Infinity`` extensions, as
+    the C++ and JavaScript validators do. One leading UTF-8 byte order mark
+    is skipped, as before. Raises ``ValueError`` (``UnicodeDecodeError`` for
+    bytes that are not UTF-8).
+    """
+    return json.loads(raw.decode("utf-8-sig"), parse_constant=_reject_constant)
+
+
+def _loads_coded(raw: bytes, code: str) -> Any:
+    """``json.loads`` whose refusals carry a finding code.
+
+    A ``json.JSONDecodeError`` keeps its type (its message gains the code);
+    any other parser refusal, such as an integer too long to convert, becomes
+    a ``ValueError`` with the code.
+    """
+    try:
+        return _parse_json(raw)
+    except json.JSONDecodeError as exc:
+        raise json.JSONDecodeError(f"{code}: {exc.msg}", exc.doc, exc.pos) from exc
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ValueError(f"{code}: {exc}") from exc
+
+
 class QvfReader:
     """Lazy reader for a ``.qvf`` archive. Verifies member checksums on read.
 
@@ -280,7 +462,7 @@ class QvfReader:
     def __init__(self, path: str, *, limits: Optional[Limits] = None) -> None:
         self.path = path
         self.limits = limits or Limits()
-        self._zip = zipfile.ZipFile(path, "r")
+        self._zip = _open_zip(path)
         try:
             dups = _duplicate_entries(self._zip)
             if dups:
@@ -290,7 +472,7 @@ class QvfReader:
             # getinfo() resolves a duplicated name to its last central-directory
             # record, which is the current manifest (spec § 2.3).
             raw = self._read_json_bytes(self._zip.getinfo(_MANIFEST), _MANIFEST)
-            self.manifest: dict[str, Any] = json.loads(raw)
+            self.manifest: dict[str, Any] = _loads_coded(raw, "E_MANIFEST_JSON")
             order = (self.manifest.get("byte_order", "little")
                      if isinstance(self.manifest, dict) else "little")
             if order != "little":
@@ -327,7 +509,7 @@ class QvfReader:
         if info.file_size > cap:
             raise ValueError(f"E_JSON_TOO_LARGE: {label} is {info.file_size} "
                              f"bytes, over the {cap}-byte JSON cap")
-        raw = self._zip.read(info)
+        raw = _read_entry(self._zip, info)
         limit = self.limits.max_json_depth
         if _json_depth(raw, limit) > limit:
             raise ValueError(f"E_JSON_TOO_DEEP: {label} nests deeper than "
@@ -342,11 +524,11 @@ class QvfReader:
         problem = _size_problem(member, info)
         if problem:
             raise ValueError(f"{problem[0]}: {problem[1]}")
-        raw = self._zip.read(info)
+        raw = _read_entry(self._zip, info)
         if verify and "sha256" in member:
             got = hashlib.sha256(raw).hexdigest()
             if got != member["sha256"]:
-                raise ValueError(f"sha256 mismatch for {member['path']}")
+                raise ValueError(f"E_SHA256_MISMATCH: sha256 mismatch for {member['path']}")
         return raw
 
     def read_json(self, member: dict[str, Any]) -> Any:
@@ -359,7 +541,7 @@ class QvfReader:
         if _json_depth(raw, limit) > limit:
             raise ValueError(f"E_JSON_TOO_DEEP: {member['path']} nests deeper "
                              f"than {limit} levels")
-        return json.loads(raw)
+        return _loads_coded(raw, "E_JSON_INVALID")
 
     def read_array(self, member: dict[str, Any]):
         import numpy as np
@@ -1690,6 +1872,21 @@ def _volume_errors(sid: str, kind: str, members: Any, docs: dict[str, Any],
     return errors
 
 
+def _grid_data_unit_error(sid: str, kind: Any, grid: Any) -> Optional[str]:
+    """A grid ``units.data`` that contradicts the unit spec § 4.3 fixes for
+    the volume kind, or None. Only a unit name contradicts: a string outside
+    the vocabulary is ``W_UNIT_UNKNOWN`` alone."""
+    fixed = _VOLUME_DATA_UNITS.get(kind) if isinstance(kind, str) else None
+    units = grid.get("units") if isinstance(grid, dict) else None
+    if fixed is None or not isinstance(units, dict):
+        return None
+    unit = units.get("data")
+    if not isinstance(unit, str) or unit == fixed or unit not in qvf_kinds.UNITS:
+        return None
+    return (f"section {sid!r}: grid units.data {unit!r} contradicts the unit "
+            f"{fixed!r} that spec § 4.3 fixes for {kind} data")
+
+
 def _is_bool3(value: Any) -> bool:
     return (isinstance(value, list) and len(value) == 3
             and all(isinstance(x, bool) for x in value))
@@ -2106,8 +2303,10 @@ def validate_qvf(path: str, *, limits: Optional[Limits] = None, level=Level.All)
     shapes and pairing, ``basis.n_electrons`` against the occupations and
     ``provenance.n_electrons``, and the Appendix A.1 diagonal of ``overlap``,
     ``E_NORMALIZATION``), the data shapes of the vector, complex, series and
-    Laplacian volumes, a series ``axis`` against its slabs, and a periodic
-    grid's span against the cell of its structure (spec § 5.2), and the
+    Laplacian volumes, a series ``axis`` against its slabs, a periodic
+    grid's span against the cell of its structure, and a grid
+    ``units.data`` against the unit § 4.3 fixes for its volume kind
+    (``E_UNIT_CONTRADICTED``) (spec § 5.2), and the
     ``properties.*`` rules (symmetric elastic matrices, ``static`` =
     ``electronic`` + ``ionic``, one Born tensor per atom, and a dipole that
     agrees with the root ``dipole_moment``), and the ``wavefunction.bloch``
@@ -2133,9 +2332,10 @@ def validate_qvf(path: str, *, limits: Optional[Limits] = None, level=Level.All)
     out = _Findings()
 
     try:
-        zf = zipfile.ZipFile(path, "r")
+        zf = _open_zip(path)
     except Exception as exc:  # noqa: BLE001 — any failure means unreadable
-        out.error("E_ZIP_UNREADABLE", "archive", f"not a readable zip: {exc}")
+        reason = str(exc).removeprefix("E_ZIP_UNREADABLE: ").removeprefix("not a readable zip: ")
+        out.error("E_ZIP_UNREADABLE", "archive", f"not a readable zip: {reason}")
         return out.report(0)
     with zf:
         n_sections = _validate_open_zip(zf, lim, out, level)
@@ -2213,17 +2413,17 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
     if "manifest.json" in unsafe:
         return 0
     try:
-        raw = zf.read(minfo)
+        raw = _read_entry(zf, minfo)
     except Exception as exc:  # noqa: BLE001
         out.error("E_ZIP_UNREADABLE", "entry:manifest.json",
-                  f"ZIP entry 'manifest.json' cannot be read: {exc}")
+                  f"ZIP entry 'manifest.json' cannot be read: {_reason(exc)}")
         return 0
     if _json_depth(raw, lim.max_json_depth) > lim.max_json_depth:
         out.error("E_JSON_TOO_DEEP", "manifest.json",
                   f"manifest.json nests deeper than {lim.max_json_depth} levels")
         return 0
     try:
-        manifest = json.loads(raw)
+        manifest = _parse_json(raw)
     except Exception as exc:  # noqa: BLE001
         out.error("E_MANIFEST_JSON", "manifest.json",
                   f"manifest.json is not valid JSON: {exc}")
@@ -2431,10 +2631,10 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                           f"{lim.max_json_bytes}-byte JSON cap")
                 continue
             try:
-                raw = zf.read(info)
+                raw = _read_entry(zf, info)
             except Exception as exc:  # noqa: BLE001
                 out.error("E_ZIP_UNREADABLE", f"entry:{mpath}",
-                          f"ZIP entry {mpath!r} cannot be read: {exc}")
+                          f"ZIP entry {mpath!r} cannot be read: {_reason(exc)}")
                 continue
             if "sha256" in m and hashlib.sha256(raw).hexdigest() != m["sha256"]:
                 out.error("E_SHA256_MISMATCH", mwhere,
@@ -2446,7 +2646,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                               f"{lim.max_json_depth} levels")
                     continue
                 try:
-                    doc = json.loads(raw)
+                    doc = _parse_json(raw)
                 except Exception as exc:  # noqa: BLE001
                     out.error("E_JSON_INVALID", mwhere,
                               f"member {mpath!r}: not valid JSON ({exc})")
@@ -2697,6 +2897,9 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             for code, msg in _grid_errors(sid, s, grid, kinds_by_id, cells_of,
                                           only_structure):
                 out.error(code, mwhere, msg)
+            msg = _grid_data_unit_error(sid, s.get("kind"), grid)
+            if msg is not None:
+                out.error("E_UNIT_CONTRADICTED", mwhere, msg)
 
         # properties.*: rules JSON Schema cannot express (spec § 5.13); the Born
         # charges are counted against a structure that may come later.

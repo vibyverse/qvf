@@ -180,3 +180,290 @@ def render(schema,model):
     copy += ['    throw std::invalid_argument("copy_section requires a canonical kind");', '}']
     text='\n'.join(head+types.lines+sections+copy+['} } // qvf::kinds','#endif',''])
     return text,types.fallbacks
+
+
+# --- Rust: rust/src/kinds.rs ---------------------------------------------------
+#
+# The same mapping as the C++ records, as serde models: known fields get Rust
+# types, open fields land in a flattened `extra` map, and every canonical kind
+# gets a struct with its section fields and typed members that implements
+# `crate::typed::TypedKind`.
+
+RUST_KEYWORDS = {'as', 'async', 'await', 'break', 'const', 'continue', 'crate', 'dyn', 'else', 'enum', 'extern',
+                 'false', 'fn', 'for', 'if', 'impl', 'in', 'let', 'loop', 'match', 'mod', 'move', 'mut', 'pub',
+                 'ref', 'return', 'self', 'Self', 'static', 'struct', 'super', 'trait', 'true', 'type', 'unsafe',
+                 'use', 'where', 'while', 'abstract', 'become', 'box', 'do', 'final', 'macro', 'override', 'priv',
+                 'typeof', 'unsized', 'virtual', 'yield', 'try', 'gen', 'extra'}
+
+
+def rust_ident(name):
+    out = re.sub(r'[^A-Za-z0-9_]', '_', name)
+    if not out or out[0].isdigit():
+        out = 'field_' + out
+    if out in RUST_KEYWORDS:
+        out += '_'
+    return out
+
+
+def rust_quote(s):
+    return json.dumps(s, ensure_ascii=False)
+
+
+class RustTypes(Types):
+    """Rust type names for schema nodes, collecting struct and enum items."""
+
+    def __init__(self, schema):
+        super().__init__(schema)
+        self.unions = {}
+        self.used = set()
+        self.stack = []
+
+    def unique(self, name):
+        base, n = name, 2
+        while name in self.used:
+            name = f'{base}{n}'
+            n += 1
+        self.used.add(name)
+        return name
+
+    @staticmethod
+    def variant(t):
+        simple = {'String': 'Str', 'i64': 'Int', 'f64': 'Num', 'bool': 'Bool', '()': 'Null', 'Value': 'Json'}
+        if t in simple:
+            return simple[t]
+        for prefix, v in (('Vec<', 'List'), ('BTreeMap<', 'Map'), ('[', 'Array'), ('(', 'Tuple'), ('Option<', 'Maybe')):
+            if t.startswith(prefix):
+                return v
+        return t
+
+    def union(self, types, name='Choice'):
+        types = list(dict.fromkeys(types))
+        if len(types) == 1:
+            return types[0]
+        if '()' in types and len(types) == 2:
+            return 'Option<' + next(t for t in types if t != '()') + '>'
+        # An untagged enum tries variants in order: integers before numbers,
+        # so that an integer stays an integer through a round trip.
+        if 'i64' in types and 'f64' in types:
+            types.remove('i64')
+            types.insert(types.index('f64'), 'i64')
+        key = tuple(types)
+        if key in self.unions:
+            return self.unions[key]
+        enum = self.unique(name)
+        self.unions[key] = enum
+        seen = set()
+        L = ['#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]', '#[serde(untagged)]', f'pub enum {enum} {{']
+        for t in types:
+            v = self.variant(t)
+            base, n = v, 2
+            while v in seen:
+                v = f'{base}{n}'
+                n += 1
+            seen.add(v)
+            L.append(f'    {v},' if t == '()' else f'    {v}({self.boxed(t)}),')
+        L += ['}', '']
+        self.lines += L
+        return enum
+
+    def boxed(self, t):
+        # A record that contains itself (directly or through an enum) needs
+        # indirection; Vec and BTreeMap already provide it.
+        return f'Box<{t}>' if t in self.stack else t
+
+    def type(self, node, name):
+        if not isinstance(node, dict) or not node:
+            self.fallbacks.append(name)
+            return 'Value'
+        if '$ref' in node and all(k in ('$ref', 'description', '$comment', 'deprecated') for k in node):
+            ref = node['$ref'].rsplit('/', 1)[-1]
+            return self.named(self.defs[ref], ref)
+        node = self.merged(node)
+        typ = node.get('type')
+        if isinstance(typ, list):
+            return self.union([self.type(dict(node, type=t), name + pascal(t)) for t in typ], name)
+        if not typ and 'const' in node:
+            typ = self.literal_type(node['const'])
+        if not typ and node.get('enum'):
+            typ = self.literal_type(node['enum'][0])
+        if not typ and node.get('properties'):
+            typ = 'object'
+        if not typ and ('anyOf' in node or 'oneOf' in node):
+            choices = node.get('anyOf', node.get('oneOf'))
+            return self.union([self.type(n, name + 'Alternative' + str(i + 1)) for i, n in enumerate(choices)], name)
+        basic = {'string': 'String', 'integer': 'i64', 'number': 'f64', 'boolean': 'bool', 'null': '()'}
+        if typ in basic:
+            return basic[typ]
+        if typ == 'array':
+            if node.get('prefixItems'):
+                types = [self.type(x, name + 'Item' + str(i + 1)) for i, x in enumerate(node['prefixItems'])]
+                if len(set(types)) == 1 and node.get('maxItems') == len(types) and len(types) <= 32:
+                    return f'[{types[0]}; {len(types)}]'
+                if (node.get('items') is False or node.get('maxItems') == len(types)) and len(types) <= 16:
+                    return '(' + ', '.join(types) + ',)' if len(types) == 1 else '(' + ', '.join(types) + ')'
+                item = self.union(types + [self.type(node.get('items', {}), name + 'Item')], name + 'Item')
+            else:
+                item = self.type(node.get('items', {}), name + 'Item')
+            if 'maxItems' in node and node.get('minItems') == node['maxItems'] and 0 < node['maxItems'] <= 32:
+                return f'[{item}; {node["maxItems"]}]'
+            return f'Vec<{item}>'
+        if typ == 'object' or 'patternProperties' in node:
+            props = node.get('properties', {})
+            if not props:
+                subs = list(node.get('patternProperties', {}).values())
+                ap = node.get('additionalProperties')
+                if isinstance(ap, dict):
+                    subs.append(ap)
+                item = self.union([self.type(n, name + 'Entry' + str(i)) for i, n in enumerate(subs)], name + 'Entry') if subs else 'Value'
+                return f'BTreeMap<String, {item}>'
+            return self.record(node, name)
+        self.fallbacks.append(name)
+        return 'Value'
+
+    def record(self, node, name):
+        if name in self.done:
+            return self.done[name]
+        self.used.add(name)
+        self.done[name] = name
+        self.stack.append(name)
+        props = node.get('properties', {})
+        req = set(node.get('required', []))
+        fields = [(k, self.type(v, name + pascal(k)), k in req) for k, v in props.items()]
+        L = ['#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]', f'pub struct {name} {{']
+        idents = set()
+        for k, t, required in fields:
+            ident = rust_ident(k)
+            while ident in idents:
+                ident += '_'
+            idents.add(ident)
+            attrs = [] if ident == k else [f'rename = {rust_quote(k)}']
+            t = self.boxed(t)
+            if not required:
+                attrs += ['default', 'skip_serializing_if = "Option::is_none"']
+                if t.startswith('Option<'):
+                    # Absent and null are different: absent is the outer None.
+                    attrs.append('with = "crate::typed::double_option"')
+                t = f'Option<{t}>'
+            if attrs:
+                L.append(f'    #[serde({", ".join(attrs)})]')
+            L.append(f'    pub {ident}: {t},')
+        L += ['    /// Fields the schema leaves open, kept for the round trip.',
+              '    #[serde(flatten)]', '    pub extra: BTreeMap<String, Value>,', '}', '']
+        self.stack.pop()
+        self.lines += L
+        return name
+
+
+def render_rust(schema, model):
+    types = RustTypes(schema)
+    for kind in model.kinds:
+        types.used.add(NAMES.get(kind['kind'], pascal(kind['kind'])))
+    items = []
+    names = []
+    for kind in model.kinds:
+        name = NAMES.get(kind['kind'], pascal(kind['kind']))
+        node = types.merged(schema['$defs'][kind['def']])
+        # The common section fields of `$defs/Section` (id, label, refs) come
+        # first, then the kind's own; `kind` and `members` are the struct.
+        base = schema['$defs']['Section']
+        props = {k: v for k, v in list(base['properties'].items()) + list(node.get('properties', {}).items())
+                 if k not in ('kind', 'members')}
+        required = [k for k in base.get('required', []) + node.get('required', []) if k in props]
+        fields = types.record({'type': 'object', 'properties': props, 'required': required}, name + 'Fields')
+        roles = []
+        known = [r['role'] for r in kind['roles'] if not r['pattern']]
+        patterns = [r for r in kind['roles'] if r['pattern']]
+        if len(patterns) > 1:
+            raise ValueError(f'{kind["kind"]}: more than one pattern role has no typed representation')
+        for role in kind['roles']:
+            if role['format'] == 'json':
+                t = types.named(schema['$defs'][role['payload_def']], role['payload_def']) if role['payload_def'] else 'Value'
+            elif role['format'] == 'binary':
+                t = 'Tensor'
+            else:
+                t = 'OpaqueData'
+            field = rust_ident(role['role']) if not role['pattern'] else ('attachments' if 'attachment' in role['role'] else 'custom_members')
+            roles.append((role, field, t))
+        doc = f'/// A `{kind["kind"]}` section with typed members (`{kind["def"]}`).'
+        L = [doc, '#[derive(Debug, Clone, PartialEq)]', f'pub struct {name} {{',
+             '    /// The section fields other than `kind` and `members`.', f'    pub fields: {fields},']
+        for r, f, t in roles:
+            if r['pattern']:
+                L.append(f'    /// Members whose role matches `{r["role"]}`, by role.')
+                L.append(f'    pub {f}: BTreeMap<String, {t}>,')
+            else:
+                L.append(f'    pub {f}: {t if r["required"] else "Option<" + t + ">"},')
+        L += ['}', '', f'impl TypedKind for {name} {{', f'    const KIND: &\'static str = {rust_quote(kind["kind"])};', '',
+              '    fn from_section(reader: &Reader, section: Section<\'_>) -> Result<Self, QvfError> {',
+              '        check_kind(section, Self::KIND)?;']
+        reader_fn = {'json': 'json_member', 'binary': 'tensor_member', 'opaque': 'opaque_member'}
+        for r, f, t in roles:
+            fn = reader_fn[r['format']]
+            if r['pattern']:
+                quoted = ', '.join(rust_quote(x) for x in known)
+                L.append(f'        let {f} = pattern_members(section, &[{quoted}], |role| {fn}(reader, section, role))?;')
+            elif r['required']:
+                L.append(f'        let {f} = {fn}(reader, section, {rust_quote(r["role"])})?;')
+            else:
+                L.append(f'        let {f} = optional(section, {rust_quote(r["role"])}, |role| {fn}(reader, section, role))?;')
+        L.append('        Ok(Self { fields: section_fields(section)?, ' + ''.join(f'{f}, ' for _, f, _ in roles) + '})')
+        L += ['    }', '', '    fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {',
+              '        let id = add_section(writer, Self::KIND, &self.fields)?;']
+        writer_fn = {'json': 'put_json', 'binary': 'put_tensor', 'opaque': 'put_opaque'}
+        for r, f, t in roles:
+            fn = writer_fn[r['format']]
+            if r['pattern']:
+                L.append(f'        for (role, value) in &self.{f} {{')
+                L.append(f'            {fn}(writer, &id, role, value)?;')
+                L.append('        }')
+            elif r['required']:
+                L.append(f'        {fn}(writer, &id, {rust_quote(r["role"])}, &self.{f})?;')
+            else:
+                L.append(f'        if let Some(value) = &self.{f} {{')
+                L.append(f'            {fn}(writer, &id, {rust_quote(r["role"])}, value)?;')
+                L.append('        }')
+        L += ['        Ok(id)', '    }', '', '    fn id(&self) -> &str {', '        &self.fields.id', '    }', '}', '']
+        items += L
+        names.append((kind['kind'], name))
+    any_kind = ['/// A section of any canonical kind, decoded with its typed model.',
+                '#[derive(Debug, Clone, PartialEq)]', '#[allow(clippy::large_enum_variant)]', 'pub enum AnyKind {']
+    any_kind += [f'    {n}({n}),' for _, n in names]
+    any_kind += ['}', '', 'impl AnyKind {',
+                 '    /// Decode a section of a canonical kind. Returns `Ok(None)` for a vendor kind.',
+                 '    pub fn from_section(reader: &Reader, section: Section<\'_>) -> Result<Option<Self>, QvfError> {',
+                 '        Ok(Some(match section.kind {']
+    any_kind += [f'            {n}::KIND => AnyKind::{n}({n}::from_section(reader, section)?),' for _, n in names]
+    any_kind += ['            _ => return Ok(None),', '        }))', '    }', '',
+                 '    /// The canonical kind.', '    pub fn kind(&self) -> &\'static str {', '        match self {']
+    any_kind += [f'            AnyKind::{n}(_) => {n}::KIND,' for _, n in names]
+    any_kind += ['        }', '    }', '', '    /// The section id.', '    pub fn id(&self) -> &str {', '        match self {']
+    any_kind += [f'            AnyKind::{n}(v) => v.id(),' for _, n in names]
+    any_kind += ['        }', '    }', '',
+                 '    /// Write the section and its members; returns its id.',
+                 '    pub fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {',
+                 '        match self {']
+    any_kind += [f'            AnyKind::{n}(v) => v.to_writer(writer),' for _, n in names]
+    any_kind += ['        }', '    }', '}', '']
+    head = ['// GENERATED by scripts/gen_kinds.py from spec/qvf_manifest.schema.json; do not edit',
+            '// License: Apache-2.0.',
+            '//! Typed serde models of the schema `$defs` payloads and of every canonical',
+            '//! section kind, generated by `scripts/gen_kinds.py` (the same mapping as',
+            '//! `cpp/include/qvf/kinds/all.hpp`). Fields the schema leaves open are kept in',
+            '//! `extra`. Regenerate with `python3 scripts/gen_kinds.py`.',
+            '#![allow(non_snake_case, non_camel_case_types, clippy::all)]',
+            '',
+            'use std::collections::BTreeMap;',
+            'use std::io::Write;',
+            '',
+            'use serde::{Deserialize, Serialize};',
+            'use serde_json::Value;',
+            '',
+            'use crate::error::QvfError;',
+            'use crate::reader::{Reader, Section, Tensor};',
+            'use crate::typed::{',
+            '    add_section, check_kind, json_member, opaque_member, optional, pattern_members, put_json, put_opaque, put_tensor,',
+            '    section_fields, tensor_member, OpaqueData, TypedKind,',
+            '};',
+            'use crate::writer::{WriteError, Writer};',
+            '']
+    return '\n'.join(head + types.lines + items + any_kind), types.fallbacks

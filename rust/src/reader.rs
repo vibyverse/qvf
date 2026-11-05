@@ -218,7 +218,7 @@ pub(crate) fn declared_size_problem(
     }
 }
 
-fn check_entry_caps(entry: &ZipEntry, limits: &Limits) -> Result<(), QvfError> {
+pub(crate) fn check_entry_caps(entry: &ZipEntry, limits: &Limits) -> Result<(), QvfError> {
     if entry.size as f64 > limits.max_member_bytes {
         return Err(QvfError::new(
             Code::E_MEMBER_TOO_LARGE,
@@ -341,6 +341,36 @@ impl Reader {
             .collect()
     }
 
+    /// The well-formed sections, each with its member roles in the order of
+    /// the manifest file (the order the Python reader keeps; the parsed
+    /// [`Reader::manifest`] sorts object keys).
+    pub fn sections_with_roles(&self) -> Vec<(Section<'_>, Vec<String>)> {
+        let order = self
+            .zip
+            .find("manifest.json")
+            .and_then(|e| self.zip.read(e, Some(self.limits.max_member_bytes)).ok())
+            .and_then(|raw| crate::json::member_roles_in_file_order(&raw))
+            .unwrap_or_default();
+        let Some(list) = self.manifest.get("sections").and_then(Value::as_array) else { return Vec::new() };
+        let mut out = Vec::new();
+        for (i, s) in list.iter().enumerate() {
+            let Some(raw) = s.as_object() else { continue };
+            let (Some(id), Some(kind)) = (raw.get("id").and_then(Value::as_str), raw.get("kind").and_then(Value::as_str)) else {
+                continue;
+            };
+            let Some(members) = raw.get("members").and_then(Value::as_object) else { continue };
+            let mut roles: Vec<String> = order.get(i).cloned().unwrap_or_default();
+            roles.retain(|r| members.contains_key(r));
+            for r in members.keys() {
+                if !roles.contains(r) {
+                    roles.push(r.clone());
+                }
+            }
+            out.push((Section { id, kind, raw }, roles));
+        }
+        out
+    }
+
     /// The first well-formed section with that id.
     pub fn section(&self, id: &str) -> Option<Section<'_>> {
         self.sections().into_iter().find(|s| s.id == id)
@@ -440,16 +470,16 @@ impl Reader {
         })?;
         let shape: Vec<usize> = match spec.get("shape") {
             None => Vec::new(),
-            Some(Value::Array(dims)) => {
-                dims.iter().map(|d| d.as_f64().filter(|x| x.fract() == 0.0 && *x >= 0.0 && *x <= usize::MAX as f64).map(|x| x as usize)).collect::<Option<Vec<_>>>().ok_or_else(
-                    || {
-                        QvfError::new(
-                            Code::E_MEMBER_MALFORMED,
-                            format!("member {section_id}/{role}: shape must be a list of non-negative integers"),
-                        )
-                    },
-                )?
-            }
+            Some(Value::Array(dims)) => dims
+                .iter()
+                .map(|d| d.as_f64().filter(|x| x.fract() == 0.0 && *x >= 0.0 && *x <= usize::MAX as f64).map(|x| x as usize))
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| {
+                    QvfError::new(
+                        Code::E_MEMBER_MALFORMED,
+                        format!("member {section_id}/{role}: shape must be a list of non-negative integers"),
+                    )
+                })?,
             Some(_) => {
                 return Err(QvfError::new(
                     Code::E_MEMBER_MALFORMED,

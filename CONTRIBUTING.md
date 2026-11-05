@@ -55,6 +55,23 @@ Candidate CI checks:
   compiled JSON Schema (C++, TypeScript, Python, Rust), and the kind catalogue
   `docs/kinds.md`, are generated from the schema by `scripts/gen_kinds.py`
   and must match it.
+- **Rust crate** (`rust/`) on stable and on the MSRV declared as
+  `rust-version` in `rust/Cargo.toml` (the job checks that both agree):
+  `cargo test --locked` on both, `cargo fmt --check` and
+  `cargo clippy --locked --all-targets -- -D warnings` on stable. The Python
+  reference validator is installed so the writer tests cross-check with it.
+- **Schema-checker parity**: Python (jsonschema), Node and the C++ tool in one
+  job, running `python/tests/test_schema_checker_parity.py`. Any skipped test
+  fails the job, so a missing checker cannot pass silently.
+- **Fuzz smoke**: `zip_reader_fuzzer` and `manifest_fuzzer` (`-DQVF_FUZZ=ON`,
+  clang 18 with the libFuzzer runtime, ASan + UBSan) for 180 s each over the
+  three corpora and the `scripts/fuzz_manifest_seeds.py` seeds. A crash,
+  leak, timeout or sanitizer report fails the job, and the reproducers are
+  uploaded as the `fuzz-crashers` artifact.
+- **Big-endian (s390x)**: cross-build with the s390x toolchain file, CTest
+  under QEMU user-mode emulation (the conformance runner and
+  `qvf_endian_probe` included), then the cross-host round trip with
+  `scripts/check_endian_roundtrip.py`.
 
 For an authorized candidate, these are the equivalent checks from the
 repository root. Run native commands under your native-build lock; keep
@@ -87,6 +104,11 @@ ctest --test-dir build --output-on-failure
 QVF_CPP_BUILD_DIR="$PWD/build" QVF_NODE="$(command -v node)" \
   python -m pytest python/tests/test_schema_checker_parity.py -v -rs
 
+# Rust crate (candidate job rust, also on the MSRV from rust/Cargo.toml)
+(cd rust && cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings \
+  && cargo test --locked)
+cargo +1.74 test --locked --manifest-path rust/Cargo.toml
+
 # C++ under AddressSanitizer + UndefinedBehaviorSanitizer, then the reader over
 # the corpus (build/ is ignored by version control)
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g"
@@ -98,7 +120,7 @@ for f in conformance/corpus/*.qvf; do
   ./build/san/read_qvf "$f" || break
 done
 
-# Big-endian check (local only, no CI job): cross-build for s390x and run
+# Big-endian check (candidate job s390x): cross-build for s390x and run
 # CTest (conformance runner and endian probe included) under QEMU user-mode
 # emulation.
 apt-get install g++-s390x-linux-gnu qemu-user
@@ -118,7 +140,8 @@ for t in write_all_kinds write_h2o write_h2o_c; do
 done
 python scripts/check_endian_roundtrip.py build/endian/be --reference build/endian/le
 
-# Fuzzing the ZIP reader and the validator (clang; not run in CI yet). Where
+# Fuzzing the ZIP reader and the validator with clang. The candidate job fuzz
+# runs each target for 180 s with -artifact_prefix so crashers are kept. Where
 # clang has no libFuzzer runtime (on Ubuntu it is in libclang-rt-18-dev), the
 # targets use a built-in mutation driver without coverage feedback.
 CC=clang CXX=clang++ cmake -S cpp -B build/fuzz -DCMAKE_BUILD_TYPE=Debug -DQVF_FUZZ=ON
@@ -133,6 +156,17 @@ python scripts/fuzz_manifest_seeds.py build/fuzz/manifest_seeds \
 mkdir -p build/fuzz/manifest_corpus
 ./build/fuzz/manifest_fuzzer -max_total_time=60 -max_len=262144 \
   build/fuzz/manifest_corpus build/fuzz/manifest_seeds
+
+# Fuzzing the Python and JavaScript readers and validators (opt-in, not in CI).
+# Structure-aware mutations of the corpora at the ZIP and the JSON level;
+# targets zip, json, mixed and bomb. Findings and reproducers go to build/.
+pip install hypothesis atheris        # atheris is optional
+QVF_FUZZ=1 python -m pytest python/tests/fuzz -q          # short Hypothesis pass
+python python/tests/fuzz/run_fuzz.py --target mixed --seconds 600
+mkdir -p build/fuzz-py/atheris        # libFuzzer adds new inputs to the first directory
+python python/tests/fuzz/atheris_fuzz.py -max_total_time=600 -timeout=10 \
+  -rss_limit_mb=2048 build/fuzz-py/atheris conformance/corpus conformance/negative
+(cd js && npm run build && node test/fuzz/run_fuzz.mjs --target mixed --seconds 600)
 
 # Generated tables: check them, and regenerate after editing the schema,
 # registry.json or spec Appendix B (then regenerate the single header too)

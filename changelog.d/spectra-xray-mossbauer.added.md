@@ -1,4 +1,4 @@
-Proposed, awaiting maintainer acceptance (GOVERNANCE.md, 2026-11-04 record):
+Accepted by the maintainer (GOVERNANCE.md, 2026-11-05 record, #19):
 three canonical kinds for format review P13. `spectra.xas` and `spectra.xes`
 are one-dimensional spectra on the shared `SpectrumPayload` (x in eV), which
 gains a strict optional `xray` block (`edge`, `element`, `atom_indices`,

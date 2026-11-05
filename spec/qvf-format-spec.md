@@ -1049,9 +1049,13 @@ single unit name (§ 5.2).
   a validator that runs the JSON Schema check reports the contradiction as
   `E_PAYLOAD_SCHEMA` (§ 6). The grid payload is shared by every `volume.*`
   kind, so the schema cannot fix `grid.units.data` per kind: a
-  `volume.density` grid restates `e_per_bohr3`, a `volume.laplacian` grid
-  `e_per_bohr5` and a `volume.potential` grid `hartree_per_e`, and another
-  name there contradicts the table, which v1 validators do not detect.
+  `volume.density` or `volume.transition_density` grid restates
+  `e_per_bohr3`, a `volume.laplacian` grid `e_per_bohr5`, a
+  `volume.potential` grid `hartree_per_e` and a `volume.rdg` grid
+  `dimensionless`. Another unit name there contradicts the table, and a
+  validator reports it as `E_UNIT_CONTRADICTED` (§ 6), with or without the
+  JSON Schema check. A string that is not a unit name is `W_UNIT_UNKNOWN`
+  only.
 * Where a payload leaves the unit open (a spectrum's x axis, QTAIM
   positions, the scan axes), a declaration chooses it, within the quantity
   the field holds: a position takes a length.
@@ -4032,7 +4036,11 @@ Members and kind-specific rules:
   structure's `pbc[a]` is true, and `voxel_vectors[a] × (shape[a] − 1)` when
   `includes_endpoint` is true or absent, or `voxel_vectors[a] × shape[a]`
   when it is false, equals lattice row `a` of the structure converted to bohr
-  within 10⁻⁶ relative.
+  within 10⁻⁶ relative. The grid `units.data` of a `volume.density`,
+  `volume.transition_density`, `volume.potential`, `volume.rdg` or
+  `volume.laplacian` section, when it is a unit name, is the one § 4.3 fixes
+  for the kind (`e_per_bohr3`, `e_per_bohr3`, `hartree_per_e`,
+  `dimensionless`, `e_per_bohr5`), or the finding is `E_UNIT_CONTRADICTED`.
 * The property kinds (§ 5.13): a `properties.elastic` `stiffness` and
   `compliance` are symmetric to within 1e-6 of their largest entry; in a
   `properties.dielectric` payload, `static` equals `electronic` + `ionic`
@@ -4649,3 +4657,4 @@ finding about a member's payload points at the member spec that declares it.
 | `W_UNIT_UNKNOWN` | warning | § 4.3 | A declared unit is not a unit name: a value of a payload's `units` object (of an `excited_states` payload's `meta.units`), a one-dimensional spectrum's `x_units`, `y_units` or `broadening.units`, the `units` of a `volume.series` `axis`, or the `units` of a `{value, units}` object in `provenance` that is not a legacy spelling either. A validator with a JSON Schema engine also reports `E_SCHEMA` or `E_PAYLOAD_SCHEMA` for it. |
 | `E_ROOT_INCONSISTENT` | error | § 3.6, § 5.1, § 5.3, § 5.13 | Two statements of the same quantity differ: an energy of `energies` stated for the method `provenance.method` names differs from `provenance.scf_energy`, or `energies.components.zpve` from `thermochemistry.zpve_eh`, by more than 1e-8 hartree; a `wavefunction.gto` `basis.n_electrons` differs from `provenance.n_electrons`; the `dipole` of a `properties.electric` section differs from the root `dipole_moment` by more than 1e-6 debye; or, in an archive with one `structure` section, its `charge` or `multiplicity` differs from `provenance.charge` or `provenance.multiplicity`. |
 | `E_NORMALIZATION` | error | § 5.3, Appendix A.1 | The diagonal of a `wavefunction.gto` `overlap` member disagrees with the self-overlaps Appendix A.1 gives for its `basis` payload: `basis.json` coefficients are not on `N_i`-normalized primitives, or the AO order disagrees with Appendix A.2. |
+| `E_UNIT_CONTRADICTED` | error | § 4.3, § 5.2 | A grid `units.data` is a unit name other than the one § 4.3 fixes for the section's volume kind: `e_per_bohr3` for `volume.density` and `volume.transition_density`, `hartree_per_e` for `volume.potential`, `dimensionless` for `volume.rdg`, `e_per_bohr5` for `volume.laplacian`. The schema cannot fix this per kind, so the finding does not depend on the JSON Schema check. |

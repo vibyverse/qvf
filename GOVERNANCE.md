@@ -92,16 +92,18 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
-### 2026-11-04: X-ray absorption and emission and Mössbauer spectra (proposed)
+### 2026-11-05: X-ray absorption and emission and Mössbauer spectra
 
-**Status.** Proposed, awaiting maintainer acceptance under "Change process"
-(add a new canonical kind directly when a clear ecosystem need exists and a
-reference consumer will render it). Format review P13 named `spectra.xas`
-and `spectra.mossbauer` as kinds added on demand, and its coverage matrix
-lists "Mössbauer, XAS/XES, other spectroscopies" as having no canonical
-carrier. Nothing here is accepted until the maintainer merges it.
+**Status.** Accepted by the maintainer on 2026-11-05 under "Change
+process" (vibyverse/qvf#19), which adds a new canonical kind directly when a
+clear ecosystem need exists and a reference consumer will render it, with
+the readings at the end of this record settled as proposed. It is a public
+contract change. Format review P13 named `spectra.xas` and
+`spectra.mossbauer` as kinds added on demand, and its coverage matrix lists
+"Mössbauer, XAS/XES, other spectroscopies" as having no canonical carrier.
+Producers may write the three kinds once a toolkit release carries them.
 
-**Decision proposed.** Three canonical kinds, each with the one JSON member
+**Decision.** Three canonical kinds, each with the one JSON member
 `spectrum` (spec § 5.4), appended to the end of `registry.json`
 `canonical_kinds` so that no existing kind changes its position.
 
@@ -178,7 +180,7 @@ methods print, so that each can be written without a vendor field:
 compound names of vibyverse/qvf#11 (accepted the same day, record below),
 has no area (megabarn), velocity (mm/s), magnetic flux density (tesla) or
 EFG unit (E_h / (e bohr²), which would be `hartree_per_e_bohr2`). The
-proposal uses only what main has and adds no unit name: cross sections are
+decision uses only names already in the vocabulary and adds none: cross sections are
 stated through `xray.intensity: cross_section_mb` with `y_units` absent,
 and the Mössbauer payload fixes its units by field name, as `spectra.epr`
 does with MHz, so it has no `units` object. The contact density is
@@ -202,8 +204,8 @@ use `spectra.generic` with `x_units: "ev"`. (e) Not checked by a
 validator: atom indices against the structure (as for NMR and EPR), the
 sum of the populations, δ against `calibration`, and ΔE_Q and η against
 `efg_au`. (f) `quadrupole_splitting_mm_s` and `hyperfine_field_t` may be
-signed. (g) The registry `promotions` entries carry `"status":
-"proposed"`, which becomes an ordinary entry on acceptance.
+signed. (g) The registry `promotions` entries are ordinary entries, as for the
+other kinds added directly.
 
 **Compatibility.** Every archive that was valid stays valid with the same
 meaning, and every frozen positive, negative and legacy archive keeps its
@@ -220,6 +222,80 @@ entry points. The corpus gains `spectra_xas_tddft.qvf`,
 `xes_oscillator_strength_y_units`, `xes_length_mismatch`,
 `xas_state_index_unresolved`, `mossbauer_asymmetry_range`,
 `mossbauer_unitless_key` and `mossbauer_no_sites`.
+
+### 2026-11-04: The data unit of a volume grid checked per kind
+
+**Status.** Proposed. The maintainer chose the finding code
+(`E_UNIT_CONTRADICTED`, a new error) and the scope (five kinds) on
+2026-11-04. The record awaits acceptance under "Change process"; the
+readings at the end are open until then.
+
+**Decision.** Reading (b) of the compound unit names record left one fixed
+unit unchecked: the grid payload (`$defs/VolumeGridPayload`) serves every
+`volume.*` kind, so the schema cannot fix `grid.units.data` per kind. A
+semantic check now does. Where spec § 4.3 and § 5.2 fix the unit of `data`
+and the vocabulary names it, a grid `units.data` that is another unit name
+contradicts the table and is the new error **`E_UNIT_CONTRADICTED`**
+(Appendix B):
+
+| Kind | Fixed `units.data` |
+|---|---|
+| `volume.density` | `e_per_bohr3` |
+| `volume.transition_density` | `e_per_bohr3` |
+| `volume.potential` | `hartree_per_e` |
+| `volume.rdg` | `dimensionless` |
+| `volume.laplacian` | `e_per_bohr5` |
+
+The Python, C++, JavaScript and Rust validators run it as a semantic check,
+with or without the JSON Schema check. `volume.orbital` (an amplitude in
+bohr^(−3/2), which has no unit name), `volume.difference` (the unit of its
+operands) and the kinds § 5.2 leaves open (`volume.spin`, `volume.elf`,
+`volume.generic`, `volume.vector`, `volume.complex`, `volume.series`) are
+not checked. Spec § 4.3 ("Declared units"), § 6 and Appendix B state the
+rule. The negative corpus gains `unit_grid_data_contradicts_kind.qvf` (a
+`volume.density` grid that declares `hartree_per_e`). **No `qvf_version`
+bump**, no schema or registry change, and no package version change.
+
+**Why a new code.** Appendix B gives a new check a new code; codes are added,
+never renamed. `E_PAYLOAD_SCHEMA` reports a payload against its `$defs`
+definition, and the definition is not what this archive violates, so a
+validator without a schema engine would otherwise emit a schema code while
+it reports `W_SCHEMA_SKIPPED`. `W_UNIT_UNKNOWN` is about strings outside the
+vocabulary. A warning was rejected because § 4.3 already calls the
+contradiction an error, and a later upgrade would need a second code.
+
+**Rationale for no bump.** The check encodes a rule § 4.3 stated before
+("another name there contradicts the table"), as the `const` entries of the
+2026-10-08 and 2026-11-04 records did for keys the schema can reach. An
+archive it rejects already contradicted § 4.3. Every corpus, negative and
+legacy archive keeps its verdict (`conformance/run_conformance.py` and the
+C++, JavaScript and Rust runners), and the positive corpus archives that
+declare a grid `data` unit declare the fixed one.
+
+**Compatibility.** Producers: an archive that declares the fixed unit, or
+none, is unchanged. An archive that declares another unit name for one of
+the five kinds validated before and is now rejected. Its values were never
+in that unit by the table, so a consumer that honoured the declaration read
+them wrong; the fix is to drop or correct the declaration. Consumers: no
+change. Validator authors: `E_UNIT_CONTRADICTED` is a new code, appended
+after `E_NORMALIZATION` so that the generated code order is unchanged for the
+earlier codes. Writers: the Python `add_volume` and the C++ writer check
+declared units against the schema's fixed units, which do not include
+`units.data`, so they still write such a grid. Teaching them the table
+of kinds is a separate writer change.
+
+**Registry.** No entry changes. The change enters `CHANGELOG.md` through its
+`changelog.d` fragment.
+
+**Readings to confirm.** (a) Only a unit name contradicts. A string outside
+the vocabulary is `W_UNIT_UNKNOWN` (and `E_PAYLOAD_SCHEMA` with a schema
+engine) and not also `E_UNIT_CONTRADICTED`, so one defect gives one semantic
+finding; `unit_compound_unknown.qvf` keeps its expectations. (b)
+`volume.transition_density` and `volume.rdg` are included because § 4.3
+fixes their units as well, beyond the three kinds the earlier bullet named.
+(c) The table of kinds lives in each validator beside the volume shape
+table; it is not generated, because the schema does not hold it. (d) The
+finding points at the grid member spec, like the other grid findings.
 
 ### 2026-11-04: Compound unit names in the unit vocabulary
 

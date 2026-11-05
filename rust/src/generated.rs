@@ -9,6 +9,8 @@
 #![allow(clippy::all)]
 
 pub const SCHEMA_ID: &str = "https://vibe-qc.org/spec/qvf/1/manifest.schema.json";
+/// SHA-256 of the schema file the tables were generated from.
+pub const SCHEMA_SHA256: &str = "cf1bb2177f63ade31f92ab686de99f53890c4c727a4cab852bfe84f4076018e3";
 pub const QVF_VERSION: i64 = 1;
 
 /// Opcodes; operands a, b, c per opcode as in scripts/gen_kinds.py.
@@ -1542,4 +1544,5 @@ pub static FINDING_CODES: &[(&str, &str)] = &[
     ("W_UNIT_UNKNOWN", "warning"),
     ("E_ROOT_INCONSISTENT", "error"),
     ("E_NORMALIZATION", "error"),
+    ("E_UNIT_CONTRADICTED", "error"),
 ];

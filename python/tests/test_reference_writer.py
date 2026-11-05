@@ -1028,7 +1028,9 @@ def _every_option_writer() -> QvfWriter:
                              coeffs_are_libint_normalized=True,
                              fermi_energy_ev=-4.2, pure=True, labels=["G", "X"],
                              mesh=[2, 1, 1], shift=[0, 0, 0], time_reversal=False,
-                             n_mo_per_k=[4, 3], label="wavefunction_bloch", section_id="wf_bloch")
+                             n_mo_per_k=[4, 3], ecp=[{"center": 0, "n_core_electrons": 2,
+                                                      "label": "gth-pade"}],
+                             n_electrons=2, label="wavefunction_bloch", section_id="wf_bloch")
 
     w.add_atom_properties(**{role: [0.1, -0.2, 0.1] for role in _SCALAR_ROLES},
                           magnetic_moment=[[0, 0, 1.0], [0, 0, -0.5], [0, 0, 0]],

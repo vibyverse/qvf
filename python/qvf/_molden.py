@@ -12,12 +12,22 @@ import re
 from . import __version__
 from .convert import (_MAX_VALUES, _atom, _binary, _new_output, _number, _select,
                       _structure, _text, _validated)
-from ._legacy_writer import BOHR_PER_ANGSTROM
+from ._legacy_writer import BOHR_PER_ANGSTROM, primitive_norm
 from .reader import Reader
 from .writer import Writer
 
 _SPINS = {"restricted", "restricted_open", "unrestricted"}
 _FLAGS = {"5d", "6d", "5d7f", "5d10f", "7f", "10f", "9g", "15g"}
+
+# Producer dialects: each maps what a program writes onto the standard Molden
+# meaning (unit-normalized contractions and AOs, Molden phases), which then
+# maps onto QVF Appendix A. The table in docs/converters.md lists the sources.
+# The producer-specific rules follow the documented corrections of IOData
+# 1.0.1, iodata/formats/molden.py (_fix_obasis_orca, _fix_obasis_turbomole,
+# _fix_mo_coeffs_cfour, _fix_mo_coeffs_psi4); no IOData code is used here.
+# Unlike IOData, nothing is guessed from orbital norms: the caller names the
+# dialect, and a contraction that is still not normalized is refused.
+DIALECTS = ("standard", "renormalize", "orca", "turbomole", "cfour", "psi4-1.3", "xtb")
 
 
 def _shell_norm(shell):
@@ -89,6 +99,10 @@ def _sections(text):
             name = header[1].lower().strip()
             if (not sections and name != "molden format") or name in sections:
                 raise ValueError("Molden needs its format header first and unique sections")
+            if name in {"core", "pseudo"}:
+                raise ValueError(f"Molden [{header[1]}] marks ECP cores; the ECP parameters are not in "
+                                 "the file, so QVF basis.ecp cannot be built and the orbitals would "
+                                 "be wrong without it")
             if name not in {"molden format", "atoms", "gto", "mo", "title"} | _FLAGS:
                 raise ValueError(f"unsupported Molden section {name!r}")
             suffix = header[2].strip().lower().strip('()')
@@ -114,20 +128,78 @@ def _sections(text):
     return sections, {2: pure_d, 3: pure_f, 4: pure_g}, omitted_comments
 
 
-def _parse(text, spin, *, unnormalized_primitives=False):
+def _primitive_scale(dialect, angular, pure, exponent):
+    """Written / standard contraction coefficient of one primitive."""
+    if dialect == "orca":
+        # IOData _fix_obasis_orca: ORCA multiplies by the norm of the Cartesian
+        # primitive (0,0,0), (1,0,0), (1,1,0), (1,1,1), (2,1,1) for s to g,
+        # which is N_i * sqrt((2l-1)!! / prod (2l_k-1)!!) with Appendix A.1 N_i.
+        product = {0: 1, 1: 1, 2: 1, 3: 1, 4: 3}[angular]
+        return primitive_norm(exponent, angular) * math.sqrt(_double_factorial(2 * angular - 1) / product)
+    if dialect == "xtb":
+        # QVF Appendix A.1. xTB printmold writes basis%cont with the axial
+        # primitive normalization already multiplied into it.
+        return primitive_norm(exponent, angular)
+    if dialect == "turbomole" and not pure and angular >= 2:
+        # IOData _fix_obasis_turbomole: tm2molden Cartesian d/f/g contraction
+        # coefficients are 1/sqrt(3), 1/sqrt(15), 1/sqrt(105) of the
+        # normalized ones.
+        return 1 / math.sqrt(_double_factorial(2 * angular - 1))
+    return 1.0
+
+
+def _component_factors(dialect, shell, factors):
+    """Adjust the standard per-component factors (file AO / QVF AO)."""
+    angular, pure = shell["l"], shell["pure"]
+    if dialect == "xtb":
+        # xTB cube.f90/primval uses R_atom-r; QVF uses r-R_atom.
+        # printmold emits those MO coefficients unchanged. Reverse odd-l
+        # phases while preserving Molden's Cartesian component scaling.
+        return [factor * (-1) ** angular for factor in factors]
+    if dialect == "orca" and pure and angular >= 3:
+        # IOData orca_conventions: in Molden order c0 c1 s1 c2 s2 c3 s3 c4 s4,
+        # ORCA's c3, s3 (f, g) and c4, s4 (g) are the negated Molden functions.
+        return [-factor if k >= 5 else factor for k, factor in enumerate(factors)]
+    if not pure and angular >= 2 and dialect == "cfour":
+        # IOData _fix_mo_coeffs_cfour (CFOUR up to 2.1): written Cartesian MO
+        # coefficients are the Molden ones times 1/sqrt(prod (2l_k-1)!!), so
+        # the file AO is a common 1/sqrt((2l-1)!!) multiple of the QVF AO.
+        return [1 / math.sqrt(_double_factorial(2 * angular - 1))] * len(factors)
+    if not pure and angular >= 2 and dialect == "psi4-1.3":
+        # IOData _fix_mo_coeffs_psi4 (Psi4 <= 1.3.2): written Cartesian MO
+        # coefficients are the Molden ones times sqrt((2l-1)!! / prod
+        # (2l_k-1)!!), which are coefficients on QVF's axially normalized AOs.
+        return [1.0] * len(factors)
+    return factors
+
+
+def _atom_line(fields, index, factor):
+    """One [Atoms] row: label, index, atomic number, x, y, z."""
+    if len(fields) != 6 or not re.fullmatch(r"[0-9]+", fields[1]) or int(fields[1]) != index:
+        raise ValueError("Molden atoms require sequential 1-based indices and six fields")
+    charge = _number(fields[2])
+    # Molpro and others write labels such as O1 or H12; the element is the
+    # leading letters, which must agree with the atomic number.
+    letters = re.match(r"[A-Za-z]*", fields[0])[0].title()
+    atom = _atom(letters, [_number(v) * factor for v in fields[3:]])
+    if charge != atom["atomic_number"]:
+        raise ValueError(f"Molden atom {index} ({fields[0]}) has nuclear charge {fields[2]}, not "
+                         f"{atom['atomic_number']}: an ECP effective core charge, ghost or point "
+                         "charge, which this import cannot represent")
+    return atom
+
+
+def _parse(text, spin, dialect="standard"):
     if spin not in _SPINS:
         raise ValueError("Molden import requires explicit restricted, restricted_open or unrestricted spin")
+    if dialect not in DIALECTS:
+        raise ValueError(f"unknown Molden dialect {dialect!r}; choose one of {', '.join(DIALECTS)}")
     sections, pure, comments = _sections(text)
+    title = " ".join(sections.get("title", [None, []])[1] + sections["molden format"][1]).lower()
     atoms = []
     factor = 1 / BOHR_PER_ANGSTROM if sections["atoms"][0] == "au" else 1
     for line in sections["atoms"][1]:
-        fields = line.split()
-        if len(fields) != 6 or int(fields[1]) != len(atoms) + 1:
-            raise ValueError("Molden atoms require sequential 1-based indices and six fields")
-        atom = _atom(fields[0], [_number(v) * factor for v in fields[3:]])
-        if int(fields[2]) != atom["atomic_number"]:
-            raise ValueError("Molden ghost/ECP/effective nuclear charges are unsupported")
-        atoms.append(atom)
+        atoms.append(_atom_line(line.split(), len(atoms) + 1, factor))
     if not atoms:
         raise ValueError("Molden has no atoms")
     rows = sections["gto"][1]; index = 0; center = None; centers = set()
@@ -159,15 +231,19 @@ def _parse(text, spin, *, unnormalized_primitives=False):
             shell = {"center": center, "l": angular, "pure": pure.get(angular, False),
                      "exponents": [row[0] for row in primitives],
                      "coefficients": [row[column] for row in primitives]}
-            if unnormalized_primitives:
-                # QVF Appendix A.1. xTB printmold writes basis%cont with the
-                # axial primitive normalization already multiplied into it.
-                from ._legacy_writer import primitive_norm
-                shell["coefficients"] = [c / primitive_norm(e, angular) for e, c in
-                                         zip(shell["exponents"], shell["coefficients"])]
+            if dialect == "orca" and angular >= 2 and not shell["pure"]:
+                raise ValueError("ORCA dialect: ORCA writes spherical d, f and g only; a Cartesian "
+                                 "shell has no documented ORCA convention")
+            scales = [_primitive_scale(dialect, angular, shell["pure"], e) for e in shell["exponents"]]
+            shell["coefficients"] = [c / s for c, s in zip(shell["coefficients"], scales)]
             norm = _shell_norm(shell)
-            if abs(norm * norm - 1) > 1e-5:
-                raise ValueError("Molden input contractions must already be normalized (squared norm within 1e-5)")
+            if dialect != "renormalize" and abs(norm * norm - 1) > 1e-5:
+                hint = (" The title names ORCA, whose contractions need dialect 'orca'."
+                        if "orca" in title and dialect != "orca" else "")
+                raise ValueError(f"Molden contraction {len(shells) + 1} ({letter}) has squared norm "
+                                 f"{norm * norm:.8g} under dialect {dialect!r}; input contractions must "
+                                 "be normalized within 1e-5. Name the producer dialect, or use "
+                                 "'renormalize' to rescale like the Molden program." + hint)
             # Remove text-rounding drift exactly as a normalized-AO reader does.
             shell["coefficients"] = [c / norm for c in shell["coefficients"]]
             norms.append(norm); shells.append(shell)
@@ -176,11 +252,7 @@ def _parse(text, spin, *, unnormalized_primitives=False):
     order = []; scales = []
     for shell in shells:
         indices, factors = _layout(shell); offset = len(order)
-        if unnormalized_primitives:
-            # xTB cube.f90/primval uses R_atom-r; QVF uses r-R_atom.
-            # printmold emits those MO coefficients unchanged. Reverse odd-l
-            # phases while preserving Molden's Cartesian component scaling.
-            factors = [factor * (-1)**shell["l"] for factor in factors]
+        factors = _component_factors(dialect, shell, factors)
         order.extend(offset + i for i in indices); scales.extend(factors)
     nao = len(order); orbitals = []; current = None; coefficients = {}
 
@@ -198,14 +270,18 @@ def _parse(text, spin, *, unnormalized_primitives=False):
         match = re.fullmatch(r"([A-Za-z]+)\s*=\s*(.+)", line)
         if match:
             key = match[1].lower(); value = match[2].strip()
-            if key == "sym":
+            if key not in {"sym", "ene", "spin", "occup"}:
+                raise ValueError("unsupported or repeated Molden MO header")
+            # A header after coefficients starts the next orbital, so the
+            # four keys may come in any order (the format fixes none).
+            if current is None or coefficients:
                 finish(); current = {}; coefficients = {}
-            if current is None or key in current or key not in {"sym", "ene", "spin", "occup"} or coefficients:
+            if key in current:
                 raise ValueError("unsupported or repeated Molden MO header")
             current[key] = _number(value) if key in {"ene", "occup"} else value
         else:
             fields = line.split()
-            if current is None or len(fields) != 2:
+            if current is None or len(fields) != 2 or not re.fullmatch(r"[0-9]+", fields[0]):
                 raise ValueError("Molden MO coefficient requires an index and one real value")
             ao = int(fields[0])
             if not 1 <= ao <= nao or ao in coefficients:
@@ -217,19 +293,24 @@ def _parse(text, spin, *, unnormalized_primitives=False):
     if not orbitals:
         raise ValueError("Molden has no orbitals")
     channels = {"alpha": [], "beta": []}
-    for metadata, row in orbitals:
+    limit = 1 if spin == "unrestricted" else 2
+    for number, (metadata, row) in enumerate(orbitals, 1):
         channel = metadata["spin"].lower()
-        if channel not in channels or not 0 <= metadata["occup"] <= (1 if spin == "unrestricted" else 2):
+        if channel not in channels:
             raise ValueError("Molden spin label or occupation conflicts with the declared spin")
+        if not 0 <= metadata["occup"] <= limit:
+            raise ValueError(f"Molden orbital {number} ({metadata['spin']}) has occupation "
+                             f"{metadata['occup']:g}, outside 0 to {limit} for {spin} spin: QVF "
+                             "electron occupations cannot represent negative or excess (for "
+                             "example natural-orbital) occupations, and none is clipped")
         channels[channel].append((metadata, row))
     if not channels["alpha"] or (bool(channels["beta"]) != (spin == "unrestricted")):
         raise ValueError("Molden single sets must be Alpha; unrestricted requires both Alpha and Beta")
     return atoms, shells, channels, nao, norms, comments, sections
 
 
-def import_molden(source, destination, *, spin, _unnormalized_primitives=False):
-    atoms, shells, channels, nao, norms, comments, sections = _parse(
-        _text(source), spin, unnormalized_primitives=_unnormalized_primitives)
+def import_molden(source, destination, *, spin, dialect="standard"):
+    atoms, shells, channels, nao, norms, comments, sections = _parse(_text(source), spin, dialect)
     metadata = {"spin": spin, "orbital_kind": "custom", "n_ao": nao}
     with _new_output(destination) as temporary:
         with Writer(temporary, "qvf.convert", __version__, "Molden orbital import") as writer:
@@ -250,10 +331,10 @@ def import_molden(source, destination, *, spin, _unnormalized_primitives=False):
                 _binary(writer, "wavefunction", role, (v for _, row in orbitals for v in row), [len(orbitals), nao])
             writer.add_json("wavefunction", "mo_metadata", metadata)
         findings = _validated(temporary)
-    return {"format": "molden", "output": str(destination), "spin": spin, "n_ao": nao,
+    return {"format": "molden", "output": str(destination), "spin": spin, "dialect": dialect, "n_ao": nao,
             "findings": findings, "contraction_norms": norms, "omitted_comments": comments,
             "omitted_text_lines": sum(len(sections.get(name, [None, []])[1]) for name in ("title", "molden format")),
-            "scope": "Molecular real s/p/d orbitals only. Orbital kind is custom: Molden does not establish its meaning. No method, charge, multiplicity, electron count, overlap matrix or job is inferred."}
+            "scope": "Molecular real s, p, sp, d, f and g orbitals only. Orbital kind is custom: Molden does not establish its meaning. No method, charge, multiplicity, electron count, overlap matrix or job is inferred."}
 
 
 def export_molden(source, destination, *, section=None):

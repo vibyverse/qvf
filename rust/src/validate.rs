@@ -4,7 +4,7 @@
 //! for what is wrong with it: every problem is a finding with a stable code.
 //! It is a port of `js/src/validate.ts`, which performs the semantic checks of
 //! the Python and C++ reference validators in the same order and with the
-//! same codes. The JSON Schema of `manifest.json` (`E_SCHEMA`) and of every
+//! same codes. The levels are staged as in Python and C++ (see [`Level`]). The JSON Schema of `manifest.json` (`E_SCHEMA`) and of every
 //! JSON member with a payload definition (`E_PAYLOAD_SCHEMA`) is checked by
 //! the checker generated from the schema ([`crate::schema_check`]);
 //! `schema_check: false` disables it, and the validator then reports
@@ -34,8 +34,12 @@ use crate::zip::{path_problem, ratio_exceeded, ZipArchive, ZipEntry};
 /// Bohr per ångström (spec § 4.3, CODATA 2018 rounded to ten decimals).
 pub const BOHR_PER_ANGSTROM: f64 = 1.8897261246;
 
-/// How much of spec § 6 to check. Levels are cumulative; see
-/// `js/src/validate.ts` for what each one adds.
+/// How much of spec § 6 to check. Levels are cumulative and staged as in
+/// the Python and C++ reference validators: `Container` reads only the ZIP
+/// central directory (and reports a missing `manifest.json`), `Manifest`
+/// adds `manifest.json`, `Payloads` the members, `Semantics` every semantic
+/// check (cross-section ones included) without `E_REF_UNRESOLVED`, and
+/// `References` and `All` everything.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Level {
     Container,
@@ -117,13 +121,19 @@ pub fn validate_file(path: impl AsRef<Path>, options: &ValidateOptions) -> Repor
 /// Validate a `.qvf` archive held in memory (spec § 6).
 pub fn validate_bytes(bytes: Vec<u8>, options: &ValidateOptions) -> Report {
     let mut out = Findings::default();
+    // The reference validators run every check from the semantics level on
+    // and drop unresolved references below the references level.
+    let level = if options.level >= Level::Semantics { Level::All } else { options.level };
     let n = match ZipArchive::open(bytes) {
-        Ok(zip) => run(&zip, &options.limits, options.level, options.schema_check, &mut out),
+        Ok(zip) => run(&zip, &options.limits, level, options.schema_check, &mut out),
         Err(e) => {
             out.push(Code::E_ZIP_UNREADABLE, "archive", format!("not a readable zip: {}", e.message));
             0
         }
     };
+    if options.level < Level::References {
+        out.0.retain(|f| f.code != Code::E_REF_UNRESOLVED);
+    }
     finish(out, n)
 }
 
@@ -1767,6 +1777,34 @@ fn volume_errors(
     errors
 }
 
+/// The unit name spec § 4.3 fixes for the grid `units.data` of a volume kind.
+/// One grid payload serves every `volume.*` kind, so the schema cannot fix it
+/// per kind.
+fn volume_data_unit(kind: &str) -> Option<&'static str> {
+    Some(match kind {
+        "volume.density" | "volume.transition_density" => "e_per_bohr3",
+        "volume.potential" => "hartree_per_e",
+        "volume.rdg" => "dimensionless",
+        "volume.laplacian" => "e_per_bohr5",
+        _ => return None,
+    })
+}
+
+/// A grid `units.data` that is a unit name other than the one § 4.3 fixes for
+/// the volume kind (`E_UNIT_CONTRADICTED`), as a message. A string that is not
+/// a unit name is `W_UNIT_UNKNOWN` alone.
+fn grid_data_unit_error(sid: &str, kind: &str, grid: &Obj) -> Option<String> {
+    let fixed = volume_data_unit(kind)?;
+    let unit = as_obj(grid.get("units"))?.get("data");
+    let name = str_of(unit).filter(|u| *u != fixed && is_unit_name(unit))?;
+    Some(format!(
+        "{}grid units.data {} contradicts the unit {} that spec § 4.3 fixes for {kind} data",
+        sec(sid),
+        quote(name),
+        quote(fixed)
+    ))
+}
+
 fn is_grid_payload(kind: &str, role: &str) -> bool {
     if role == "volume_grid" {
         return kind == "reaction.path";
@@ -2282,15 +2320,14 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
             ),
         );
     }
-    if level < Level::Manifest {
-        return 0;
-    }
-
-    // --- manifest ---
+    // --- manifest (its presence is a container check) ---
     let Some(manifest_entry) = zip.find("manifest.json") else {
         out.push(Code::E_MANIFEST_MISSING, "manifest.json", "missing manifest.json");
         return 0;
     };
+    if level < Level::Manifest {
+        return 0;
+    }
     if manifest_entry.size as f64 > lim.max_json_bytes {
         out.push(
             Code::E_JSON_TOO_LARGE,
@@ -2616,6 +2653,13 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
             let kinds = if level >= Level::References { Some(&kinds_by_id) } else { None };
             for (code, role, msg) in volume_errors(sid, kind, members, &docs, kinds) {
                 out.push(code, member_pointer(i, &role), msg);
+            }
+            let mut roles: Vec<&String> = docs.keys().filter(|r| is_grid_payload(kind, r)).collect();
+            roles.sort();
+            for r in roles {
+                if let Some(msg) = as_obj(docs.get(r)).and_then(|g| grid_data_unit_error(sid, kind, g)) {
+                    out.push(Code::E_UNIT_CONTRADICTED, member_pointer(i, r), msg);
+                }
             }
         }
         if level >= Level::References {

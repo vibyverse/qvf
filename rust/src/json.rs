@@ -151,3 +151,80 @@ pub(crate) fn quote(s: &str) -> String {
 pub(crate) fn join(v: &[f64]) -> String {
     v.iter().map(|x| num(*x)).collect::<Vec<_>>().join(",")
 }
+
+/// A JSON document that keeps the order of object keys (and nothing else):
+/// `serde_json::Value` sorts them, the Python CLI walks them in file order.
+enum Ordered {
+    Other,
+    Object(Vec<(String, Ordered)>),
+    Array(Vec<Ordered>),
+}
+
+impl<'de> serde::Deserialize<'de> for Ordered {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = Ordered;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("JSON")
+            }
+            fn visit_bool<E>(self, _: bool) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_i64<E>(self, _: i64) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_u64<E>(self, _: u64) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_f64<E>(self, _: f64) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_str<E>(self, _: &str) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_unit<E>(self) -> Result<Ordered, E> {
+                Ok(Ordered::Other)
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Ordered, A::Error> {
+                let mut out = Vec::new();
+                while let Some(v) = seq.next_element()? {
+                    out.push(v);
+                }
+                Ok(Ordered::Array(out))
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Ordered, A::Error> {
+                let mut out: Vec<(String, Ordered)> = Vec::new();
+                while let Some((k, v)) = map.next_entry::<String, Ordered>()? {
+                    // A repeated key keeps its first position and its last value, as a Python dict.
+                    match out.iter_mut().find(|(key, _)| *key == k) {
+                        Some(slot) => slot.1 = v,
+                        None => out.push((k, v)),
+                    }
+                }
+                Ok(Ordered::Object(out))
+            }
+        }
+        d.deserialize_any(V)
+    }
+}
+
+/// The member roles of every entry of `sections` in a raw manifest, in file
+/// order (empty for an entry that is not an object with an object
+/// `members`), or `None` when the bytes are not such a manifest.
+pub fn member_roles_in_file_order(raw: &[u8]) -> Option<Vec<Vec<String>>> {
+    let Ordered::Object(root) = serde_json::from_slice::<Ordered>(raw).ok()? else { return None };
+    let (_, Ordered::Array(sections)) = root.iter().find(|(k, _)| k == "sections")? else { return None };
+    Some(
+        sections
+            .iter()
+            .map(|s| match s {
+                Ordered::Object(fields) => match fields.iter().find(|(k, _)| k == "members") {
+                    Some((_, Ordered::Object(m))) => m.iter().map(|(k, _)| k.clone()).collect(),
+                    _ => Vec::new(),
+                },
+                _ => Vec::new(),
+            })
+            .collect(),
+    )
+}
