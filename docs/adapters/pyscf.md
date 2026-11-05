@@ -463,12 +463,16 @@ of one call share one AO evaluation. Data are stored as float32, the format
 default, or as float64 with `dtype="float64"`.
 
 **Links.** Every volume carries `structure_ref` at section and grid level.
-QVF v1 has no field that points from a volume to a `wavefunction.gto`
-section, so the wavefunction id (`wavefunction_ref`, default `"wf"`, which
-must already be in the writer) is written as the section `group` (§ 4.1),
-which a viewer may use to show the volumes beside their orbitals. Pass
-`wavefunction_ref=None` to write no group. A dedicated reference would be a
-format change and is not part of this adapter.
+The wavefunction id (`wavefunction_ref`, default `"wf"`, which must already
+be in the writer) is written as the section field `wavefunction_ref`
+(§ 5.2, *Volumes of a wavefunction*), and each `volume.orbital` also names
+its coefficient row as `mo_index` and, for an unrestricted reference, its
+channel as `spin` (`"alpha"` or `"beta"`). A viewer reads the orbital's
+energy and occupation from that row of the wavefunction's `mo_metadata`.
+The same id is also written as the section `group` (§ 4.1), so viewers that
+group by it keep working. Pass `wavefunction_ref=None` to write neither.
+The section fields are an additive format change (see `GOVERNANCE.md`,
+2026-11-04), and toolkits that predate it ignore them.
 
 **Integration accuracy.** The grid sum `Σ f(r) ΔV` is a check, not an
 accurate quadrature, for an all-electron density. A uniform grid aliases the

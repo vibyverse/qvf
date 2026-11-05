@@ -1,0 +1,10 @@
+{
+  "archive": "volume_wavefunction_ref_wrong_kind.qvf",
+  "description": "A volume.density whose wavefunction_ref names an existing section of kind structure instead of a wavefunction.gto section (spec \u00a7 5.2).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

@@ -228,6 +228,8 @@ pub struct VolumeDensityFields {
     pub run_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wavefunction_ref: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -277,6 +279,12 @@ pub struct VolumeOrbitalFields {
     pub run_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wavefunction_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mo_index: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spin: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -297,6 +305,8 @@ pub struct VolumeSpinFields {
     pub run_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wavefunction_ref: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,

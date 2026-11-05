@@ -252,6 +252,12 @@ Schema definition: `$defs/SectionVolumeDensity`.
 | `grid` | yes | json |  |  | [`VolumeGridPayload`](#def-volumegridpayload) |
 | `data` | yes | binary | `float32`, `float64` | 3 |  |
 
+**Section fields**
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `wavefunction_ref` |  | string | Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction. |
+
 **Example** (from `conformance/corpus/volume_density.qvf`, long arrays shortened)
 
 Manifest section:
@@ -305,6 +311,14 @@ Schema definition: `$defs/SectionVolumeOrbital`.
 | `grid` | yes | json |  |  | [`VolumeGridPayload`](#def-volumegridpayload) |
 | `data` | yes | binary | `float32`, `float64` | 3 |  |
 
+**Section fields**
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `wavefunction_ref` |  | string | Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction. |
+| `mo_index` |  | integer | 0-based row of the orbital in the coefficient member of the `wavefunction.gto` section that `wavefunction_ref` names, which is then required: of `mo_coefficients`, or of the `mo_coefficients_alpha` or `mo_coefficients_beta` that `spin` selects. For natural transition orbitals the row is the hole-particle pair index. See QVF spec § 5.2 (volume.*), under Volumes of a wavefunction. |
+| `spin` |  | one of `"alpha"` \| `"beta"` | The coefficient member `mo_index` is a row of: `mo_coefficients_alpha` or `mo_coefficients_beta`. Required when the referenced `wavefunction.gto` section carries the alpha and beta coefficients of an unrestricted wavefunction, and absent when it carries `mo_coefficients`; it needs `mo_index`. See QVF spec § 5.2 (volume.*), under Volumes of a wavefunction. |
+
 **Example** (from `conformance/corpus/volume_orbital.qvf`, long arrays shortened)
 
 Manifest section:
@@ -357,6 +371,12 @@ Schema definition: `$defs/SectionVolumeSpin`.
 |---|---|---|---|---|---|
 | `grid` | yes | json |  |  | [`VolumeGridPayload`](#def-volumegridpayload) |
 | `data` | yes | binary | `float32`, `float64` | 3 |  |
+
+**Section fields**
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `wavefunction_ref` |  | string | Id of the `wavefunction.gto` section the field was computed from. It must name a section of kind `wavefunction.gto` in this archive; see QVF spec § 5.2 (volume.*), under Volumes of a wavefunction. |
 
 **Example** (from `conformance/corpus/volume_spin.qvf`, long arrays shortened)
 

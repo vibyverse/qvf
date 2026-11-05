@@ -159,6 +159,74 @@ int main() {
         CHECK(threw, "duplicate id rejected");
     }
 
+    // --- volumes that name their wavefunction and orbital (spec § 5.2) ---
+    {
+        auto throws = [](auto&& fn) {
+            try {
+                fn();
+            } catch (const std::exception&) {
+                return true;
+            }
+            return false;
+        };
+        QvfWriter vw({"t", "1", "wavefunction volumes"});
+        vw.auto_metadata = false;
+        vw.add_structure({{"H", 1, {{0, 0, 0}}}, {"H", 1, {{0, 0, 0.74}}}});
+        WavefunctionGTO rhf;
+        rhf.shells = {{0, 0, {1.0}, {1.0}, true}, {1, 0, {1.0}, {1.0}, true}};
+        rhf.mo_coefficients = {2, 2, {1, 0, 0, 1}};
+        rhf.energies = {-0.5, 0.5};
+        rhf.occupations = {2, 0};
+        vw.add_wavefunction_gto(rhf);
+        WavefunctionGTO uhf;
+        uhf.shells = rhf.shells;
+        uhf.unrestricted = true;
+        uhf.mo_coefficients_alpha = {2, 2, {1, 0, 0, 1}};
+        uhf.mo_coefficients_beta = {1, 2, {1, 0}};
+        uhf.energies_alpha = {-0.5, 0.5};
+        uhf.occupations_alpha = {1, 0};
+        uhf.energies_beta = {-0.4};
+        uhf.occupations_beta = {1};
+        uhf.section_id = "wf_u";
+        vw.add_wavefunction_gto(uhf);
+        Grid g;
+        const Tensor field = tensor_f32(std::vector<double>(8, 0.125), {2, 2, 2});
+        vw.add_volume("volume.density", g, field, "rho", "", "rho");
+        vw.add_volume("volume.orbital", g, field, "MO 1", "", "mo_1");
+        vw.add_volume("volume.orbital", g, field, "MO 0 beta", "", "mo_b0");
+        vw.add_volume("volume.elf", g, field, "ELF", "", "elf");
+        CHECK(vw.link_volume_wavefunction("rho", "wf") == "rho" &&
+                  vw.link_volume_wavefunction("mo_1", "wf", 1) == "mo_1" &&
+                  vw.link_volume_wavefunction("mo_b0", "wf_u", 0, "beta") == "mo_b0",
+              "link_volume_wavefunction returns the volume id");
+        CHECK(throws([&] { vw.link_volume_wavefunction("elf", "wf"); }),
+              "link_volume_wavefunction refuses a volume.elf");
+        CHECK(throws([&] { vw.link_volume_wavefunction("rho", "wf", 0); }),
+              "link_volume_wavefunction refuses mo_index on a density");
+        CHECK(throws([&] { vw.link_volume_wavefunction("mo_1", "structure", 0); }),
+              "link_volume_wavefunction refuses a reference to a structure");
+        CHECK(throws([&] { vw.link_volume_wavefunction("mo_1", "wf", 2); }),
+              "link_volume_wavefunction refuses a row outside mo_coefficients");
+        CHECK(throws([&] { vw.link_volume_wavefunction("mo_1", "wf", 0, "alpha"); }),
+              "link_volume_wavefunction refuses spin with mo_coefficients");
+        CHECK(throws([&] { vw.link_volume_wavefunction("mo_b0", "wf_u", 0); }),
+              "link_volume_wavefunction needs spin for an unrestricted wavefunction");
+        CHECK(throws([&] { vw.link_volume_wavefunction("mo_b0", "wf_u", 1, "beta"); }),
+              "link_volume_wavefunction refuses a row outside mo_coefficients_beta");
+        QvfReader vr = QvfReader::from_bytes(vw.to_bytes());
+        const Json& secs = vr.manifest().at("sections");
+        const Json& mo_b0 = secs.at(5);
+        CHECK(secs.at(3).at("wavefunction_ref").as_string() == "wf" &&
+                  !secs.at(3).has("mo_index"),
+              "a linked density carries wavefunction_ref only");
+        CHECK(mo_b0.at("wavefunction_ref").as_string() == "wf_u" &&
+                  mo_b0.at("mo_index").as_int() == 0 &&
+                  mo_b0.at("spin").as_string() == "beta",
+              "a linked unrestricted orbital carries wavefunction_ref, mo_index and spin");
+        CHECK(!secs.at(4).has("spin"), "a restricted orbital carries no spin");
+        CHECK(!has_errors(vr.validate_findings()), "linked volumes validate");
+    }
+
     // --- reserved ids and a bonds structure_ref (spec § 3.4, § 5.1) ---
     {
         auto throws = [](auto&& fn) {

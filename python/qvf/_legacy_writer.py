@@ -1971,7 +1971,10 @@ class QvfWriter:
                   structure_ref: str | None = None,
                   axis: Mapping[str, Any] | None = None,
                   excited_states_ref: str | None = None,
-                  state_index: int | None = None) -> str:
+                  state_index: int | None = None,
+                  wavefunction_ref: str | None = None,
+                  mo_index: int | None = None,
+                  spin: str | None = None) -> str:
         """Add any ``volume.*`` section; ``origin`` and ``voxel_vectors`` are
         in bohr (spec § 5.2). For ``volume.difference`` you may pass
         ``operand_a``/``operand_b`` section ids.
@@ -1996,6 +1999,15 @@ class QvfWriter:
         not resolved here, because the ``excited_states`` section usually
         names this one through ``density_ref`` and is added after it; the
         validators resolve it (spec § 5.12).
+
+        ``wavefunction_ref`` (``volume.density``, ``volume.spin`` and
+        ``volume.orbital``) names the ``wavefunction.gto`` section the field
+        was computed from, which must already have been added. For a
+        ``volume.orbital``, ``mo_index`` is the 0-based row of the orbital in
+        that section's coefficient member and ``spin`` (``"alpha"`` or
+        ``"beta"``) the member of an unrestricted wavefunction; ``spin`` is
+        required with the alpha and beta coefficients and refused with
+        ``mo_coefficients`` (spec § 5.2, Volumes of a wavefunction).
 
         ``units`` (optional) is written as the grid's ``units`` declaration,
         e.g. ``{"origin": "bohr", "voxel_vectors": "bohr"}``: unit names of
@@ -2052,6 +2064,8 @@ class QvfWriter:
             if state_index is not None:
                 state_fields["state_index"] = _positive_int(
                     state_index, "volume.transition_density state_index")
+        state_fields.update(self._wavefunction_volume_fields(
+            kind, wavefunction_ref, mo_index, spin))
         sid = section_id or (kind.replace(".", "_") + f"_{len(self._sections)}")
         self._check_new_id(sid)
         stem = sid
@@ -2100,6 +2114,55 @@ class QvfWriter:
                 section["description"] = description
         section.update(state_fields)
         return self._push(section)
+
+    def _wavefunction_volume_fields(self, kind: str, wavefunction_ref: Any,
+                                    mo_index: Any, spin: Any) -> dict[str, Any]:
+        """The ``wavefunction_ref``, ``mo_index`` and ``spin`` section fields
+        of a volume (spec § 5.2, Volumes of a wavefunction), checked against
+        the ``wavefunction.gto`` section already added."""
+        if wavefunction_ref is None and mo_index is None and spin is None:
+            return {}
+        if kind not in ("volume.density", "volume.spin", "volume.orbital"):
+            raise ValueError(f"{kind}: wavefunction_ref applies to volume.density, "
+                             f"volume.spin and volume.orbital only")
+        if (mo_index is not None or spin is not None) and kind != "volume.orbital":
+            raise ValueError(f"{kind}: mo_index and spin apply to volume.orbital only")
+        if wavefunction_ref is None:
+            raise ValueError(f"{kind}: mo_index needs wavefunction_ref (spec § 5.2)")
+        if spin is not None and mo_index is None:
+            raise ValueError(f"{kind}: spin needs mo_index (spec § 5.2)")
+        self._check_ref(f"{kind} wavefunction_ref", wavefunction_ref, "wavefunction.gto")
+        fields: dict[str, Any] = {"wavefunction_ref": wavefunction_ref}
+        if mo_index is None:
+            return fields
+        if (isinstance(mo_index, (bool, np.bool_))
+                or not isinstance(mo_index, (int, np.integer)) or mo_index < 0):
+            raise ValueError(f"{kind}: mo_index must be an integer >= 0, got {mo_index!r}")
+        members = next(s for s in self._sections
+                       if s["id"] == wavefunction_ref)["members"]
+        if "mo_coefficients" in members:
+            if spin is not None:
+                raise ValueError(f"{kind}: wavefunction {wavefunction_ref!r} has one "
+                                 f"set of orbitals; spin must be omitted (spec § 5.2)")
+            role = "mo_coefficients"
+        else:
+            if spin not in ("alpha", "beta"):
+                raise ValueError(f"{kind}: wavefunction {wavefunction_ref!r} is "
+                                 f"unrestricted; spin must be 'alpha' or 'beta' "
+                                 f"(spec § 5.2)")
+            role = f"mo_coefficients_{spin}"
+        shape = (members.get(role) or {}).get("shape")
+        if not shape:
+            raise ValueError(f"{kind}: wavefunction {wavefunction_ref!r} has no "
+                             f"{role} member with a shape")
+        rows = shape[0]
+        if int(mo_index) >= rows:
+            raise ValueError(f"{kind}: mo_index {mo_index} is outside the {rows} "
+                             f"rows of {role} of {wavefunction_ref!r}")
+        fields["mo_index"] = int(mo_index)
+        if spin is not None:
+            fields["spin"] = spin
+        return fields
 
     def _series_axis(self, axis: Mapping[str, Any], n: int) -> dict[str, Any]:
         """A ``volume.series`` ``axis`` payload (``$defs/VolumeSeriesAxisPayload``,

@@ -1,0 +1,10 @@
+{
+  "archive": "volume_orbital_spin_missing.qvf",
+  "description": "A volume.orbital with mo_index 0 and no spin, but the wavefunction.gto that wavefunction_ref names is unrestricted: row 0 of mo_coefficients_alpha or of mo_coefficients_beta (spec \u00a7 5.2).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

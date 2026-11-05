@@ -1408,6 +1408,88 @@ def _():
 
 
 
+# Volumes that name their wavefunction and orbital (spec § 5.2, Volumes of a
+# wavefunction).
+
+_H2_MO_UNRESTRICTED = {"n_ao": 2, "spin": "unrestricted", "orbital_kind": "canonical",
+                       "alpha": {"energies": [-0.61, 0.31], "occupations": [1.0, 0.0]},
+                       "beta": {"energies": [-0.42, 0.55], "occupations": [1.0, 0.0]}}
+
+
+def _linked_volume(a: Archive, kind: str, sid: str, **fields: Any) -> dict:
+    grid = _json({"origin": [-1.0, -1.0, -1.0],
+                  "voxel_vectors": [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0],
+                                    [0.0, 0.0, 0.5]],
+                  "shape": [4, 4, 4]})
+    data = struct.pack("<64f", *([0.125] * 64))
+    return a.add_section(
+        {"id": sid, "kind": kind,
+         "members": {"grid": json_member(f"volumes/{sid}_grid.json", grid),
+                     "data": binary_member(f"volumes/{sid}.dat", data, "float32",
+                                           [4, 4, 4])},
+         **fields},
+        {f"volumes/{sid}_grid.json": grid, f"volumes/{sid}.dat": data})
+
+
+@case("volume_wavefunction_ref_wrong_kind")
+def _():
+    a = base_archive()
+    _linked_volume(a, "volume.density", "rho", wavefunction_ref="structure")
+    return (a.to_bytes(),
+            "A volume.density whose wavefunction_ref names an existing section of "
+            "kind structure instead of a wavefunction.gto section (spec § 5.2).",
+            _err("E_REF_UNRESOLVED"), None)
+
+
+@case("volume_orbital_mo_index_out_of_range")
+def _():
+    a = base_archive()
+    _wavefunction(a, _H2_BASIS, _H2_MO)
+    _linked_volume(a, "volume.orbital", "mo_2", wavefunction_ref="wf", mo_index=2)
+    return (a.to_bytes(),
+            "A volume.orbital with mo_index 2, but the wavefunction.gto that "
+            "wavefunction_ref names has 2 rows (0 and 1) in mo_coefficients "
+            "(spec § 5.2).",
+            _err("E_REF_UNRESOLVED"), None)
+
+
+@case("volume_orbital_spin_missing")
+def _():
+    a = base_archive()
+    _wavefunction(a, _H2_BASIS, _H2_MO_UNRESTRICTED, unrestricted=True)
+    _linked_volume(a, "volume.orbital", "mo_0", wavefunction_ref="wf", mo_index=0)
+    return (a.to_bytes(),
+            "A volume.orbital with mo_index 0 and no spin, but the wavefunction.gto "
+            "that wavefunction_ref names is unrestricted: row 0 of "
+            "mo_coefficients_alpha or of mo_coefficients_beta (spec § 5.2).",
+            _err("E_REF_UNRESOLVED"), None)
+
+
+@case("volume_orbital_spin_restricted")
+def _():
+    a = base_archive()
+    _wavefunction(a, _H2_BASIS, _H2_MO)
+    _linked_volume(a, "volume.orbital", "mo_0", wavefunction_ref="wf", mo_index=0,
+                   spin="alpha")
+    return (a.to_bytes(),
+            "A volume.orbital with spin 'alpha', but the wavefunction.gto that "
+            "wavefunction_ref names carries one set of orbitals in "
+            "mo_coefficients (spec § 5.2).",
+            _err("E_REF_UNRESOLVED"), None)
+
+
+@case("volume_orbital_mo_index_without_ref")
+def _():
+    a = base_archive()
+    _wavefunction(a, _H2_BASIS, _H2_MO)
+    _linked_volume(a, "volume.orbital", "mo_0", mo_index=0)
+    return (a.to_bytes(),
+            "A volume.orbital with mo_index but no wavefunction_ref, which "
+            "mo_index requires (spec § 5.2). Only a validator with a JSON Schema "
+            "engine detects this; one without (it reports W_SCHEMA_SKIPPED) "
+            "accepts the archive.",
+            _err("E_SCHEMA"), None)
+
 # Typed provenance fields (spec § 3.2) and the grown job.spec payload (§ 5.9).
 
 @case("job_spec_structure_ref_wrong_kind")

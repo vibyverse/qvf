@@ -1,0 +1,10 @@
+{
+  "archive": "volume_orbital_mo_index_without_ref.qvf",
+  "description": "A volume.orbital with mo_index but no wavefunction_ref, which mo_index requires (spec \u00a7 5.2). Only a validator with a JSON Schema engine detects this; one without (it reports W_SCHEMA_SKIPPED) accepts the archive.",
+  "expect": [
+    {
+      "code": "E_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}
