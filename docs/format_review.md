@@ -75,7 +75,8 @@ packaging, Fortran/platform qualification and fuzzing remain in the
 | Atomic charges / spin populations | ✅ | one role list, vector roles, `custom.<name>` (D02, P10, WP-24) |
 | Bond orders, QTAIM, NCI | ✅ | QTAIM positions in Å, declared (D05, WP-11) |
 | NMR, EPR | ✅ | typed payloads (P13, WP-11) |
-| Mössbauer, XAS/XES, other spectroscopies | ❌ | `spectra.generic` or vendor; P13 adds typed kinds on demand |
+| Mössbauer, XAS/XES | ✅ | `spectra.xas`, `spectra.xes`, `spectra.mossbauer` (P13, #19, Unreleased) |
+| Other spectroscopies | ❌ | `spectra.generic` or vendor; P13 adds typed kinds on demand |
 | **Periodic analysis** | | |
 | Bands, DOS, PDOS, COOP/COHP | ✅ | spin axis on projections, `occupations` (D04, WP-12) |
 | Fermi surface | ✅ | mesh payload schema'd, `shape` optional (P14, WP-12) |
