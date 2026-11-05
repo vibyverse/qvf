@@ -157,6 +157,17 @@ mkdir -p build/fuzz/manifest_corpus
 ./build/fuzz/manifest_fuzzer -max_total_time=60 -max_len=262144 \
   build/fuzz/manifest_corpus build/fuzz/manifest_seeds
 
+# Fuzzing the Python and JavaScript readers and validators (opt-in, not in CI).
+# Structure-aware mutations of the corpora at the ZIP and the JSON level;
+# targets zip, json, mixed and bomb. Findings and reproducers go to build/.
+pip install hypothesis atheris        # atheris is optional
+QVF_FUZZ=1 python -m pytest python/tests/fuzz -q          # short Hypothesis pass
+python python/tests/fuzz/run_fuzz.py --target mixed --seconds 600
+mkdir -p build/fuzz-py/atheris        # libFuzzer adds new inputs to the first directory
+python python/tests/fuzz/atheris_fuzz.py -max_total_time=600 -timeout=10 \
+  -rss_limit_mb=2048 build/fuzz-py/atheris conformance/corpus conformance/negative
+(cd js && npm run build && node test/fuzz/run_fuzz.mjs --target mixed --seconds 600)
+
 # Generated tables: check them, and regenerate after editing the schema,
 # registry.json or spec Appendix B (then regenerate the single header too)
 python scripts/gen_kinds.py --check

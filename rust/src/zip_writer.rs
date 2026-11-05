@@ -92,6 +92,10 @@ impl<W: Write> Counting<W> {
 /// pieces, finish it, and call [`ZipWriter::finish`] after the last one.
 pub struct ZipWriter<W: Write> {
     out: Counting<W>,
+    /// Raw central-directory records of the entries an update keeps
+    /// (spec § 2.3), written first and unchanged.
+    kept: Vec<u8>,
+    kept_count: u64,
     records: Vec<Record>,
     active: Option<Active>,
     force_zip64: bool,
@@ -111,8 +115,26 @@ impl<W: Write> ZipWriter<W> {
     /// A writer on `sink`. Entries get the current UTC time as their
     /// modification time.
     pub fn new(sink: W, force_zip64: bool) -> Self {
+        Self::append(sink, 0, Vec::new(), 0, force_zip64)
+    }
+
+    /// A writer that appends to an archive (spec § 2.3): `sink` is
+    /// positioned at `start`, where the old central directory began, and
+    /// `kept` holds the raw central-directory records of the `kept_count`
+    /// existing entries. Their bytes stay where they are, and the new
+    /// central directory lists them first, unchanged, then the new entries.
+    pub fn append(sink: W, start: u64, kept: Vec<u8>, kept_count: u64, force_zip64: bool) -> Self {
         let (dos_time, dos_date) = dos_stamp(crate::writer::UtcTime::now());
-        ZipWriter { out: Counting { inner: sink, pos: 0 }, records: Vec::new(), active: None, force_zip64, dos_time, dos_date }
+        ZipWriter {
+            out: Counting { inner: sink, pos: start },
+            kept,
+            kept_count,
+            records: Vec::new(),
+            active: None,
+            force_zip64,
+            dos_time,
+            dos_date,
+        }
     }
 
     /// Bytes written so far.
@@ -120,14 +142,14 @@ impl<W: Write> ZipWriter<W> {
         self.out.pos
     }
 
-    /// Number of finished entries.
+    /// Number of finished entries, kept ones included.
     pub fn len(&self) -> usize {
-        self.records.len()
+        self.records.len() + self.kept_count as usize
     }
 
-    /// Whether no entry has been finished yet.
+    /// Whether there is no entry yet.
     pub fn is_empty(&self) -> bool {
-        self.records.is_empty()
+        self.len() == 0
     }
 
     /// Begin an entry. `size_hint` is its uncompressed size when known, which
@@ -236,12 +258,19 @@ impl<W: Write> ZipWriter<W> {
         self.active = None;
     }
 
+    /// The sink, abandoning any open entry and writing no central directory.
+    pub fn into_inner(self) -> W {
+        self.out.inner
+    }
+
     /// Write the central directory and end records and return the sink.
     pub fn finish(mut self) -> io::Result<W> {
         if self.active.is_some() {
             return Err(io::Error::other("a ZIP entry is still open"));
         }
         let cd_offset = self.out.pos;
+        let kept = std::mem::take(&mut self.kept);
+        self.out.put(&kept)?;
         for rec in &self.records {
             let big_size = self.force_zip64 || rec.size >= MAX32 || rec.compressed_size >= MAX32;
             let big_offset = self.force_zip64 || rec.offset >= MAX32;
@@ -283,7 +312,7 @@ impl<W: Write> ZipWriter<W> {
             self.out.put(&h)?;
         }
         let cd_size = self.out.pos - cd_offset;
-        let count = self.records.len() as u64;
+        let count = self.records.len() as u64 + self.kept_count;
         let end64 = self.force_zip64 || count >= MAX16 || cd_offset >= MAX32 || cd_size >= MAX32;
         let mut tail = Vec::with_capacity(98);
         if end64 {

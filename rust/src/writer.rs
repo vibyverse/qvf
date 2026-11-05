@@ -43,6 +43,9 @@ pub enum WriteError {
     /// duplicate section id, an illegal path or a tensor of the wrong size.
     /// Nothing was written for that call.
     Invalid(String),
+    /// An archive to update or repack could not be read (its finding code
+    /// and message).
+    Read(crate::error::QvfError),
 }
 
 impl fmt::Display for WriteError {
@@ -50,6 +53,7 @@ impl fmt::Display for WriteError {
         match self {
             WriteError::Io(e) => write!(f, "write failed: {e}"),
             WriteError::Invalid(m) => f.write_str(m),
+            WriteError::Read(e) => write!(f, "{}: {}", e.code, e.message),
         }
     }
 }
@@ -58,8 +62,14 @@ impl std::error::Error for WriteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             WriteError::Io(e) => Some(e),
-            WriteError::Invalid(_) => None,
+            WriteError::Invalid(_) | WriteError::Read(_) => None,
         }
+    }
+}
+
+impl From<crate::error::QvfError> for WriteError {
+    fn from(e: crate::error::QvfError) -> Self {
+        WriteError::Read(e)
     }
 }
 
@@ -230,6 +240,27 @@ pub(crate) struct SectionInfo {
     /// Orbital row count per spin channel ("" for a single set) of a
     /// `wavefunction.gto`.
     pub mo_rows: HashMap<String, usize>,
+    /// State indices of an `excited_states` section (when known).
+    pub states: Option<Vec<u32>>,
+}
+
+/// What an update keeps of the archive it appends to (spec § 2.3).
+pub(crate) struct UpdateBase {
+    /// `source`, verbatim.
+    pub source: Map<String, Value>,
+    /// Every other root key except `qvf_version` and `sections` (and the
+    /// `schema_uri` of the withdrawn version 2), verbatim.
+    pub root: Map<String, Value>,
+    pub sections: Vec<Map<String, Value>>,
+    pub info: HashMap<String, SectionInfo>,
+    /// Every entry name and member path of the archive.
+    pub taken: HashSet<String>,
+    /// `metadata.modified_utc` as the archive has it.
+    pub loaded_modified: Option<Value>,
+    /// Where the old central directory began, its raw records and their count.
+    pub start: u64,
+    pub kept: Vec<u8>,
+    pub kept_count: u64,
 }
 
 /// Root keys the writer itself owns.
@@ -274,6 +305,13 @@ pub struct Writer<W: Write> {
     pub(crate) info: HashMap<String, SectionInfo>,
     paths: HashSet<String>,
     failed: bool,
+    /// The entry names an update found in the archive: a new member whose
+    /// path is one of them gets a fresh one (spec § 2.3).
+    original: HashSet<String>,
+    /// The archive's `source`, kept verbatim by an update.
+    source_raw: Option<Map<String, Value>>,
+    /// Set by an update: the loaded `metadata.modified_utc`.
+    update: Option<Option<Value>>,
 }
 
 impl Writer<BufWriter<File>> {
@@ -309,7 +347,75 @@ impl<W: Write> Writer<W> {
             info: HashMap::new(),
             paths: HashSet::new(),
             failed: false,
+            original: HashSet::new(),
+            source_raw: None,
+            update: None,
         })
+    }
+
+    /// A writer that appends to an existing archive (spec § 2.3).
+    pub(crate) fn for_update(sink: W, base: UpdateBase, options: WriterOptions) -> Self {
+        let program = base.source.get("program").and_then(Value::as_str).unwrap_or_default();
+        let version = base.source.get("version").and_then(Value::as_str).unwrap_or_default();
+        let source = Source::new(program, version);
+        Writer {
+            zip: ZipWriter::append(sink, base.start, base.kept, base.kept_count, options.force_zip64),
+            options: WriterOptions { created_utc: false, ..options },
+            source,
+            root: base.root,
+            sections: base.sections,
+            info: base.info,
+            paths: base.taken.clone(),
+            failed: false,
+            original: base.taken,
+            source_raw: Some(base.source),
+            update: Some(base.loaded_modified),
+        }
+    }
+
+    /// Remove a section from the manifest and return it. In an update its
+    /// members stay in the archive as orphans until a repack (spec § 2.3).
+    /// A `job.spec` section is kept verbatim by updates (spec § 5.9).
+    pub(crate) fn remove_section(&mut self, id: &str) -> Result<Map<String, Value>, WriteError> {
+        self.ensure_ok()?;
+        let Some(index) = self.sections.iter().position(|s| s.get("id").and_then(Value::as_str) == Some(id)) else {
+            return invalid(format!("remove_section: no section with id {id:?}"));
+        };
+        if self.update.is_some() && self.sections[index].get("kind").and_then(Value::as_str) == Some("job.spec") {
+            return invalid("updates preserve job.spec sections verbatim (spec § 5.9)");
+        }
+        self.info.remove(id);
+        Ok(self.sections.remove(index))
+    }
+
+    /// Remove one member from a section and return its spec. Its entry stays
+    /// in the archive (an orphan once the manifest is written).
+    pub(crate) fn remove_member(&mut self, id: &str, role: &str) -> Result<Map<String, Value>, WriteError> {
+        self.ensure_ok()?;
+        let job = self.info.get(id).is_some_and(|i| i.kind == "job.spec");
+        if self.update.is_some() && job {
+            return invalid("updates preserve job.spec sections verbatim (spec § 5.9)");
+        }
+        match self.members_of(id)?.remove(role) {
+            Some(Value::Object(m)) => Ok(m),
+            Some(_) => invalid(format!("section {id:?} member {role:?} is malformed")),
+            None => invalid(format!("section {id:?} has no member {role:?}")),
+        }
+    }
+
+    /// The sections as the manifest will list them.
+    pub(crate) fn sections_mut(&mut self) -> &mut Vec<Map<String, Value>> {
+        &mut self.sections
+    }
+
+    /// The root blocks other than the ones the writer owns.
+    pub(crate) fn root_mut(&mut self) -> &mut Map<String, Value> {
+        &mut self.root
+    }
+
+    /// Give up without a manifest: the sink, with whatever was written.
+    pub(crate) fn abandon(self) -> W {
+        self.zip.into_inner()
     }
 
     fn ensure_ok(&self) -> Result<(), WriteError> {
@@ -395,17 +501,36 @@ impl<W: Write> Writer<W> {
         Ok(())
     }
 
-    fn claim_path(&mut self, path: &str) -> Result<(), WriteError> {
+    /// Reserve a member path, and return the path the member is written at:
+    /// `path`, or in an update, for a path the archive already holds, the
+    /// first free `stem.N.suffix` (N from 2), as the Python editor names it,
+    /// because an update never reuses an entry name (spec § 2.3).
+    fn claim_path(&mut self, path: &str) -> Result<String, WriteError> {
         if path.is_empty() || path == "manifest.json" || path.ends_with('/') {
             return invalid(format!("illegal member path {path:?}"));
         }
         if let Some(why) = path_problem(path) {
             return invalid(format!("illegal member path {path:?}: {why} (spec § 2.1)"));
         }
-        if !self.paths.insert(path.to_owned()) {
-            return invalid(format!("duplicate member path {path:?}"));
+        let mut path = path.to_owned();
+        if self.paths.contains(&path) {
+            if !self.original.contains(&path) {
+                return invalid(format!("duplicate member path {path:?}"));
+            }
+            let (head, tail) = match path.rfind('/') {
+                Some(i) => (&path[..=i], &path[i + 1..]),
+                None => ("", path.as_str()),
+            };
+            let (stem, suffix) = match tail.find('.') {
+                Some(i) => (&tail[..i], &tail[i..]),
+                None => (tail, ""),
+            };
+            let candidate = |n: u64| format!("{head}{stem}.{n}{suffix}");
+            let n = (2..).find(|&n| !self.paths.contains(&candidate(n))).expect("a free name exists");
+            path = candidate(n);
         }
-        Ok(())
+        self.paths.insert(path.clone());
+        Ok(path)
     }
 
     fn method(&self) -> Method {
@@ -444,12 +569,12 @@ impl<W: Write> Writer<W> {
     /// [`Writer::add_json`] at an explicit path.
     pub fn add_json_at(&mut self, id: &str, role: &str, payload: &Value, path: &str) -> Result<Value, WriteError> {
         self.check_target(id, role)?;
-        self.claim_path(path)?;
+        let path = &self.claim_path(path)?;
         let data = json_bytes(payload);
         let method = self.method();
         self.write_entry(path, method, &data)?;
         let mut m = Map::new();
-        m.insert("path".into(), Value::from(path));
+        m.insert("path".into(), Value::from(path.as_str()));
         m.insert("format".into(), Value::from("json"));
         m.insert("sha256".into(), Value::from(hex(&Sha256::digest(&data))));
         m.insert("size".into(), Value::from(data.len() as u64));
@@ -460,6 +585,18 @@ impl<W: Write> Writer<W> {
     /// `<id>/<role>.bin`, with an optional media type. Images (PNG, JPEG,
     /// SVG) are STORED.
     pub fn add_opaque(&mut self, id: &str, role: &str, data: &[u8], media_type: Option<&str>) -> Result<Value, WriteError> {
+        self.add_opaque_at(id, role, data, media_type, &format!("{id}/{role}.bin"))
+    }
+
+    /// [`Writer::add_opaque`] at an explicit path.
+    pub fn add_opaque_at(
+        &mut self,
+        id: &str,
+        role: &str,
+        data: &[u8],
+        media_type: Option<&str>,
+        path: &str,
+    ) -> Result<Value, WriteError> {
         self.check_target(id, role)?;
         if let Some(mt) = media_type {
             let ok = mt
@@ -469,8 +606,7 @@ impl<W: Write> Writer<W> {
                 return invalid(format!("media type {mt:?} is not type/subtype (spec § 4.2)"));
             }
         }
-        let path = format!("{id}/{role}.bin");
-        self.claim_path(&path)?;
+        let path = self.claim_path(path)?;
         let method = match media_type {
             Some("image/png" | "image/jpeg" | "image/svg+xml") => Method::Store,
             _ => self.method(),
@@ -518,7 +654,7 @@ impl<W: Write> Writer<W> {
         let Some(expected) = tensor_bytes(dtype, shape) else {
             return invalid(format!("shape {shape:?} overflows"));
         };
-        self.claim_path(path)?;
+        let path = &self.claim_path(path)?;
         let method = self.method();
         if let Err(e) = self.zip.start_entry(path, method, Some(expected)) {
             self.failed = true;
@@ -545,10 +681,13 @@ impl<W: Write> Writer<W> {
         m.insert("qvf_version".into(), Value::from(generated::QVF_VERSION));
         m.insert("schema_uri".into(), Value::from(generated::SCHEMA_ID));
         m.insert("byte_order".into(), Value::from("little"));
-        let mut source = Map::new();
-        source.insert("program".into(), Value::from(self.source.program.as_str()));
-        source.insert("version".into(), Value::from(self.source.version.as_str()));
-        source.insert("calculation".into(), Value::from(self.source.calculation.as_str()));
+        let source = self.source_raw.clone().unwrap_or_else(|| {
+            let mut source = Map::new();
+            source.insert("program".into(), Value::from(self.source.program.as_str()));
+            source.insert("version".into(), Value::from(self.source.version.as_str()));
+            source.insert("calculation".into(), Value::from(self.source.calculation.as_str()));
+            source
+        });
         m.insert("source".into(), Value::Object(source));
         for (k, v) in &self.root {
             m.insert(k.clone(), v.clone());
@@ -565,6 +704,16 @@ impl<W: Write> Writer<W> {
             let meta = self.root.entry("metadata").or_insert_with(|| Value::Object(Map::new()));
             if let Some(obj) = meta.as_object_mut() {
                 obj.entry("created_utc").or_insert_with(|| Value::from(UtcTime::now().iso8601()));
+            }
+        }
+        if let Some(loaded) = &self.update {
+            // spec § 2.3: an update stamps modified_utc unless the caller set one.
+            let meta = self.root.entry("metadata").or_insert_with(|| Value::Object(Map::new()));
+            if let Some(obj) = meta.as_object_mut() {
+                let current = obj.get("modified_utc");
+                if current.is_none() || current == loaded.as_ref() {
+                    obj.insert("modified_utc".into(), Value::from(UtcTime::now().iso8601()));
+                }
             }
         }
         let raw = json_bytes(&self.manifest());

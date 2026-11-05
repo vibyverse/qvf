@@ -25,8 +25,8 @@ __all__ = ["import_xyz", "export_xyz", "import_cube", "export_cube", "import_xsf
            "import_pdb", "export_pdb", "import_molden", "export_molden", "import_cif",
            "export_cif", "import_poscar", "export_poscar", "import_chgcar", "export_chgcar",
            "import_mmcif", "export_mmcif", "import_espresso_in", "export_espresso_in",
-           "import_espresso_xml", "import_espresso_cube", "import_aims", "export_aims",
-           "import_fchk", "export_fchk"]
+           "import_espresso_xml", "import_espresso_cube", "import_espresso_filplot",
+           "import_aims", "export_aims", "import_fchk", "export_fchk"]
 _MAX_TEXT = 64 * 1024 * 1024
 _MAX_VALUES = 5_000_000
 _SCALAR_KINDS = {"volume." + name for name in (
@@ -151,7 +151,9 @@ def import_espresso_in(source, destination):
 
     Any ibrav of INPUT_PW with celldm or A, B, C, cosAB, cosAC, cosBC, or
     ibrav = 0 with CELL_PARAMETERS in alat, bohr or angstrom; ATOMIC_POSITIONS
-    in alat, bohr, angstrom or crystal. Elements come from the species labels;
+    in alat, bohr, angstrom or crystal. A ``space_group`` input with
+    ``crystal_sg`` sites is expanded to its conventional cell. Elements come
+    from the species labels;
     atoms with all three if_pos flags 0 become ``constraints.frozen_atoms``.
     See docs/converters.md.
     """
@@ -180,6 +182,17 @@ def import_espresso_cube(source, destination, *, kind="volume.density"):
     """Import a pp.x cube file as a periodic grid without the endpoint plane."""
     from ._espresso import import_espresso_cube as convert
     return convert(source, destination, kind=kind)
+
+
+def import_espresso_filplot(source, destination):
+    """Import a pp.x filplot file as a structure and a periodic grid without the endpoint.
+
+    The kind and unit follow from plot_num: densities stay in e/bohr^3 and
+    potentials in Ry become hartree (electrostatic potentials with the sign
+    flipped). See docs/converters.md.
+    """
+    from ._espresso import import_espresso_filplot as convert
+    return convert(source, destination)
 
 
 def import_aims(source, destination):

@@ -33,6 +33,8 @@ const SATURATED32 = 0xffffffff;
 const INFLATE_STEP_MAX = 64 * 1024;
 /** DEFLATE cannot expand by more than this factor (RFC 1951 worst case is 1032:1). */
 const DEFLATE_MAX_EXPANSION = 1032;
+/** Allowance on top of that bound, so that it can never refuse a real stream. */
+const DEFLATE_SLACK = 1024;
 
 export const METHOD_STORE = 0;
 export const METHOD_DEFLATE = 8;
@@ -272,6 +274,14 @@ function readCentralDirectory(bytes: Uint8Array, view: DataView, dir: Directory)
  * header cannot make the reader produce, or allocate, much more than declared.
  */
 function inflateExact(data: Uint8Array, size: number, name: string): Uint8Array {
+  // The output buffer is allocated up front, so first refuse a declared size
+  // that the stored bytes cannot reach: a tiny entry declaring gigabytes must
+  // not make the reader allocate them (spec § 2.1).
+  if (size > data.length * DEFLATE_MAX_EXPANSION + DEFLATE_SLACK) {
+    throw unreadable(
+      `ZIP entry ${JSON.stringify(name)} declares ${size} bytes, more than its ${data.length} compressed bytes can inflate to`,
+    );
+  }
   let out: Uint8Array;
   try {
     out = new Uint8Array(size);

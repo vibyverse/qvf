@@ -1,5 +1,5 @@
 //! An independent Rust implementation of QVF, the archive format of the
-//! vibe-qc family: a streaming writer with section builders, a reader with
+//! vibe-qc family: a streaming writer with section builders, an editor, a reader with
 //! typed little-endian tensors and typed section models ([`kinds`],
 //! generated from the schema `$defs`, read with [`Reader::get`]), and a
 //! validator that reports the stable finding codes of the format specification
@@ -18,8 +18,10 @@
 //! # Ok::<(), qvf::QvfError>(())
 //! ```
 //!
-//! The `qvf` binary (`src/bin/qvf.rs`) offers the `validate`, `info`, `cat`
-//! and `extract` commands of the Python CLI.
+//! [`Editor`] updates an archive in place (spec § 2.3) and repacks it.
+//! The `qvf` binary (`src/bin/qvf.rs`) offers the `validate`, `info`, `cat`,
+//! `extract`, `diff`, `repack`, `scrub`, `conformance` and `schema` commands
+//! of the Python CLI.
 //!
 //! The crate does not depend on the C++ library or its C ABI. The JSON
 //! Schema check runs on the instruction table `scripts/gen_kinds.py`
@@ -27,6 +29,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod builders;
+pub mod conformance;
+pub mod editor;
 pub mod error;
 #[rustfmt::skip]
 pub mod generated;
@@ -34,7 +39,9 @@ pub mod json;
 #[rustfmt::skip]
 pub mod kinds;
 pub mod limits;
+pub mod operations;
 pub mod reader;
+pub mod regex;
 pub mod schema_check;
 pub mod sections;
 pub mod typed;
@@ -43,6 +50,11 @@ pub mod writer;
 pub mod zip;
 pub mod zip_writer;
 
+pub use builders::{
+    BandProjections, Bands, BondingAnalysis, Broadening, DosBonding, DosChannel, DosInfo, DosPair, DosProjected, DosTotal, Kpath,
+    KpathSegment, Peak, Precision, Spectrum, Trajectory, TrajectoryCell,
+};
+pub use editor::{Editor, EditorOptions};
 pub use error::{Code, QvfError, Severity};
 pub use limits::Limits;
 pub use reader::{DType, Reader, Section, Tensor, TensorData};

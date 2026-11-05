@@ -1,0 +1,10 @@
+{
+  "archive": "manifest_json_utf16.qvf",
+  "description": "manifest.json is valid JSON encoded as UTF-16 with a byte order mark; a manifest parses as UTF-8 JSON (spec \u00a7 6).",
+  "expect": [
+    {
+      "code": "E_MANIFEST_JSON",
+      "severity": "error"
+    }
+  ]
+}

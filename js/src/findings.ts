@@ -55,6 +55,8 @@ export const FINDING_CODES = {
   E_ROOT_INCONSISTENT: "error",
   // Wavefunction normalization (spec § 5.3, Appendix A.1).
   E_NORMALIZATION: "error",
+  // A grid units.data against the unit of its volume kind (spec § 4.3).
+  E_UNIT_CONTRADICTED: "error",
 } as const;
 
 export type Severity = "error" | "warning";

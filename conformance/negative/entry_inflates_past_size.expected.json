@@ -1,0 +1,10 @@
+{
+  "archive": "entry_inflates_past_size.qvf",
+  "description": "A member whose ZIP headers declare 1 KiB uncompressed, with the CRC-32 and sha256 of the first 1 KiB, while its DEFLATE stream goes on to 8 KiB: the entry does not end at its declared size, so it is unreadable even though a reader that stops there sees matching checksums (spec \u00a7 2.1, \u00a7 6.1).",
+  "expect": [
+    {
+      "code": "E_ZIP_UNREADABLE",
+      "severity": "error"
+    }
+  ]
+}

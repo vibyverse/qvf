@@ -578,6 +578,7 @@ qvf convert si.pwi --from espresso-in --to qvf -o si.qvf
 qvf convert si.qvf --from qvf --to espresso-in -o si-export.pwi
 qvf convert data-file-schema.xml --from espresso-xml --to qvf -o si-result.qvf
 qvf convert rho.cube --from espresso-cube --to qvf -o rho.qvf
+qvf convert rho.filplot --from espresso-filplot --to qvf -o rho.qvf
 ```
 
 **pw.x input.** Import reads the cell and atoms of one pw.x input as a
@@ -601,8 +602,35 @@ are `celldm(1..6)` with `celldm(1)` in bohr, or `A`, `B`, `C` in Å with
 `cosAB`, `cosAC`, `cosBC` mapped to celldm as pw.x does: all three for 14,
 `cosAC` for `-12` and `-13`, `cosAB` otherwise (the rhombohedral angle for
 `5` and `-5`). Both sets together, missing or nonpositive lengths, cosines
-with magnitude 1 or more and angles that describe no cell are refused. `space_group` input and
-`crystal_sg` positions are not supported.
+with magnitude 1 or more and angles that describe no cell are refused.
+
+**Space-group input.** With `space_group` (the ITA number, 1 to 230) in
+`&SYSTEM` and `ATOMIC_POSITIONS crystal_sg`, each position line is one
+inequivalent site in crystal coordinates of the conventional cell, and the
+import writes every atom of the conventional unit cell. The operators come
+from the Hall symbol of the selected setting (`ita_hall` in
+`qvf/_spacegroups.py`, the same parser the CIF and PDB imports use), and
+the report gives it as `hall`. `uniqueb = .true.` selects unique axis b for
+monoclinic groups. The default `.false.` selects unique axis c with cell
+choice 1 for primitive groups and the B-centred cell (ITA cell choice 2,
+the lattice of `ibrav = 13`) for centred groups. `origin_choice = 2`
+selects the second ITA origin where there is one. For R groups,
+`rhombohedral = .true.` (the default) reads the sites on rhombohedral axes
+and `.false.` on hexagonal axes, where the cell is the triple hexagonal
+cell. The cell parameters follow the celldm (or `A`, `B`, `C`, `cosAB`,
+`cosAC`, `cosBC`) convention of the conventional lattice: `ibrav = 14`
+for triclinic, `12` (unique c, `cosAB`) or `-12` (unique b, `cosAC`) for
+monoclinic, `8`, `6`, `4` and `1` for orthorhombic, tetragonal, hexagonal
+and trigonal, and cubic groups, and `5` for R groups on rhombohedral axes.
+`CELL_PARAMETERS` and an `ibrav` are not used. A given `ibrav`, and a
+`uniqueb`, `origin_choice` or `rhombohedral` that does not apply to the
+group, are listed in `settings_ignored`. Images of a site within 0.01 Å of
+each other are one atom (`special_position_images_merged`), images of two
+sites that overlap are refused, and a frozen site freezes all its images.
+Wyckoff labels such as `Na 4a` or `O 8c 0.25` are refused: give the site as
+x y z. pw.x itself reduces a centred cell to the primitive cell of its
+`ibrav`, so a centred group imports with the centring multiplicity times
+the atoms that pw.x reports, in the same crystal.
 
 `ATOMIC_POSITIONS` is read in `alat`, `bohr`, `angstrom` or `crystal`
 (fractional). Without a unit, pw.x's default `alat` applies and the report
@@ -662,8 +690,53 @@ volume in bohr³) is the electron count. The cube does not record
 `plot_num`: assert another scalar kind with `kind=` / `--kind`, for example
 `volume.spin` for `plot_num = 6`. The valence charges in the atom lines are
 counted in `nonzero_atom_charges_omitted`. Use `--to cube` for the reverse
-direction. The pp.x `filplot` intermediate file is not supported: its layout
-depends on the QE version and carries no version marker.
+direction.
+
+**pp.x filplot files.** The intermediate file that pp.x writes as `filplot`
+(INPUT_PP) holds the records of `plot_io` in `Modules/plot_io.f90`: a title,
+the FFT dimensions `nr1x nr2x nr3x nr1 nr2 nr3` with `nat` and `ntyp`,
+`ibrav` and `celldm(1..6)`, the three lattice vectors in alat for
+`ibrav = 0`, `gcutm dual ecutwfc plot_num`, one line per species (index,
+label, valence charge) and per atom (index, position in alat, species), and
+the values, x fastest over the padded dimensions `nr1x` and `nr2x`. The
+module docstring of `qvf/_espresso.py` gives the Fortran formats. `celldm(1)`
+is in bohr. For `ibrav` other than 0 the cell is that Bravais lattice of
+`celldm`, built as for pw.x input. The import writes the structure, labelled
+with the title, and one grid of `nr1 × nr2 × nr3` points without the padding,
+periodic on all three axes with `includes_endpoint` false, so
+`voxel_vectors[a] × shape[a]` is lattice vector a, and declares the unit as
+`grid.units.data`. The file has no version marker, so a header that does not
+fit these records is refused, as is a value count other than
+`nr1x × nr2x × nr3`. Values such as `1.25-120`, where Fortran drops the E
+of a three-digit exponent, are read.
+
+The kind and unit follow from `plot_num`. pp.x writes densities in
+e/bohr³, kept as written, and potentials in Ry as the potential energy of an
+electron. A potential that is electrostatic is stored as the electrostatic
+potential in hartree/e, which is −V/2 for V in Ry (1 Ry = 1/2 hartree, and
+an electron carries charge −e). Other potentials are stored as the
+electron potential energy in hartree, V/2.
+
+| `plot_num` | Field | Kind | Stored value | `units.data` |
+|---|---|---|---|---|
+| 0 | charge density | `volume.density` | as written | `e_per_bohr3` |
+| 1 | V_bare + V_H + V_xc | `volume.generic` | V/2 | `hartree` |
+| 2 | local ionic V_bare | `volume.generic` | V/2 | `hartree` |
+| 6 | spin polarization ρ↑ − ρ↓ | `volume.spin` | as written | `e_per_bohr3` |
+| 8 | ELF | `volume.elf` | as written | `dimensionless` |
+| 9 | ρ minus superposed atomic densities | `volume.difference` | as written | `e_per_bohr3` |
+| 11 | V_bare + V_H | `volume.potential` | −V/2 | `hartree_per_e` |
+| 12 | sawtooth field potential | `volume.potential` | −V/2 | `hartree_per_e` |
+| 17, 21 | all-electron (valence) density, PAW | `volume.density` | as written | `e_per_bohr3` |
+| 19 | reduced density gradient | `volume.rdg` | as written | `dimensionless` |
+| other | | `volume.generic` | as written | none |
+
+The report gives `plot_num`, the kind, `factor` (the multiplier applied),
+the unit, the FFT dimensions, `gcutm`, `dual`, `ecutwfc_ry`, the valence
+charges that are not stored and, for a density, the `integral` in
+electrons. V_bare is the local part of the pseudopotential, which is not a
+Coulomb potential inside the cores, so the plot_num 11 potential is the
+electrostatic potential only outside them.
 
 ASE's `read_espresso_in` reads the same `ibrav = 0` inputs, and the export, to
 the same cell and positions (to 10⁻¹⁰ relative once its CODATA 2006 bohr is
@@ -673,6 +746,20 @@ conventional cell: the conventional vectors are integer combinations of the
 imported vectors with the centring multiplicity as determinant, and the
 volume is the conventional volume over that multiplicity. ASE's cube reader
 reads pp.x-style cubes to the same cell and values.
+
+ASE's `read_espresso_in` refuses `crystal_sg` positions, so the
+space-group tests compare with `ase.spacegroup.crystal` instead: on the
+same sites, space group and setting it gives the same atom count, cell and
+positions modulo the lattice for every setting ASE tabulates (unique axis b
+only). The CIF import of the same cell, sites and Hall symbol gives the same
+atoms. With spglib installed, the Hall symbol of every pw.x setting (274 of
+them) matches spglib's symmetry database, and spglib finds the space group
+back from the expanded atoms of three general sites. The filplot fixtures
+are written by `scripts/gen_espresso_fixtures.py` (standard library only,
+`--check` for freshness) together with the pp.x cube of the same data, and
+the filplot import matches the espresso-cube import of that cube in cell,
+atoms, grid and values (times the factor of the table, to the cube's five
+significant digits).
 
 ## FHI-aims geometry.in structures (Unreleased)
 
@@ -948,7 +1035,8 @@ from qvf.convert import import_molden, export_molden, import_cif, export_cif
 from qvf.convert import import_poscar, export_poscar, import_chgcar, export_chgcar
 from qvf.convert import import_mmcif, export_mmcif
 from qvf.convert import import_espresso_in, export_espresso_in, import_espresso_xml
-from qvf.convert import import_espresso_cube, import_aims, export_aims
+from qvf.convert import import_espresso_cube, import_espresso_filplot
+from qvf.convert import import_aims, export_aims
 
 report = import_xyz("molecule.xyz", "molecule.qvf")
 report = export_xyz("molecule.qvf", "geometry.xyz", extended=True)

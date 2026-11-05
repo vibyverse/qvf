@@ -13,7 +13,8 @@ from .reader import Reader
 from . import operations
 
 _CONVERT_FORMATS = ("qvf", "xyz", "extxyz", "cube", "xsf", "pdb", "cif", "mmcif", "poscar",
-                    "chgcar", "espresso-in", "espresso-xml", "espresso-cube", "aims", "molden", "fchk")
+                    "chgcar", "espresso-in", "espresso-xml", "espresso-cube", "espresso-filplot", "aims",
+                    "molden", "fchk")
 
 
 def _json(value):
@@ -208,7 +209,8 @@ def _execute(args):
             raise ValueError("--spin applies only to Molden import")
         if args.input_format != "molden" and args.molden_dialect is not None:
             raise ValueError("--molden-dialect applies only to Molden import")
-        if args.input_format == "qvf" and args.output_format in ("espresso-xml", "espresso-cube"):
+        if args.input_format == "qvf" and args.output_format in ("espresso-xml", "espresso-cube",
+                                                                 "espresso-filplot"):
             raise ValueError(f"{args.output_format} is an import-only format")
         if args.input_format == "qvf" and args.output_format != "qvf":
             if args.output_format == "espresso-in":
@@ -259,6 +261,8 @@ def _execute(args):
             elif args.input_format == "espresso-cube":
                 result = convert.import_espresso_cube(args.input, args.output,
                                                       kind=args.kind or "volume.density")
+            elif args.input_format == "espresso-filplot":
+                result = convert.import_espresso_filplot(args.input, args.output)
             elif args.input_format == "aims":
                 result = convert.import_aims(args.input, args.output)
             elif args.input_format == "chgcar":

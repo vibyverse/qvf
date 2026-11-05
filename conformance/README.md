@@ -273,7 +273,14 @@ the stable finding code (spec Appendix B) its `expected.json` names:
   error `E_PAYLOAD_SCHEMA`: a validator without a JSON Schema engine is held to
   the warning alone, so the archive is valid to it. `unit_compound_unknown.qvf`
   expects the same pair for `e_per_angstrom3`, a string the compound spelling
-  rule of spec § 4.3 allows but the closed list does not hold.
+  rule of spec § 4.3 allows but the closed list does not hold. Its grid is a
+  `volume.density`, so it also shows that a string outside the vocabulary is
+  not `E_UNIT_CONTRADICTED`.
+  `unit_grid_data_contradicts_kind.qvf` declares the grid `units.data` of a
+  `volume.density` section as `hartree_per_e`, a unit name the schema accepts
+  because one grid payload serves every `volume.*` kind. It expects
+  `E_UNIT_CONTRADICTED` from every validator, with or without a JSON Schema
+  engine: the data unit of spec § 4.3 for each kind is a semantic check.
 - `job_spec_structure_ref_wrong_kind.qvf` expects `E_REF_UNRESOLVED` from every
   validator (a `job.spec` payload's `structure_ref` names a `bonds` section),
   and so does `run_record_job_ref_wrong_kind.qvf` (a `run.record` `job_ref`
@@ -428,3 +435,14 @@ is an opt-in application-policy test (`max_ratio` is disabled by default).
 `entry_size_understated` and the absolute size-cap negatives guard bounded
 decompression; `crc_mismatch_stored` and `crc_mismatch_deflated` reject corrupt
 checksums even without an optional member SHA-256.
+`entry_inflates_past_size` (a stream that goes on past its declared size, with
+the CRC-32 and sha256 of the declared prefix), `entry_size_overstated` (a
+stream that ends short of it) and `entry_size_impossible` (2 GiB declared for
+a few stored bytes, beyond the 1032:1 DEFLATE limit, which a reader refuses
+without allocating it) make an entry that does not inflate to exactly its
+declared size `E_ZIP_UNREADABLE`, and so does `compression_method_unsupported`,
+a well-formed bzip2 member, and `zip_multi_volume`, whose end record names
+disk 1. `manifest_json_nan` and `manifest_json_utf16` are
+`E_MANIFEST_JSON`: a manifest is RFC 8259 JSON in UTF-8, without the `NaN`
+extension or another Unicode encoding. The fuzz harnesses of the Python and
+JavaScript readers found these (CONTRIBUTING.md).

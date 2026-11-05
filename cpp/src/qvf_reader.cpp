@@ -1955,6 +1955,35 @@ struct GridMember {
     Json grid;
 };
 
+// The unit name spec § 4.3 fixes for the grid units.data of a volume kind, or
+// nullptr. One grid payload serves every volume.* kind, so the schema cannot
+// fix it per kind.
+inline const char* volume_data_unit(const std::string& kind) {
+    if (kind == "volume.density" || kind == "volume.transition_density") return "e_per_bohr3";
+    if (kind == "volume.potential") return "hartree_per_e";
+    if (kind == "volume.rdg") return "dimensionless";
+    if (kind == "volume.laplacian") return "e_per_bohr5";
+    return nullptr;
+}
+
+// A grid units.data that is a unit name other than the one § 4.3 fixes for the
+// section's volume kind (E_UNIT_CONTRADICTED), as a message, or empty. A string
+// that is not a unit name is W_UNIT_UNKNOWN alone. Mirrors
+// _grid_data_unit_error() in python/qvf/validate.py.
+inline std::string grid_data_unit_error(const std::string& sid, const Json& section,
+                                        const Json& grid) {
+    const Json* kind = get(section, "kind");
+    const char* fixed = kind && kind->is_string() ? volume_data_unit(kind->as_string()) : nullptr;
+    const Json* units = grid.is_object() ? get(grid, "units") : nullptr;
+    const Json* unit = units && units->is_object() ? get(*units, "data") : nullptr;
+    if (!fixed || !unit || !unit->is_string()) return {};
+    const std::string& name = unit->as_string();
+    if (name == fixed || !parse_unit(name)) return {};
+    return "section " + quote_str(sid) + ": grid units.data " + quote_str(name) +
+           " contradicts the unit " + quote_str(fixed) + " that spec § 4.3 fixes for " +
+           kind->as_string() + " data";
+}
+
 // Reference and periodic-span rules of a grid payload: a grid structure_ref
 // names a structure section; the grid's structure is the section-level
 // structure_ref, else the grid's, else the archive's only structure. When it
@@ -3070,10 +3099,13 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             f.error("E_REF_UNRESOLVED", section_pointer(d.index) + "/" + e.first, e.second);
 
     // Grids: references and periodic spans against the structure (spec § 5.2).
-    for (const auto& g : grid_members)
+    for (const auto& g : grid_members) {
         for (const auto& e : grid_errors(g.sid, *g.section, g.grid, kinds_by_id, cells,
                                          only_structure))
             f.error(e.first, g.where, e.second);
+        const std::string unit_msg = grid_data_unit_error(g.sid, *g.section, g.grid);
+        if (!unit_msg.empty()) f.error("E_UNIT_CONTRADICTED", g.where, unit_msg);
+    }
 
     // properties.*: rules JSON Schema cannot express (spec § 5.13); the Born
     // charges are counted against a structure that may come later.

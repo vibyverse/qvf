@@ -639,4 +639,5 @@ FINDING_CODES: Mapping[str, str] = MappingProxyType({
     "W_UNIT_UNKNOWN": "warning",
     "E_ROOT_INCONSISTENT": "error",
     "E_NORMALIZATION": "error",
+    "E_UNIT_CONTRADICTED": "error",
 })

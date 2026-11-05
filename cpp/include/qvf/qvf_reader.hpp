@@ -125,7 +125,8 @@ public:
     // normalization check of an `overlap` member, E_NORMALIZATION), the data
     // shapes of the vector, complex, series and Laplacian volumes, a series
     // axis against its slabs, the span of a periodic grid against its
-    // structure's cell (spec § 5.2), wavefunction.bloch shapes, k-point
+    // structure's cell (spec § 5.2), a grid units.data against the unit spec
+    // § 4.3 fixes for its volume kind (E_UNIT_CONTRADICTED), wavefunction.bloch shapes, k-point
     // weights and periodic structure, the reaction.scheme participants, step
     // ids and repeated structures (spec § 5.14), the bytes of preview members
     // against their media_type (spec § 5.15), a run.record job_ref (spec
