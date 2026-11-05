@@ -128,6 +128,16 @@ _VOLUME_DATA_SHAPES: dict[str, tuple[int, Optional[int], str]] = {
     "volume.complex": (4, 2, "[nx, ny, nz, 2]"),
     "volume.series": (4, None, "[n, nx, ny, nz]"),
 }
+# The unit name spec § 4.3 fixes for the grid `units.data` of a volume kind.
+# One grid payload serves every `volume.*` kind, so the schema cannot fix it
+# per kind; another unit name there is E_UNIT_CONTRADICTED.
+_VOLUME_DATA_UNITS: dict[str, str] = {
+    "volume.density": "e_per_bohr3",
+    "volume.transition_density": "e_per_bohr3",
+    "volume.potential": "hartree_per_e",
+    "volume.rdg": "dimensionless",
+    "volume.laplacian": "e_per_bohr5",
+}
 # The kinds a `volume.series` axis `trajectory_ref` may name (spec § 5.2).
 _SERIES_REF_KINDS = ("trajectory", "reaction.path")
 
@@ -1862,6 +1872,21 @@ def _volume_errors(sid: str, kind: str, members: Any, docs: dict[str, Any],
     return errors
 
 
+def _grid_data_unit_error(sid: str, kind: Any, grid: Any) -> Optional[str]:
+    """A grid ``units.data`` that contradicts the unit spec § 4.3 fixes for
+    the volume kind, or None. Only a unit name contradicts: a string outside
+    the vocabulary is ``W_UNIT_UNKNOWN`` alone."""
+    fixed = _VOLUME_DATA_UNITS.get(kind) if isinstance(kind, str) else None
+    units = grid.get("units") if isinstance(grid, dict) else None
+    if fixed is None or not isinstance(units, dict):
+        return None
+    unit = units.get("data")
+    if not isinstance(unit, str) or unit == fixed or unit not in qvf_kinds.UNITS:
+        return None
+    return (f"section {sid!r}: grid units.data {unit!r} contradicts the unit "
+            f"{fixed!r} that spec § 4.3 fixes for {kind} data")
+
+
 def _is_bool3(value: Any) -> bool:
     return (isinstance(value, list) and len(value) == 3
             and all(isinstance(x, bool) for x in value))
@@ -2278,8 +2303,10 @@ def validate_qvf(path: str, *, limits: Optional[Limits] = None, level=Level.All)
     shapes and pairing, ``basis.n_electrons`` against the occupations and
     ``provenance.n_electrons``, and the Appendix A.1 diagonal of ``overlap``,
     ``E_NORMALIZATION``), the data shapes of the vector, complex, series and
-    Laplacian volumes, a series ``axis`` against its slabs, and a periodic
-    grid's span against the cell of its structure (spec § 5.2), and the
+    Laplacian volumes, a series ``axis`` against its slabs, a periodic
+    grid's span against the cell of its structure, and a grid
+    ``units.data`` against the unit § 4.3 fixes for its volume kind
+    (``E_UNIT_CONTRADICTED``) (spec § 5.2), and the
     ``properties.*`` rules (symmetric elastic matrices, ``static`` =
     ``electronic`` + ``ionic``, one Born tensor per atom, and a dipole that
     agrees with the root ``dipole_moment``), and the ``wavefunction.bloch``
@@ -2870,6 +2897,9 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             for code, msg in _grid_errors(sid, s, grid, kinds_by_id, cells_of,
                                           only_structure):
                 out.error(code, mwhere, msg)
+            msg = _grid_data_unit_error(sid, s.get("kind"), grid)
+            if msg is not None:
+                out.error("E_UNIT_CONTRADICTED", mwhere, msg)
 
         # properties.*: rules JSON Schema cannot express (spec § 5.13); the Born
         # charges are counted against a structure that may come later.

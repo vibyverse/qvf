@@ -351,7 +351,8 @@ and runs all of its checks in the same order, with the same codes:
   and NTOs, `wavefunction.gto` including the Appendix A.1 overlap diagonal
   (`E_NORMALIZATION`), `wavefunction.bloch`, volumes and series, periodic
   grid spans, property kinds, 1-D spectra, reaction schemes and reaction
-  energies, declared units, root consistency.
+  energies, declared units (a grid `units.data` against the unit of its
+  volume kind, `E_UNIT_CONTRADICTED`), root consistency.
 * references: every cross-reference the other validators resolve.
 
 Current results (`cargo test --test conformance -- --nocapture`):

@@ -44,6 +44,7 @@ pub enum Code {
     W_UNIT_UNKNOWN,
     E_ROOT_INCONSISTENT,
     E_NORMALIZATION,
+    E_UNIT_CONTRADICTED,
 }
 
 impl Code {
@@ -85,6 +86,7 @@ impl Code {
         Code::W_UNIT_UNKNOWN,
         Code::E_ROOT_INCONSISTENT,
         Code::E_NORMALIZATION,
+        Code::E_UNIT_CONTRADICTED,
     ];
 
     /// The code as Appendix B spells it.
@@ -126,6 +128,7 @@ impl Code {
             Code::W_UNIT_UNKNOWN => "W_UNIT_UNKNOWN",
             Code::E_ROOT_INCONSISTENT => "E_ROOT_INCONSISTENT",
             Code::E_NORMALIZATION => "E_NORMALIZATION",
+            Code::E_UNIT_CONTRADICTED => "E_UNIT_CONTRADICTED",
         }
     }
 

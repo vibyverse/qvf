@@ -273,7 +273,14 @@ the stable finding code (spec Appendix B) its `expected.json` names:
   error `E_PAYLOAD_SCHEMA`: a validator without a JSON Schema engine is held to
   the warning alone, so the archive is valid to it. `unit_compound_unknown.qvf`
   expects the same pair for `e_per_angstrom3`, a string the compound spelling
-  rule of spec § 4.3 allows but the closed list does not hold.
+  rule of spec § 4.3 allows but the closed list does not hold. Its grid is a
+  `volume.density`, so it also shows that a string outside the vocabulary is
+  not `E_UNIT_CONTRADICTED`.
+  `unit_grid_data_contradicts_kind.qvf` declares the grid `units.data` of a
+  `volume.density` section as `hartree_per_e`, a unit name the schema accepts
+  because one grid payload serves every `volume.*` kind. It expects
+  `E_UNIT_CONTRADICTED` from every validator, with or without a JSON Schema
+  engine: the data unit of spec § 4.3 for each kind is a semantic check.
 - `job_spec_structure_ref_wrong_kind.qvf` expects `E_REF_UNRESOLVED` from every
   validator (a `job.spec` payload's `structure_ref` names a `bonds` section),
   and so does `run_record_job_ref_wrong_kind.qvf` (a `run.record` `job_ref`

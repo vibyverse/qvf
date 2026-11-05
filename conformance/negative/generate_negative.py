@@ -955,6 +955,21 @@ def _():
             "detects this. One without accepts the archive.",
             _err("E_PAYLOAD_SCHEMA"), None)
 
+
+@case("unit_grid_data_contradicts_kind")
+def _():
+    a = base_archive()
+    _volume_density(a, {**_GRID, "units": {"origin": "bohr",
+                                           "data": "hartree_per_e"}})
+    return (a.to_bytes(),
+            "A volume.density grid that declares units.data 'hartree_per_e', "
+            "a unit name that contradicts the e_per_bohr3 spec § 4.3 fixes for "
+            "volume.density data. The grid payload is shared by every volume "
+            "kind, so the schema accepts it, and every validator reports the "
+            "semantic finding E_UNIT_CONTRADICTED, with or without a JSON "
+            "Schema engine.",
+            _err("E_UNIT_CONTRADICTED"), None)
+
 # Energy derivatives and the root energies block (spec § 3.6, § 5.10, § 5.11).
 
 @case("forces_atom_count")

@@ -99,7 +99,9 @@ central directory only), `manifest`, `payloads` (reads every member), `semantics
 role, the per-frame members, `coords` precision, binary `energies` and
 `lattice` / `pbc` of `trajectory` and `reaction.path` sections, the `wavefunction.gto` rules of spec § 5.3 including the Appendix A.1
 check of an `overlap` member, `E_NORMALIZATION`, a structure's `charge` and
-`multiplicity`, `E_CHARGE_MULTIPLICITY`, the step ids of a `reaction.scheme`),
+`multiplicity`, `E_CHARGE_MULTIPLICITY`, the step ids of a `reaction.scheme`, a
+grid `units.data` against the unit spec § 4.3 fixes for its volume kind,
+`E_UNIT_CONTRADICTED`),
 `references` (operands, `trajectory_ref`, `job_ref`, `files` index, the
 participants of a `reaction.scheme`, the atom indices of a `bonds` section
 against the structure its `structure_ref` names), `all` (the default). The bytes of a
