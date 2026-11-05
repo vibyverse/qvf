@@ -25,6 +25,20 @@ names. Libraries gain a Rust crate (reader,
 validator, writer, editor and CLI) and a JavaScript writer. Frozen family
 consumers stay on their v0.6.0 pins until they adopt this release.
 
+**Release qualification.** GitHub Actions did not start the release-candidate
+workflow for this release (the runs stayed queued with no jobs), so the
+maintainer accepted local qualification of the candidate commit on Linux
+x86_64 instead. It covered the Python suite on Python 3.9, 3.13 and 3.14
+(with PySCF 2.14.0 on 3.13), the JavaScript suite on Node 20, 22 and 24, the
+Rust crate, the C++ build with gcc and clang under `-Wall -Wextra -Werror`
+with CTest and the conformance runner, AddressSanitizer and
+UndefinedBehaviorSanitizer (clang) over CTest and every corpus archive, both
+libFuzzer targets for 180 s each without a finding, the s390x big-endian
+CTest under QEMU with the cross-host round trip, the generated-file checks,
+source archives that contain exactly the committed files, and installed
+Python, C/C++, npm and Rust package checks. The candidate workflow's macOS
+(clang) and Windows (MSVC) C++ jobs were not run for this release.
+
 ### Changed
 
 - Prepare the Python distribution `qvf-writer` for its first PyPI
