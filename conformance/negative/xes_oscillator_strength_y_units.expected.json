@@ -1,0 +1,10 @@
+{
+  "archive": "xes_oscillator_strength_y_units.qvf",
+  "description": "A spectra.xes payload of oscillator strengths that declares y_units 'km_per_mol'; oscillator strengths are dimensionless (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

@@ -364,6 +364,15 @@ KINDS: Mapping[str, KindInfo] = MappingProxyType({
         RoleInfo("thumbnail", True, "opaque", (), None, None, None, False),
         RoleInfo("image", False, "opaque", (), None, None, None, False),
     ), False),
+    "spectra.xas": KindInfo("spectra.xas", (
+        RoleInfo("spectrum", True, "json", (), None, None, "SpectrumPayload", False),
+    ), False),
+    "spectra.xes": KindInfo("spectra.xes", (
+        RoleInfo("spectrum", True, "json", (), None, None, "SpectrumPayload", False),
+    ), False),
+    "spectra.mossbauer": KindInfo("spectra.mossbauer", (
+        RoleInfo("spectrum", True, "json", (), None, None, "MossbauerSpectrumPayload", False),
+    ), False),
 })
 
 #: The canonical kind names (registry.json order); vendor kinds x_<...> are
@@ -406,6 +415,9 @@ PAYLOAD_DEFS: Mapping[Tuple[str, str], str] = MappingProxyType({
     ("spectra.generic", "spectrum"): "SpectrumPayload",
     ("spectra.nmr", "spectrum"): "NmrSpectrumPayload",
     ("spectra.epr", "spectrum"): "EprSpectrumPayload",
+    ("spectra.xas", "spectrum"): "SpectrumPayload",
+    ("spectra.xes", "spectrum"): "SpectrumPayload",
+    ("spectra.mossbauer", "spectrum"): "MossbauerSpectrumPayload",
     ("bonds", "bonds"): "BondsPayload",
     ("structure", "bonds"): "BondsPayload",
     ("bond_orders", "bond_orders"): "BondOrdersPayload",
@@ -485,10 +497,12 @@ SCHEMA_DEFS: Tuple[str, ...] = (
     "ReactionStepEnergies", "ReactionEnergyDelta", "ReactionEnergyTerm",
     "ReactionEnergyMethod", "ReactionEnergySource", "VibrationsDisplacements",
     "SectionVibrations", "VibrationsMetadataPayload", "SectionSpectraIR",
-    "SpectrumPayload", "SpectrumPeak", "SectionSpectraRaman",
-    "BandsEigenvalues", "SectionSpectraUVVis", "SectionSpectraECD",
-    "SectionSpectraVCD", "SectionSpectraNMR", "NmrSpectrumPayload",
-    "SectionSpectraEPR", "EprSpectrumPayload", "SectionSpectraGeneric",
+    "SpectrumPayload", "XraySpectrumBlock", "SpectrumPeak",
+    "SectionSpectraRaman", "BandsEigenvalues", "SectionSpectraUVVis",
+    "SectionSpectraECD", "SectionSpectraVCD", "SectionSpectraNMR",
+    "NmrSpectrumPayload", "SectionSpectraEPR", "EprSpectrumPayload",
+    "SectionSpectraXAS", "SectionSpectraXES", "SectionSpectraMossbauer",
+    "MossbauerSpectrumPayload", "MossbauerSite", "SectionSpectraGeneric",
     "MoCoefficientsBinary", "SectionWavefunctionGTO", "WavefunctionAoMatrix",
     "BasisShell", "BasisEcpProjector", "BasisEcpCentre", "BasisPayload",
     "MoSpinChannel", "MoMetadataPayload", "SectionWavefunctionBloch",

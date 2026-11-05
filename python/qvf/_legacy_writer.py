@@ -95,6 +95,18 @@ _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]
                       r"-[0-9a-f]{12}$")
 # Generic section references (spec § 4.1): field -> the kind it must name.
 _SECTION_REF_KINDS = {"structure_ref": "structure", "run_ref": "run.record"}
+# X-ray and Mössbauer spectra (spec § 5.4); the patterns are the schema's.
+_XRAY_EDGE_RE = re.compile(
+    r"^(K|L[1-3]|L2,3|M[1-5]|M2,3|M4,5|N[1-7]|N2,3|N4,5|N6,7|O[1-5]|O2,3|O4,5)$")
+_CORE_ORBITAL_RE = re.compile(r"^[1-7][spdf]([1357]/2)?$")
+_ELEMENT_RE = re.compile(r"^[A-Z][a-z]{0,2}$")
+_ISOTOPE_RE = re.compile(r"^[0-9]{1,3}[A-Z][a-z]{0,2}$")
+_XRAY_INTENSITIES = frozenset({"oscillator_strength", "cross_section_mb",
+                               "normalized", "arbitrary"})
+_MOSSBAUER_SITE_KEYS = frozenset({
+    "atom_index", "symbol", "label", "isomer_shift_mm_s",
+    "quadrupole_splitting_mm_s", "asymmetry", "efg_au", "contact_density_au",
+    "hyperfine_field_t", "linewidth_mm_s", "population"})
 
 # Excited states (spec § 5.12, $defs/ExcitedState and
 # $defs/ExcitedStateContribution): the fields of a state and of a
@@ -3522,7 +3534,10 @@ class QvfWriter:
     _SPECTRA_KINDS = frozenset({
         "spectra.ir", "spectra.raman", "spectra.uvvis", "spectra.ecd",
         "spectra.vcd", "spectra.nmr", "spectra.epr", "spectra.generic",
+        "spectra.xas", "spectra.xes", "spectra.mossbauer",
     })
+    _OBJECT_SPECTRA_KINDS = frozenset({
+        "spectra.nmr", "spectra.epr", "spectra.mossbauer"})
 
     def add_spectrum(self, kind: str, *,
                     frequencies: Sequence[float] | None = None,
@@ -3545,8 +3560,10 @@ class QvfWriter:
         width?, label?, assignment?}``) and ``broadening`` (``{type, fwhm?,
         units?}``) are written as given. Alternatively pass the whole
         ``payload`` dict, which is how the other optional blocks (``x``,
-        ``temperature_k``, ``raman``, ``uvvis``) are written and the only form
-        for ``spectra.nmr`` and ``spectra.epr``. A 1-D payload's
+        ``temperature_k``, ``raman``, ``uvvis``, ``xray``) are written and the
+        only form for ``spectra.nmr``, ``spectra.epr`` and
+        ``spectra.mossbauer``. ``add_xray_spectrum`` and ``add_mossbauer``
+        build the X-ray and Mössbauer payloads from typed arguments. A 1-D payload's
         ``frequencies``, ``intensities`` and ``x`` must have one length, and
         its ``states_ref``, which makes the peaks' ``assignment.state_index``
         values state indices (spec § 5.4), must name an ``excited_states``
@@ -3556,7 +3573,7 @@ class QvfWriter:
             self._check_new_id(section_id)
         if kind not in self._SPECTRA_KINDS:
             raise ValueError(f"{kind!r} is not a spectra kind")
-        one_d = kind not in ("spectra.nmr", "spectra.epr")
+        one_d = kind not in self._OBJECT_SPECTRA_KINDS
         if payload is None:
             if frequencies is None or intensities is None:
                 raise ValueError(f"{kind}: pass frequencies+intensities or payload")
@@ -3617,6 +3634,182 @@ class QvfWriter:
         if label is not None:
             section["label"] = label
         return self._push(section)
+
+    def add_xray_spectrum(self, kind: str, energies: Sequence[float],
+                          intensities: Sequence[float], *, edge: str,
+                          element: str | None = None,
+                          atom_indices: Sequence[int] | None = None,
+                          core_orbital: str | None = None,
+                          line: str | None = None,
+                          intensity: str | None = None,
+                          energy_shift_ev: float | None = None,
+                          x_units: str | None = None,
+                          y_units: str | None = None,
+                          peaks: Sequence[Mapping[str, Any]] | None = None,
+                          broadening: Mapping[str, Any] | None = None,
+                          states_ref: str | None = None,
+                          label: str | None = None,
+                          section_id: str | None = None) -> str:
+        """Add a ``spectra.xas`` or ``spectra.xes`` section (spec § 5.4, *X-ray
+        absorption and emission*) on the shared ``$defs/SpectrumPayload``.
+
+        ``energies`` are the photon energies in eV unless ``x_units`` declares
+        another unit, ``intensities`` one value per energy. The ``xray`` block
+        is built from ``edge`` (IUPAC notation: ``"K"``, ``"L3"``,
+        ``"L2,3"``), ``element``, ``atom_indices`` (0-based, each once),
+        ``core_orbital`` (``"1s"``, ``"2p3/2"``), ``line`` (XES, e.g.
+        ``"Kβ1,3"``), ``intensity`` (``"oscillator_strength"``,
+        ``"cross_section_mb"``, ``"normalized"`` or ``"arbitrary"``) and
+        ``energy_shift_ev`` (the shift already applied). ``peaks``,
+        ``broadening`` and ``states_ref`` are written as for ``add_spectrum``;
+        a peak's ``assignment.atom_index`` names its absorber. Nothing is
+        converted. Raises ``ValueError`` before anything is written on an
+        edge, orbital or intensity the spec does not allow, or on a ``y_units``
+        that contradicts ``intensity``.
+        """
+        if kind not in ("spectra.xas", "spectra.xes"):
+            raise ValueError(f"{kind!r} is not spectra.xas or spectra.xes")
+        if not isinstance(edge, str) or not _XRAY_EDGE_RE.fullmatch(edge):
+            raise ValueError(f"{kind}: edge {edge!r} is not an IUPAC edge label "
+                             f"such as 'K', 'L3' or 'L2,3' (spec § 5.4)")
+        xray: dict[str, Any] = {"edge": edge}
+        if element is not None:
+            if not isinstance(element, str) or not _ELEMENT_RE.fullmatch(element):
+                raise ValueError(f"{kind}: element {element!r} is not a "
+                                 f"chemical symbol")
+            xray["element"] = element
+        if atom_indices is not None:
+            idx = [_positive_int(a, f"{kind} atom_indices entry", 0)
+                   for a in atom_indices]
+            if not idx or len(set(idx)) != len(idx):
+                raise ValueError(f"{kind}: atom_indices must be a non-empty "
+                                 f"list of distinct indices")
+            xray["atom_indices"] = idx
+        if core_orbital is not None:
+            if (not isinstance(core_orbital, str)
+                    or not _CORE_ORBITAL_RE.fullmatch(core_orbital)):
+                raise ValueError(f"{kind}: core_orbital {core_orbital!r} is not "
+                                 f"in n l notation such as '1s' or '2p3/2'")
+            xray["core_orbital"] = core_orbital
+        if line is not None:
+            if not isinstance(line, str) or not line:
+                raise ValueError(f"{kind}: line must be a non-empty string")
+            xray["line"] = line
+        if intensity is not None:
+            if intensity not in _XRAY_INTENSITIES:
+                raise ValueError(f"{kind}: intensity {intensity!r} is not one "
+                                 f"of {sorted(_XRAY_INTENSITIES)}")
+            if intensity == "cross_section_mb" and y_units is not None:
+                raise ValueError(f"{kind}: cross sections are in megabarn, which "
+                                 f"has no unit name; leave y_units out "
+                                 f"(spec § 5.4)")
+            if (intensity != "cross_section_mb" and y_units is not None
+                    and y_units != "dimensionless"):
+                raise ValueError(f"{kind}: {intensity} intensities are pure "
+                                 f"numbers; y_units must be 'dimensionless' "
+                                 f"(spec § 5.4)")
+            xray["intensity"] = intensity
+        if energy_shift_ev is not None:
+            xray["energy_shift_ev"] = _real_number(energy_shift_ev,
+                                                   f"{kind} energy_shift_ev")
+        payload: dict[str, Any] = {
+            "frequencies": [float(x) for x in energies],
+            "intensities": [float(y) for y in intensities],
+            "xray": xray}
+        if states_ref is not None:
+            payload["states_ref"] = states_ref
+        return self.add_spectrum(kind, payload=payload, x_units=x_units,
+                                 y_units=y_units, peaks=peaks,
+                                 broadening=broadening, label=label,
+                                 section_id=section_id)
+
+    def add_mossbauer(self, sites: Sequence[Mapping[str, Any]], *,
+                      isotope: str | None = None,
+                      reference: str | None = None,
+                      temperature_k: float | None = None,
+                      calibration: Mapping[str, Any] | None = None,
+                      label: str | None = None,
+                      section_id: str = "spectra_mossbauer") -> str:
+        """Add a ``spectra.mossbauer`` section (spec § 5.4,
+        ``$defs/MossbauerSpectrumPayload``, strict).
+
+        ``sites`` holds one mapping per resonant site: ``atom_index``
+        (required), ``symbol``, ``label``, ``isomer_shift_mm_s``,
+        ``quadrupole_splitting_mm_s``, ``asymmetry`` (0 to 1), ``efg_au``
+        (3 x 3, atomic units), ``contact_density_au`` (e/bohr³),
+        ``hyperfine_field_t`` (tesla), ``linewidth_mm_s`` (> 0) and
+        ``population`` (0 to 1), plus ``x_`` keys. ``isotope`` defaults to
+        57Fe when absent; ``calibration`` is ``{alpha, c, beta?, label?}``
+        for δ = alpha (ρ(0) − c) + beta. Units are fixed by the field names
+        and nothing is converted. Raises ``ValueError`` before anything is
+        written on an unknown key or a value outside its range.
+        """
+        self._check_new_id(section_id)
+        what = "spectra.mossbauer"
+        if isinstance(sites, Mapping) or not sites:
+            raise ValueError(f"{what}: sites must be a non-empty list")
+        out_sites = []
+        for n, site in enumerate(sites):
+            where = f"{what} sites[{n}]"
+            if not isinstance(site, Mapping):
+                raise ValueError(f"{where} must be a mapping")
+            unknown = [k for k in site if k not in _MOSSBAUER_SITE_KEYS
+                       and not str(k).startswith("x_")]
+            if unknown:
+                raise ValueError(f"{where}: unknown keys {unknown} "
+                                 f"(spec § 5.4)")
+            if "atom_index" not in site:
+                raise ValueError(f"{where} needs atom_index")
+            entry: dict[str, Any] = dict(site)
+            entry["atom_index"] = _positive_int(site["atom_index"],
+                                                f"{where} atom_index", 0)
+            for key in ("isomer_shift_mm_s", "quadrupole_splitting_mm_s",
+                        "hyperfine_field_t"):
+                if key in site:
+                    entry[key] = _real_number(site[key], f"{where} {key}")
+            for key in ("asymmetry", "population"):
+                if key in site:
+                    v = _real_number(site[key], f"{where} {key}", 0.0)
+                    if v > 1.0:
+                        raise ValueError(f"{where} {key} must be at most 1")
+                    entry[key] = v
+            for key in ("linewidth_mm_s", "contact_density_au"):
+                if key in site:
+                    v = _real_number(site[key], f"{where} {key}")
+                    if v <= 0.0:
+                        raise ValueError(f"{where} {key} must be positive")
+                    entry[key] = v
+            if "efg_au" in site:
+                entry["efg_au"] = _real_matrix(site["efg_au"], 3, 3,
+                                               f"{where} efg_au")
+            out_sites.append(entry)
+        payload: dict[str, Any] = {}
+        if isotope is not None:
+            if not isinstance(isotope, str) or not _ISOTOPE_RE.fullmatch(isotope):
+                raise ValueError(f"{what}: isotope {isotope!r} must be written "
+                                 f"mass number first, e.g. '57Fe'")
+            payload["isotope"] = isotope
+        if reference is not None:
+            payload["reference"] = str(reference)
+        if temperature_k is not None:
+            t = _real_number(temperature_k, f"{what} temperature_k")
+            if t <= 0.0:
+                raise ValueError(f"{what} temperature_k must be positive")
+            payload["temperature_k"] = t
+        if calibration is not None:
+            cal = dict(calibration)
+            unknown = [k for k in cal if k not in ("alpha", "beta", "c", "label")
+                       and not str(k).startswith("x_")]
+            if unknown or "alpha" not in cal or "c" not in cal:
+                raise ValueError(f"{what}: calibration needs alpha and c and "
+                                 f"takes only alpha, beta, c, label")
+            for key in ("alpha", "beta", "c"):
+                if key in cal:
+                    cal[key] = _real_number(cal[key], f"{what} calibration {key}")
+            payload["calibration"] = cal
+        payload["sites"] = out_sites
+        return self.add_spectrum("spectra.mossbauer", payload=payload,
+                                 label=label, section_id=section_id)
 
     # -- bands / dos ------------------------------------------------------
 

@@ -117,7 +117,7 @@ class Types:
         self.lines += L
         return name
 
-NAMES={'wavefunction.gto':'WavefunctionGTO','wavefunction.bloch':'WavefunctionBloch','job.spec':'JobSpec','run.record':'RunRecord','dos.total':'DosTotal','dos.projected':'DosProjected','dos.coop':'DosCoop','dos.cohp':'DosCohp','topology.qtaim':'TopologyQTAIM','spectra.ir':'SpectraIR','spectra.raman':'SpectraRaman','spectra.uvvis':'SpectraUVVis','spectra.ecd':'SpectraECD','spectra.vcd':'SpectraVCD','spectra.nmr':'SpectraNMR','spectra.epr':'SpectraEPR','basis.ao':'BasisAO','volume.elf':'VolumeELF','volume.rdg':'VolumeRDG','scf_history':'ScfHistory'}
+NAMES={'wavefunction.gto':'WavefunctionGTO','wavefunction.bloch':'WavefunctionBloch','job.spec':'JobSpec','run.record':'RunRecord','dos.total':'DosTotal','dos.projected':'DosProjected','dos.coop':'DosCoop','dos.cohp':'DosCohp','topology.qtaim':'TopologyQTAIM','spectra.ir':'SpectraIR','spectra.raman':'SpectraRaman','spectra.uvvis':'SpectraUVVis','spectra.ecd':'SpectraECD','spectra.vcd':'SpectraVCD','spectra.nmr':'SpectraNMR','spectra.epr':'SpectraEPR','spectra.xas':'SpectraXAS','spectra.xes':'SpectraXES','spectra.mossbauer':'SpectraMossbauer','basis.ao':'BasisAO','volume.elf':'VolumeELF','volume.rdg':'VolumeRDG','scf_history':'ScfHistory'}
 def render(schema,model):
     types=Types(schema); sections=[]
     common=['id','kind','label','component','critical','structure_ref','run_ref','group','members']

@@ -1,0 +1,78 @@
+{
+  "archive": "spectra_xas_dscf.qvf",
+  "description": "Cl K-edge \u0394SCF sticks of two chloride absorbers as cross sections in megabarn (no y_units), each peak naming its absorber, and an Fe L2,3 edge whose energies are declared in hartree, as a PySCF producer writes them without converting (spec \u00a7 5.4).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "spectra.xas",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "xas_cl_k",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "intensity"
+      ],
+      "equals": "cross_section_mb"
+    },
+    {
+      "section": "xas_cl_k",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "atom_indices",
+        1
+      ],
+      "equals": 2
+    },
+    {
+      "section": "xas_cl_k",
+      "member": "spectrum",
+      "json_pointer": [
+        "peaks",
+        1,
+        "assignment",
+        "atom_index"
+      ],
+      "equals": 2
+    },
+    {
+      "section": "xas_cl_k",
+      "member": "spectrum",
+      "json_pointer": [
+        "intensities",
+        0
+      ],
+      "equals": 0.42,
+      "tol": 1e-12
+    },
+    {
+      "section": "xas_fe_l23",
+      "member": "spectrum",
+      "json_pointer": [
+        "xray",
+        "edge"
+      ],
+      "equals": "L2,3"
+    },
+    {
+      "section": "xas_fe_l23",
+      "member": "spectrum",
+      "json_pointer": [
+        "x_units"
+      ],
+      "equals": "hartree"
+    },
+    {
+      "section": "xas_fe_l23",
+      "member": "spectrum",
+      "json_pointer": [
+        "frequencies",
+        0
+      ],
+      "equals": 26.0261,
+      "tol": 1e-12
+    }
+  ]
+}

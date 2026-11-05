@@ -909,6 +909,8 @@ units as the contract (they may convert for display).
 | `bands.eigenvalues`, `bands.kpath.fermi`, `fermi_energy_ev` | eV |
 | `spectra.ir.frequencies` / `intensities` | cm⁻¹ / km·mol⁻¹ |
 | `spectra.uvvis.frequencies` / `energies_ev` | eV |
+| `spectra.xas.frequencies`, `spectra.xes.frequencies` | eV; `intensities` as `xray.intensity` says: dimensionless, or megabarn (1 Mb = 10⁻²² m²) for cross sections (§ 5.4) |
+| `spectra.mossbauer` isomer shift, quadrupole splitting, linewidth / hyperfine field | mm/s / tesla, fixed by the field names; EFG tensor and contact density in atomic units (§ 5.4) |
 | `vibrations.metadata.frequencies` | cm⁻¹ |
 | `wavefunction.gto.basis.shells[].exponents` | bohr⁻² |
 | `wavefunction.gto.mo_metadata.energies` | Hartree |
@@ -1184,7 +1186,7 @@ subsections give the payload shapes that matter for interoperability.
 | `reaction.scheme` | `scheme` (JSON, `$defs/ReactionSchemePayload`) (§ 5.14) |
 | `scan.surface` | `metadata` (JSON, `$defs/ScanSurfaceMetadataPayload`) + `axis_a` + `axis_b` + `energies`; optional `geometries` |
 | `vibrations` | `metadata` (JSON, `$defs/VibrationsMetadataPayload`) + `displacements` (float64 [n_modes, n_atoms, 3]); optional section field `hessian_ref` |
-| `spectra.ir` / `.raman` / `.uvvis` / `.ecd` / `.vcd` / `.nmr` / `.epr` / `.generic` | `spectrum` (JSON) |
+| `spectra.ir` / `.raman` / `.uvvis` / `.ecd` / `.vcd` / `.xas` / `.xes` / `.nmr` / `.epr` / `.mossbauer` / `.generic` | `spectrum` (JSON) |
 | `bands` | `kpath` (JSON, `$defs/KpathPayload`) + `eigenvalues` (float64 [n_spin, n_k, n_bands]); optional `projections`, `occupations` |
 | `dos.total` | `energies` + `dos` (binary); optional section fields (§ 5.6) |
 | `dos.projected` | `energies` + `projections` (binary); optional section fields, including `channels` (§ 5.6) |
@@ -2248,10 +2250,11 @@ check this.
 
 ### 5.4 Spectra
 
-Every `spectra.*` section carries exactly one JSON member, `spectrum`. The six
+Every `spectra.*` section carries exactly one JSON member, `spectrum`. The eight
 one-dimensional kinds share one payload, `$defs/SpectrumPayload`;
-`spectra.nmr` and `spectra.epr` carry object-shaped parameter sets,
-`$defs/NmrSpectrumPayload` and `$defs/EprSpectrumPayload`.
+`spectra.nmr`, `spectra.epr` and `spectra.mossbauer` carry object-shaped
+parameter sets, `$defs/NmrSpectrumPayload`, `$defs/EprSpectrumPayload` and
+`$defs/MossbauerSpectrumPayload`.
 
 Each payload definition in § 5 has one of three strictness levels:
 
@@ -2267,8 +2270,9 @@ A consumer ignores keys it does not know in an open object.
 
 #### One-dimensional spectra
 
-`spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd`
-and `spectra.generic`. Payload: `$defs/SpectrumPayload`, **typed-open**.
+`spectra.ir`, `spectra.raman`, `spectra.uvvis`, `spectra.ecd`, `spectra.vcd`,
+`spectra.xas`, `spectra.xes` and `spectra.generic`. Payload:
+`$defs/SpectrumPayload`, **typed-open**.
 
 | Field | Type | Required | Meaning | Unit |
 |---|---|:--:|---|---|
@@ -2277,15 +2281,17 @@ and `spectra.generic`. Payload: `$defs/SpectrumPayload`, **typed-open**.
 | `x` | number[] | no | Alias of `frequencies` under a quantity-neutral name: the same values in the same order. | as `frequencies` |
 | `x_units` | unit name (§ 4.3) | no | Unit of `frequencies` and `x`. | — |
 | `y_units` | unit name (§ 4.3) | no | Unit of `intensities`. | — |
-| `peaks` | object[] | no | Annotated peaks: `x` (number, required), `y` (number), `width` (number ≥ 0, full width at half maximum), `label` (string), `assignment` (`{mode_index?, state_index?}`, integers ≥ 0). | `x`, `width` as `frequencies`; `y` as `intensities` |
+| `peaks` | object[] | no | Annotated peaks: `x` (number, required), `y` (number), `width` (number ≥ 0, full width at half maximum), `label` (string), `assignment` (`{mode_index?, state_index?, atom_index?}`, integers ≥ 0). | `x`, `width` as `frequencies`; `y` as `intensities` |
 | `broadening` | object | no | The line shape the producer applied, or recommends: `type` (required: `none`, `gaussian` or `lorentzian`), `fwhm` (number > 0), `units` (unit name). | `fwhm` in `units`, else in the x unit |
 | `temperature_k` | number > 0 | no | Temperature the spectrum refers to. | K |
 | `raman` | object | no | `laser_nm` (number > 0): excitation wavelength; `depolarization_ratios` (number[]): one per line, in `frequencies` order. | nm; dimensionless |
 | `uvvis` | object | no | `x_axis` (`energy_ev` or `wavelength_nm`): the x quantity the producer recommends for display. It does not change the stored values. | — |
+| `xray` | object | no | The core level, the absorbing or emitting atoms and the intensity quantity of an X-ray spectrum, `$defs/XraySpectrumBlock`, **strict** (see *X-ray absorption and emission* below). | — |
 | `states_ref` | string | no | `id` of the `excited_states` section (§ 5.12) whose states the peaks' `assignment.state_index` values name. | — |
 
 **The x axis.** `frequencies` carries the x axis in the unit § 4.3 gives the
-kind — cm⁻¹ for `spectra.ir`, eV for `spectra.uvvis` — unless `x_units`
+kind (cm⁻¹ for `spectra.ir`, eV for `spectra.uvvis`, `spectra.xas` and
+`spectra.xes`) unless `x_units`
 declares another unit. The name is historical and is kept for every kind,
 including those whose x values are energies (UV-Vis, ECD); `x` is an optional
 quantity-neutral alias, and a rename is left to a future major version. For a
@@ -2306,7 +2312,77 @@ electronic state a transition reaches. When the payload carries `states_ref`,
 every `state_index` is the `index` of a state of the `excited_states` section
 that `states_ref` names (§ 5.12), and a validator checks both (§ 6); without
 `states_ref`, states are numbered as the producer numbers them.
-The `raman` and `uvvis` blocks are meaningful only in the kind they name.
+`assignment.atom_index` is a 0-based index into the `atoms` of the archive's
+structure: the absorbing or emitting atom of an X-ray line.
+The `raman` and `uvvis` blocks are meaningful only in the kind they name, and
+the `xray` block only in `spectra.xas` and `spectra.xes`.
+
+#### X-ray absorption and emission: `spectra.xas` and `spectra.xes`
+
+`spectra.xas` is an X-ray absorption spectrum (XANES, NEXAFS, pre-edge), and
+`spectra.xes` an X-ray emission spectrum (core-to-core lines such as Kα and
+Kβ, or valence-to-core). Both are one-dimensional spectra on the shared
+payload above, with photon energies in eV on the x axis. They differ in what
+the energy means: the energy absorbed in a core excitation, or the energy
+emitted when a core hole is filled. Producers **SHOULD** write the `xray`
+block, `$defs/XraySpectrumBlock`, **strict**:
+
+| Field | Type | Required | Meaning | Unit |
+|---|---|:--:|---|---|
+| `edge` | string | **yes** | The absorption edge (XAS) or the level of the core hole (XES) in IUPAC X-ray notation: `K`, `L1` to `L3`, `M1` to `M5`, `N1` to `N7` or `O1` to `O5`, or one of the unresolved spin-orbit pairs `L2,3`, `M2,3`, `M4,5`, `N2,3`, `N4,5`, `N6,7`, `O2,3`, `O4,5`. | — |
+| `element` | string | no | Chemical symbol of the absorbing or emitting element. | — |
+| `atom_indices` | integer[] | no | 0-based indices into the structure's `atoms` of the absorbing or emitting atoms whose transitions the spectrum contains, each at most once. | — |
+| `core_orbital` | string | no | The core orbital excited (XAS) or holding the hole (XES) in n l notation with an optional j: `1s`, `2p`, `2p3/2`, `3d5/2`. | — |
+| `line` | string | no | The emission line or region of an XES spectrum as the producer names it, e.g. `Kα1`, `Kβ1,3`, `Kβ2,5`, `valence-to-core`. | — |
+| `intensity` | string | no | What `intensities` holds: `oscillator_strength`, `cross_section_mb`, `normalized` or `arbitrary`. | see below |
+| `energy_shift_ev` | number | no | Constant shift already added to every x value and peak position, e.g. to align computed edges with experiment. Absent means not stated, 0 unshifted. | eV |
+
+**Intensities.** `oscillator_strength`, `normalized` and `arbitrary`
+intensities are pure numbers, and a declared `y_units` is `dimensionless`.
+`cross_section_mb` intensities are cross sections in megabarn
+(1 Mb = 10⁻²² m²), a unit the vocabulary of § 4.3 does not name, so `y_units`
+is absent. The payload definition encodes both rules, so a contradiction is
+`E_PAYLOAD_SCHEMA` (§ 6). Without `xray.intensity`, the y quantity is the one
+`y_units` declares, or not stated.
+
+**Lines and states.** A calculation that resolves transitions writes them as
+sticks: `frequencies` and `intensities` hold one entry per transition, and
+`broadening` names the line shape a consumer applies. One that writes an
+envelope writes the broadened curve and the `broadening` it applied, and
+`peaks` may annotate the transitions under it. A transition that is an excited
+state of an `excited_states` section (§ 5.12), as in TDDFT with a restricted
+excitation window, CVS-ADC, CVS-EOM-CC or DFT/ROCIS, names the state through
+`states_ref` and `peaks[].assignment.state_index`. A ΔSCF transition, the
+energy difference of two separately converged states, has no such section:
+it is a stick, and its peak's `label` may name the final state. A spectrum
+that sums several absorbers lists them in `xray.atom_indices` and names the
+absorber of each peak in `assignment.atom_index`.
+
+**Common program outputs.** No vendor field is needed for the outputs below.
+
+* ORCA TDDFT core excitations (`%tddft` with an `OrbWin` donor window or
+  `XASLoc`) and DFT/ROCIS (L edges) print, per transition, an energy in cm⁻¹
+  and eV and an oscillator strength split into electric dipole, magnetic
+  dipole and electric quadrupole parts. A producer writes the eV energies as
+  `frequencies`, the total oscillator strength as `intensities` with
+  `xray.intensity: oscillator_strength`, and the states as an
+  `excited_states` section. The multipole split stays in the program output
+  (a later revision may add it). ORCA's XES (the ground-state Kohn-Sham
+  orbital approach) prints emission energies and oscillator strengths the
+  same way. Shifts applied by `orca_mapspc` or by hand go in
+  `energy_shift_ev`.
+* Q-Chem core excitations (TDDFT with a restricted excitation window,
+  CVS-ADC, CVS-EOM-CCSD) print excitation energies in eV with oscillator
+  strengths per state, and its ΔSCF calculations (MOM, SGM) the total
+  energies of a ground and a core-excited or core-ionized state, whose
+  difference is one stick.
+* PySCF TDDFT on a core-valence-separated or restricted occupied window, and
+  ΔSCF with the maximum overlap method (`scf.addons.mom_occ`), give
+  excitation energies in hartree: the producer converts them to eV, or
+  declares `x_units: "hartree"`, and writes the oscillator strengths.
+
+A core-level photoelectron (XPS) binding energy is not an X-ray spectrum
+kind in v1. Producers may carry it in `spectra.generic` with `x_units: "ev"`.
 
 #### `spectra.nmr`
 
@@ -2335,6 +2411,52 @@ are dimensionless; hyperfine and zero-field-splitting parameters are in MHz.
 
 A 3 × 3 tensor of either payload is written as three rows in the Cartesian
 frame of the structure.
+
+#### `spectra.mossbauer`
+
+Payload: `$defs/MossbauerSpectrumPayload`, **strict**. The parameters of
+each resonant site, from which a consumer can draw the spectrum. Units are
+fixed by the field names: velocities in mm/s, the hyperfine field in tesla,
+the electric field gradient and the contact density in atomic units. The
+vocabulary of § 4.3 names neither mm/s, nor tesla, nor the EFG unit
+E_h / (e bohr²), so the payload fixes every unit by field name and has no
+`units` object, although the contact density's unit has the name
+`e_per_bohr3`. Atom indices are 0-based indices into the `atoms` of the archive's
+structure.
+
+| Field | Type | Required | Meaning | Unit |
+|---|---|:--:|---|---|
+| `isotope` | string | no | Resonant nucleus, mass number first: `57Fe` (when absent), `119Sn`, `151Eu`. | — |
+| `reference` | string | no | Reference of the isomer shifts, e.g. `"alpha-Fe, 298 K"`. | — |
+| `temperature_k` | number > 0 | no | Temperature the parameters refer to. | K |
+| `calibration` | object | no | The linear calibration δ = `alpha` (ρ(0) − `c`) + `beta` that turned each site's contact density into its isomer shift: `alpha` (required), `c` (required), `beta` (0 when absent), `label`. | `alpha` mm/s per e/bohr³; `beta` mm/s; `c` e/bohr³ |
+| `sites` | object[] | **yes** | One entry per resonant site, at least one (below). | — |
+
+Each site:
+
+| Field | Type | Required | Meaning | Unit |
+|---|---|:--:|---|---|
+| `atom_index` | integer ≥ 0 | **yes** | The resonant atom. | — |
+| `symbol` | string | no | Its element symbol. | — |
+| `label` | string | no | A site label for display. | — |
+| `isomer_shift_mm_s` | number | no | Isomer shift δ relative to `reference`. | mm/s |
+| `quadrupole_splitting_mm_s` | number | no | Quadrupole splitting ΔE_Q = (e Q V_zz / 2)(1 + η²/3)^½, signed with V_zz when the sign is known. | mm/s |
+| `asymmetry` | number in [0, 1] | no | Asymmetry parameter η = (V_xx − V_yy) / V_zz, with \|V_zz\| ≥ \|V_yy\| ≥ \|V_xx\|. | dimensionless |
+| `efg_au` | 3 × 3 | no | Electric field gradient tensor at the nucleus, three rows in the Cartesian frame of the structure. | E_h / (e bohr²) |
+| `contact_density_au` | number > 0 | no | Electron density at the nucleus, ρ(0). | e / bohr³ |
+| `hyperfine_field_t` | number | no | Magnetic hyperfine field at the nucleus, signed when its direction relative to the electron spin is known. | T |
+| `linewidth_mm_s` | number > 0 | no | Full width at half maximum of each Lorentzian line. | mm/s |
+| `population` | number in [0, 1] | no | Fraction of the resonant nuclei at this site, the relative area of its subspectrum. When every site gives one, they **SHOULD** sum to 1. | — |
+
+Quantum-chemistry programs give these parameters per nucleus. ORCA's
+`%eprnmr` block with `Nuclei = all Fe {rho, fgrad}` prints ρ(0), the EFG
+tensor, the quadrupole splitting and η, and the isomer shift follows from a
+calibration as above. Other programs, PySCF among them, give ρ(0) as the
+density at the nucleus and the EFG from field-gradient integrals. The
+producer forms ΔE_Q and η from the EFG eigenvalues and the nuclear quadrupole
+moment it used. A validator checks only the payload definition: it does not
+recompute δ from `calibration`, ΔE_Q from `efg_au`, or the sum of the
+populations.
 
 ### 5.5 Trajectories, reactions, vibrations
 
@@ -4274,6 +4396,13 @@ These are acknowledged limitations of v1, not defects:
    reaction energies as version 1 of `energies`. Further quantities (for
    example zero-point-corrected energies) and an isotope-aware thermochemistry
    are additive revisions, left until a producer needs them.
+10. **X-ray and Mössbauer units.** The unit vocabulary of § 4.3 has no name
+   for an area (the megabarn of an X-ray cross section), a velocity (the mm/s
+   of a Mössbauer spectrum) or a magnetic flux density (the tesla of a
+   hyperfine field). `spectra.xas` and `spectra.xes` therefore state a cross
+   section through `xray.intensity` without `y_units`, and `spectra.mossbauer`
+   fixes its units by field name, as `spectra.epr` does with MHz (§ 5.4). A
+   later revision may add names, which is an additive change.
 
 ---
 

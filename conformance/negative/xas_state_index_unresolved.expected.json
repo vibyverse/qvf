@@ -1,0 +1,10 @@
+{
+  "archive": "xas_state_index_unresolved.qvf",
+  "description": "A spectra.xas peak names state_index 3, but the excited_states section its states_ref names has states 1 and 2 (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}
