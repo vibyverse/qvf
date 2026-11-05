@@ -6,7 +6,7 @@ repacking, a reader with typed section models, a validator and a `qvf`
 command-line tool, certified by the shared
 conformance corpus in
 [`../conformance`](../conformance). It does not use the C++ library or its C
-ABI. Status: in development (`0.1.0-dev`, `publish = false`).
+ABI. Status: part of toolkit 0.7.0 (crate version `0.7.0`, `publish = false`, not on crates.io).
 
 ## Build and test
 

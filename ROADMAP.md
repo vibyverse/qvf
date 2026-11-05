@@ -55,7 +55,7 @@ does not expand the scope of these frozen releases.
 The latest toolkit is **0.7.0** (2026-11-05), implementing **QVF v1**.
 Its release checks are the candidate CI and installed Python/C/C++ package
 acceptance. Toolkit 0.6.0 (2026-10-22) remains the frozen family pin:
-vibe-qc, vibe-view, vibe-sketch and vibe-queue pin it on main.
+vibe-qc, vibe-viewer, vibe-sketcher and vibe-scheduler pin it on main.
 These source pins do not claim that every packaged consumer has been rebuilt.
 A toolkit version increment does not require a new archive format, and the
 v2 ledger below is not a release gate for additive toolkit work.
@@ -78,7 +78,7 @@ following work:
 | Kind catalogue, documentation site and Python, C++ and C API references (WP-64, #19–#22) | Source and local build support landed; site publication remains separate work. |
 
 The dated [governance records](GOVERNANCE.md#version-history-and-decisions)
-define the two additive contract changes. Format version 1 does not imply
+define the additive contract changes. Format version 1 does not imply
 that an older toolkit accepts every later optional field. Keep the frozen
 family on the v0.6.0 schema and [check packaged runtime pins as well as source
 pins](docs/family_workflow.md#check-the-packaged-qvf-runtime).
