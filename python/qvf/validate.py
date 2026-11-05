@@ -1227,6 +1227,63 @@ def _transition_density_errors(sid: str, section: dict,
     return []
 
 
+#: Volume kinds that may name the wavefunction they were computed from
+#: (spec § 5.2, Volumes of a wavefunction).
+_WAVEFUNCTION_VOLUME_KINDS = ("volume.density", "volume.spin", "volume.orbital")
+
+
+def _wavefunction_volume_errors(sid: str, kind: str, section: dict,
+                                kinds_by_id: dict[str, str],
+                                mo_rows_of: dict[str, dict[str, int]]
+                                ) -> list[tuple[str, str]]:
+    """A ``volume.density``, ``volume.spin`` or ``volume.orbital`` section's
+    ``wavefunction_ref`` names a ``wavefunction.gto`` section. For a
+    ``volume.orbital``, ``spin`` is absent when that section carries
+    ``mo_coefficients`` and present, whenever ``mo_index`` is, when it
+    carries the alpha and beta coefficients, and ``mo_index`` is a row of
+    the member they select (``mo_rows_of``, from the manifest shapes; spec
+    § 5.2). Returns ``(field, message)`` pairs, all ``E_REF_UNRESOLVED``."""
+    if "wavefunction_ref" not in section:
+        return []
+    ref = section["wavefunction_ref"]
+    sec = f"section {sid!r}: "
+    if not isinstance(ref, str) or kinds_by_id.get(ref) != "wavefunction.gto":
+        return [("wavefunction_ref",
+                 sec + f"wavefunction_ref {ref!r} does not name a "
+                       f"wavefunction.gto section (spec § 5.2)")]
+    if kind != "volume.orbital":
+        return []
+    errors: list[tuple[str, str]] = []
+    rows = mo_rows_of.get(ref, {})
+    mo = section.get("mo_index")
+    spin = section.get("spin")
+    n: Optional[int] = None
+    if "" in rows:
+        if "spin" in section:
+            errors.append(("spin",
+                           sec + f"spin {spin!r} selects a spin channel, but "
+                                 f"wavefunction {ref!r} carries one set of "
+                                 f"orbitals in mo_coefficients (spec § 5.2)"))
+        n = rows[""]
+    elif "alpha" in rows or "beta" in rows:
+        if "spin" not in section:
+            if "mo_index" in section:
+                errors.append(("mo_index",
+                               sec + f"mo_index {mo!r} needs spin: wavefunction "
+                                     f"{ref!r} carries alpha and beta "
+                                     f"coefficients (spec § 5.2)"))
+            return errors
+        if spin in ("alpha", "beta"):
+            n = rows.get(spin)
+    if _is_int(mo) and n is not None and not 0 <= mo < n:
+        member = ("mo_coefficients" if "" in rows
+                  else f"mo_coefficients_{spin}")
+        errors.append(("mo_index",
+                       sec + f"mo_index {mo} is not one of the {n} rows of "
+                             f"{member} of wavefunction {ref!r} (spec § 5.2)"))
+    return errors
+
+
 #: Largest allowed disagreement between two statements of one property
 #: (spec § 5.13): the dipole of ``properties.electric`` against the root
 #: ``dipole_moment`` (debye), and ``static`` against ``electronic + ionic``.
@@ -2535,6 +2592,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
     excited_sections: list[tuple] = []
     states_ref_spectra: list[tuple] = []
     transition_densities: list[tuple] = []
+    wavefunction_volumes: list[tuple] = []
     grid_members: list[tuple] = []   # grid payloads, checked last (spec § 5.2)
     property_sections: list[tuple] = []     # properties.*, checked last
     periodic_of: dict[str, bool] = {}  # structure id -> any(pbc)
@@ -2805,6 +2863,8 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             states_ref_spectra.append((i, sid, docs["spectrum"]))
         if kind == "volume.transition_density":
             transition_densities.append((i, sid, s))
+        if kind in _WAVEFUNCTION_VOLUME_KINDS and "wavefunction_ref" in s:
+            wavefunction_volumes.append((i, sid, kind, s))
         for code, role, msg in _volume_errors(sid, kind, members, docs,
                                               kinds_by_id):
             out.error(code, _pointer("sections", i, "members", role), msg)
@@ -2890,6 +2950,11 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
         for i, sid, s in transition_densities:
             for field, msg in _transition_density_errors(sid, s, kinds_by_id,
                                                          state_indices_of):
+                out.error("E_REF_UNRESOLVED", _pointer("sections", i, field), msg)
+        # Volumes that name their wavefunction and orbital (spec § 5.2).
+        for i, sid, kind, s in wavefunction_volumes:
+            for field, msg in _wavefunction_volume_errors(sid, kind, s, kinds_by_id,
+                                                          mo_rows_of):
                 out.error("E_REF_UNRESOLVED", _pointer("sections", i, field), msg)
 
         # Grids: references and periodic spans against the structure (spec § 5.2).

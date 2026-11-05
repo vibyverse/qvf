@@ -2589,6 +2589,57 @@ std::string QvfWriter::add_volume_transition_density(const Grid& grid, const Ten
     return sid;
 }
 
+std::string QvfWriter::link_volume_wavefunction(const std::string& volume_id,
+                                                const std::string& wavefunction_ref,
+                                                int64_t mo_index,
+                                                const std::string& spin) {
+    const Json& volume = sections_.elements()[section_index(volume_id)];
+    const std::string kind = volume.at("kind").as_string();
+    if (kind != "volume.density" && kind != "volume.spin" && kind != "volume.orbital")
+        throw std::runtime_error(kind + ": wavefunction_ref applies to volume.density, "
+                                        "volume.spin and volume.orbital only");
+    if (mo_index < -1)
+        throw std::runtime_error(kind + ": mo_index must be >= 0 (-1 omits it)");
+    if ((mo_index >= 0 || !spin.empty()) && kind != "volume.orbital")
+        throw std::runtime_error(kind + ": mo_index and spin apply to volume.orbital only");
+    if (!spin.empty() && mo_index < 0)
+        throw std::runtime_error(kind + ": spin needs mo_index (QVF spec § 5.2)");
+    const Json& wf = sections_.elements()[section_index(wavefunction_ref)];
+    if (wf.at("kind").as_string() != "wavefunction.gto")
+        throw std::runtime_error(kind + ": wavefunction_ref '" + wavefunction_ref +
+                                 "' names a '" + wf.at("kind").as_string() +
+                                 "' section, not a 'wavefunction.gto' section");
+    if (mo_index >= 0) {
+        const Json& members = wf.at("members");
+        std::string role = "mo_coefficients";
+        if (members.has("mo_coefficients")) {
+            if (!spin.empty())
+                throw std::runtime_error(kind + ": wavefunction '" + wavefunction_ref +
+                                         "' has one set of orbitals; spin must be "
+                                         "omitted (QVF spec § 5.2)");
+        } else {
+            if (spin != "alpha" && spin != "beta")
+                throw std::runtime_error(kind + ": wavefunction '" + wavefunction_ref +
+                                         "' is unrestricted; spin must be 'alpha' or "
+                                         "'beta' (QVF spec § 5.2)");
+            role += "_" + spin;
+        }
+        if (!members.has(role) || !members.at(role).has("shape") ||
+            members.at(role).at("shape").size() == 0)
+            throw std::runtime_error(kind + ": wavefunction '" + wavefunction_ref +
+                                     "' has no " + role + " member with a shape");
+        const int64_t rows = members.at(role).at("shape").elements()[0].as_int();
+        if (mo_index >= rows)
+            throw std::runtime_error(kind + ": mo_index " + std::to_string(mo_index) +
+                                     " is outside the " + std::to_string(rows) +
+                                     " rows of " + role + " of '" + wavefunction_ref + "'");
+    }
+    set_section_field(volume_id, "wavefunction_ref", wavefunction_ref);
+    if (mo_index >= 0) set_section_field(volume_id, "mo_index", mo_index);
+    if (!spin.empty()) set_section_field(volume_id, "spin", spin);
+    return volume_id;
+}
+
 std::string QvfWriter::add_basis_ao(const Json& ao_metadata, const Grid& grid,
                                     const Tensor& data, const std::string& label,
                                     const std::string& section_id) {

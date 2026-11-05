@@ -1,0 +1,721 @@
+{
+  "archive": "volume_wavefunction_ref.qvf",
+  "description": "H2 in two s Gaussians (exponent 1 bohr^-2, 0.74 \u00c5): an RHF and a UHF triplet wavefunction and one NTO pair, with a density, a spin density and orbital volumes that name their wavefunction.gto section (wavefunction_ref) and their coefficient row (mo_index). The unrestricted orbitals also name their channel (spin), restricted and NTO orbitals do not; for an NTO section mo_index is the pair index. Every volume keeps its group (spec \u00a7 5.2, Volumes of a wavefunction).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "excited_states",
+    "structure",
+    "volume.density",
+    "volume.orbital",
+    "volume.spin",
+    "wavefunction.gto"
+  ],
+  "checks": [
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "rho",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "rho",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.430279052740179,
+      "tol": 1e-06
+    },
+    {
+      "section": "rho",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 7.947149084378269e-05,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "mo_0",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_0",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_0",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.4638313555270811,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_0",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.0063036295435162865,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "mo_1",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_1",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_1",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.23148352810414854,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_1",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.009223182592068996,
+      "tol": 1e-06
+    },
+    {
+      "section": "spin_triplet",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "spin_triplet",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "spin_triplet",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "spin_triplet",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "spin_triplet",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "spin_triplet",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.26872415015363366,
+      "tol": 1e-06
+    },
+    {
+      "section": "spin_triplet",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.0001248028425485359,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.23148352810414854,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_alpha_1",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.009223182592068996,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.4638313555270811,
+      "tol": 1e-06
+    },
+    {
+      "section": "mo_beta_0",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.0063036295435162865,
+      "tol": 1e-06
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.4638313555270811,
+      "tol": 1e-06
+    },
+    {
+      "section": "nto_hole_0",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.0063036295435162865,
+      "tol": 1e-06
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        0
+      ],
+      "equals": 6
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        1
+      ],
+      "equals": 6
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "grid",
+      "json_pointer": [
+        "shape",
+        2
+      ],
+      "equals": 8
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "grid",
+      "json_pointer": [
+        "origin",
+        0
+      ],
+      "equals": -1.25,
+      "tol": 1e-12
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "grid",
+      "json_pointer": [
+        "voxel_vectors",
+        1,
+        1
+      ],
+      "equals": 0.5,
+      "tol": 1e-12
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "data",
+      "binary_index": [
+        2,
+        3,
+        3
+      ],
+      "equals": 0.23148352810414854,
+      "tol": 1e-06
+    },
+    {
+      "section": "nto_particle_0",
+      "member": "data",
+      "binary_index": [
+        0,
+        0,
+        0
+      ],
+      "equals": 0.009223182592068996,
+      "tol": 1e-06
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        6,
+        "wavefunction_ref"
+      ],
+      "equals": "wf"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        7,
+        "wavefunction_ref"
+      ],
+      "equals": "wf"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        7,
+        "mo_index"
+      ],
+      "equals": 0
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        8,
+        "wavefunction_ref"
+      ],
+      "equals": "wf"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        8,
+        "mo_index"
+      ],
+      "equals": 1
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        9,
+        "wavefunction_ref"
+      ],
+      "equals": "wf_triplet"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        10,
+        "wavefunction_ref"
+      ],
+      "equals": "wf_triplet"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        10,
+        "mo_index"
+      ],
+      "equals": 1
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        10,
+        "spin"
+      ],
+      "equals": "alpha"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        11,
+        "wavefunction_ref"
+      ],
+      "equals": "wf_triplet"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        11,
+        "mo_index"
+      ],
+      "equals": 0
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        11,
+        "spin"
+      ],
+      "equals": "beta"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        12,
+        "wavefunction_ref"
+      ],
+      "equals": "nto_hole"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        12,
+        "mo_index"
+      ],
+      "equals": 0
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        13,
+        "wavefunction_ref"
+      ],
+      "equals": "nto_particle"
+    },
+    {
+      "manifest_pointer": [
+        "sections",
+        13,
+        "mo_index"
+      ],
+      "equals": 0
+    },
+    {
+      "section": "wf_triplet",
+      "member": "mo_metadata",
+      "json_pointer": [
+        "beta",
+        "energies",
+        0
+      ],
+      "equals": -0.42
+    },
+    {
+      "section": "nto_particle",
+      "member": "mo_metadata",
+      "json_pointer": [
+        "nto_role"
+      ],
+      "equals": "particle"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "archive": "volume_orbital_spin_restricted.qvf",
+  "description": "A volume.orbital with spin 'alpha', but the wavefunction.gto that wavefunction_ref names carries one set of orbitals in mo_coefficients (spec \u00a7 5.2).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

@@ -223,6 +223,121 @@ entry points. The corpus gains `spectra_xas_tddft.qvf`,
 `xas_state_index_unresolved`, `mossbauer_asymmetry_range`,
 `mossbauer_unitless_key` and `mossbauer_no_sites`.
 
+### 2026-11-04: Volumes name their wavefunction and orbital
+
+**Status.** Accepted by the maintainer on 2026-11-05 under "Change
+process" (extend a canonical kind with optional fields, vibyverse/qvf#17),
+with the names and rules below settled as proposed. It is a public
+contract change. Producers may write the new fields once a toolkit release
+carries them.
+
+**Decision.** Spec § 5.2 gains the subsection *Volumes of a
+wavefunction*. (1) `volume.density`, `volume.spin` and `volume.orbital`
+may carry the optional section field `wavefunction_ref`, the `id` of the
+`wavefunction.gto` section (§ 5.3) the field was computed from. (2)
+`volume.orbital` may also carry `mo_index`, an integer ≥ 0, the 0-based row
+of the orbital in that section's coefficient member, which requires
+`wavefunction_ref`, and `spin`, `"alpha"` or `"beta"`, which requires
+`mo_index` and names `mo_coefficients_alpha` or `mo_coefficients_beta`.
+`spin` is present exactly when the referenced section carries the α and β
+coefficients of an unrestricted wavefunction and absent when it carries
+`mo_coefficients`. (3) Natural transition orbitals need no further field:
+when the referenced section is an NTO section, `mo_index` is the index of
+the pair of a hole and a particle orbital, and that section's `mo_metadata` already states
+the role (`nto_role`) and the state (`state_ref`, `state_index`). (4)
+Validators check that `wavefunction_ref` names a `wavefunction.gto`
+section, that `mo_index` is a row of the member it selects (read from the
+manifest `shape`), and that `spin` is present exactly when needed. Each
+violation is `E_REF_UNRESOLVED` at the section field. The schema states the
+two dependencies as `dependentRequired`, so a `mo_index` without
+`wavefunction_ref` or a `spin` without `mo_index` is `E_SCHEMA`. No new
+finding code, member, kind or unit. (5) The conformance corpus gains
+`volume_wavefunction_ref.qvf` (an RHF and a UHF triplet wavefunction and one
+NTO pair of H2, with a density, a spin density and six orbital volumes), and
+the negative corpus `volume_wavefunction_ref_wrong_kind.qvf`,
+`volume_orbital_mo_index_out_of_range.qvf`, `volume_orbital_spin_missing.qvf`,
+`volume_orbital_spin_restricted.qvf` and
+`volume_orbital_mo_index_without_ref.qvf`. (6) Writers: Python
+`add_volume(..., wavefunction_ref=, mo_index=, spin=)` and C++
+`QvfWriter::link_volume_wavefunction(volume_id, wavefunction_ref, mo_index,
+spin)` refuse a reference, row or spin that the added wavefunction does not
+support. The PySCF grid exporter (`add_density_grid`, `add_orbital_grid`)
+writes the fields and keeps writing the wavefunction id as `group`. **No
+`qvf_version` bump.**
+
+**Background.** The PySCF grid exporter (WP-62) found the gap. A viewer
+that shows an orbital volume needs the orbital's energy, occupation and
+symmetry label to label the plot and to match it with the orbital list, and
+for an unrestricted wavefunction it needs to know which spin channel the row
+belongs to. QVF v1 had no field for either. The exporter wrote the
+wavefunction id as `group`, which § 4.1 defines as a display label without
+meaning, and the row only in the section id and `label`, which carry no
+meaning either (§ 4.1, *Section ids carry no meaning*).
+
+**Alternatives considered.**
+
+* *A generic § 4.1 field on every section.* Rejected for now. Only a few
+  kinds are computed from one wavefunction, and a generic field would need a
+  stated meaning for spectra, bands or trajectories. Widening the field to
+  more kinds later is additive.
+* *Fields in the grid payload.* Rejected. `$defs/VolumeGridPayload` is
+  strict and shared with `basis.ao` and the `volume_grid` of
+  `reaction.path`, and it is an archive member: a reader would have to
+  inflate and parse a member to learn a link that the manifest can state.
+  The precedent, `excited_states_ref` and `state_index` of
+  `volume.transition_density`, is at section level.
+* *Reusing `group`, `component` or `label`.* Rejected. They are free text
+  that a validator cannot resolve, and giving them meaning would change the
+  reading of archives already written.
+* *One nested object, such as `orbital: {wavefunction_ref, row, spin}`.*
+  Rejected. No section field of QVF is a nested reference object, and flat
+  fields follow `excited_states_ref` / `state_index` and the
+  `wavefunction_ref` of `excited_states` (§ 5.12).
+* *A 1-based index, or the names `mo`, `mo_row` or `orbital_index`.* Rows of
+  a coefficient member are 0-based wherever QVF names them (`from_mo` and
+  `to_mo` of § 5.12), so `mo_index` is 0-based too. It differs from
+  `state_index`, which holds a 1-based `index` value and not a position. The
+  spec says so where it defines the field. The name is open to revision.
+* *`spin` always optional, or always required.* An optional `spin` leaves
+  the row of an unrestricted wavefunction ambiguous. A required `spin` would
+  add a redundant field to every restricted orbital. A `spin` on a one-set
+  wavefunction is rejected rather than ignored, because it signals a
+  producer that assumed another spin layout. The values `"alpha"` and
+  `"beta"` are those of a contribution's `spin` (§ 5.12).
+* *NTO fields on the volume (`nto_role`, a pair index).* Rejected. The
+  referenced section states both, and a copy on the volume could disagree
+  with it.
+* *Finding codes.* All violations are `E_REF_UNRESOLVED`, as for a
+  `state_index` that names no state and for a missing or ambiguous NTO
+  partner: the triple (`wavefunction_ref`, `mo_index`, `spin`) is one
+  reference to an orbital row, and it either resolves or it does not.
+  `E_MEMBER_MALFORMED` describes member payloads, and these are section
+  fields.
+
+**Deferred.** `wavefunction.bloch` and `volume.complex` (a k-resolved
+orbital would also need a k-point index), and the other volume kinds that
+may be computed from a wavefunction, such as `volume.elf`,
+`volume.potential` and `volume.laplacian`. Each is an additive extension of
+the same field. `volume.transition_density` already reaches its
+wavefunction through `excited_states_ref` and the `wavefunction_ref` of the
+`excited_states` section, and `volume.difference` through its operands.
+
+**Compatibility.** Strictly additive. Every archive that was valid stays
+valid: the fields are optional, and the `Section` schema already accepted
+unknown section keys, so no existing archive gains a finding unless it
+already carried a key named `wavefunction_ref`, `mo_index` or `spin` on one
+of the three kinds with another meaning, which no known producer wrote (the
+PySCF exporter on main wrote `group` only). Older toolkits see the fields
+only in new archives, as unknown optional section fields: the v1 schema and
+validators before this change accept such an archive without a finding and
+do not check the references (checked: the schema and the Python validator
+of main report nothing for `volume_wavefunction_ref.qvf`). A consumer that
+ignores the fields behaves as before, and `group` is still written by the
+PySCF exporter. Writers gain optional parameters and one C++ method, and
+the generated typed C++ kinds gain `VolumeDensityFields`,
+`VolumeSpinFields` and `VolumeOrbitalFields`. The `registry.json` kind
+list does not change, because no kind is added or promoted.
+
 ### 2026-11-04: The data unit of a volume grid checked per kind
 
 **Status.** Proposed. The maintainer chose the finding code

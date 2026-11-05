@@ -4648,6 +4648,89 @@ def build_reaction_energies():
        "parsed output files with source (spec § 5.14, Reaction energies).")
 
 
+def build_volume_wavefunction_refs():
+    """volume_wavefunction_ref: volumes that name the wavefunction and the
+    orbital they were computed from (spec § 5.2, Volumes of a wavefunction)."""
+    exponent = 1.0
+    bond = 0.74                                   # Å
+    cg, cu = _pair_coefficients(bond, exponent)
+    coeffs = np.array([[cg, cg], [cu, -cu]])      # sigma_g, sigma_u
+    shells = _s_shells(2, exponent)
+    w = QvfWriter(_PROGRAM, _VERSION, "volumes of a wavefunction")
+    w.add_structure([{"symbol": "H", "atomic_number": 1, "position": [0.0, 0.0, 0.0]},
+                     {"symbol": "H", "atomic_number": 1, "position": [0.0, 0.0, bond]}])
+    w.add_wavefunction_gto(shells, mo_coefficients=coeffs, energies=[-0.58, 0.67],
+                           occupations=[2.0, 0.0], n_electrons=2, section_id="wf",
+                           label="RHF")
+    w.add_wavefunction_gto(shells, mo_coefficients_alpha=coeffs,
+                           mo_coefficients_beta=coeffs,
+                           energies_alpha=[-0.61, 0.31], occupations_alpha=[1.0, 1.0],
+                           energies_beta=[-0.42, 0.55], occupations_beta=[0.0, 0.0],
+                           n_electrons=2, section_id="wf_triplet", label="UHF triplet")
+    # A natural transition orbital pair of one excited state: row 0 of the
+    # hole and of the particle section is pair 0 (spec § 5.3).
+    for role, row in (("hole", coeffs[:1]), ("particle", coeffs[1:])):
+        w.add_wavefunction_gto(shells, mo_coefficients=row, energies=[0.0],
+                               occupations=[1.0], orbital_kind="nto",
+                               state_ref="es", state_index=1, nto_role=role,
+                               section_id="nto_" + role)
+    w.add_excited_states([{"index": 1, "excitation_energy": 12.1,
+                           "nto_ref": "nto_hole"}], section_id="es")
+
+    shape, step = (6, 6, 8), 0.5
+    origin, voxels, coords = _volume_grid(shape, step)
+    centre = [0.0, 0.0, 0.5 * bond * BOHR_PER_ANGSTROM]
+    origin[2] += centre[2]
+    coords = (coords[0], coords[1], coords[2] + centre[2])
+    norm = (2.0 * exponent / math.pi) ** 0.75
+    chi = [norm * np.exp(-exponent * _r2(coords, (0.0, 0.0, z)))
+           for z in (0.0, bond * BOHR_PER_ANGSTROM)]
+    mo = [c[0] * chi[0] + c[1] * chi[1] for c in coeffs]
+    volumes = [
+        ("rho", "volume.density", 2.0 * mo[0] ** 2, "RHF density", "wf", None, None),
+        ("mo_0", "volume.orbital", mo[0], "MO 0 (HOMO)", "wf", 0, None),
+        ("mo_1", "volume.orbital", mo[1], "MO 1 (LUMO)", "wf", 1, None),
+        ("spin_triplet", "volume.spin", mo[0] ** 2 + mo[1] ** 2,
+         "UHF spin density", "wf_triplet", None, None),
+        ("mo_alpha_1", "volume.orbital", mo[1], "MO 1 alpha", "wf_triplet", 1, "alpha"),
+        ("mo_beta_0", "volume.orbital", mo[0], "MO 0 beta", "wf_triplet", 0, "beta"),
+        ("nto_hole_0", "volume.orbital", mo[0], "NTO pair 0, hole", "nto_hole", 0, None),
+        ("nto_particle_0", "volume.orbital", mo[1], "NTO pair 0, particle",
+         "nto_particle", 0, None),
+    ]
+    checks = []
+    for sid, kind, data, label, wf, row, spin in volumes:
+        w.add_volume(kind, data, origin, voxels, label=label, section_id=sid,
+                     structure_ref="structure", wavefunction_ref=wf,
+                     mo_index=row, spin=spin)
+        w.annotate_section(sid, structure_ref="structure", group=wf)
+        checks += _volume_checks(sid, data, shape, origin, step, [(2, 3, 3), (0, 0, 0)])
+    index = {sid: i for i, sid in enumerate(s["id"] for s in w.build_manifest()["sections"])}
+    for sid, kind, data, label, wf, row, spin in volumes:
+        checks.append({"manifest_pointer": ["sections", index[sid], "wavefunction_ref"],
+                       "equals": wf})
+        if row is not None:
+            checks.append({"manifest_pointer": ["sections", index[sid], "mo_index"],
+                           "equals": row})
+        if spin is not None:
+            checks.append({"manifest_pointer": ["sections", index[sid], "spin"],
+                           "equals": spin})
+    checks += [
+        {"section": "wf_triplet", "member": "mo_metadata",
+         "json_pointer": ["beta", "energies", 0], "equals": -0.42},
+        {"section": "nto_particle", "member": "mo_metadata",
+         "json_pointer": ["nto_role"], "equals": "particle"},
+    ]
+    _write("volume_wavefunction_ref", w, checks,
+           "H2 in two s Gaussians (exponent 1 bohr^-2, 0.74 Å): an RHF and a UHF "
+           "triplet wavefunction and one NTO pair, with a density, a spin density "
+           "and orbital volumes that name their wavefunction.gto section "
+           "(wavefunction_ref) and their coefficient row (mo_index). The "
+           "unrestricted orbitals also name their channel (spin), restricted and "
+           "NTO orbitals do not; for an NTO section mo_index is the pair index. "
+           "Every volume keeps its group (spec § 5.2, Volumes of a wavefunction).")
+
+
 def build_compound_units():
     """Compound unit names of spec § 4.3, declared where the format fixes the
     unit (they restate it) and where a payload leaves it open (they choose
@@ -4974,5 +5057,6 @@ if __name__ == "__main__":
     build_biomolecule_identity()
     build_secondary_structure_ranges()
     build_reaction_energies()
+    build_volume_wavefunction_refs()
     build_compound_units()
     build_xray_mossbauer()

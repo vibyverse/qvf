@@ -1290,6 +1290,82 @@ inline std::vector<std::pair<std::string, std::string>> transition_density_error
     return errs;
 }
 
+// Volume kinds that may name the wavefunction they were computed from
+// (spec § 5.2, Volumes of a wavefunction).
+inline bool is_wavefunction_volume_kind(const std::string& kind) {
+    return kind == "volume.density" || kind == "volume.spin" || kind == "volume.orbital";
+}
+
+// A volume.density, volume.spin or volume.orbital section's wavefunction_ref
+// names a wavefunction.gto section. For a volume.orbital, spin is absent when
+// that section carries mo_coefficients and present, whenever mo_index is,
+// when it carries the alpha and beta coefficients, and mo_index is a row of
+// the member they select, from the manifest shapes. Mirrors
+// _wavefunction_volume_errors() in python/qvf/validate.py. Returns (field,
+// message) pairs, all E_REF_UNRESOLVED.
+inline std::vector<std::pair<std::string, std::string>> wavefunction_volume_errors(
+    const std::string& sid, const std::string& kind, const Json& section,
+    const std::map<std::string, std::string>& kinds_by_id,
+    const std::map<std::string, MoRows>& mo_rows_of) {
+    std::vector<std::pair<std::string, std::string>> errs;
+    const Json* ref = get(section, "wavefunction_ref");
+    if (!ref) return errs;
+    const std::string sec = "section " + quote_str(sid) + ": ";
+    auto it = ref->is_string() ? kinds_by_id.find(ref->as_string()) : kinds_by_id.end();
+    if (it == kinds_by_id.end() || it->second != "wavefunction.gto") {
+        errs.emplace_back("wavefunction_ref",
+                          sec + "wavefunction_ref " + show(*ref) +
+                              " does not name a wavefunction.gto section (spec § 5.2)");
+        return errs;
+    }
+    if (kind != "volume.orbital") return errs;
+    const std::string& wf = ref->as_string();
+    MoRows rows;
+    auto r = mo_rows_of.find(wf);
+    if (r != mo_rows_of.end()) rows = r->second;
+    const Json* mo = get(section, "mo_index");
+    const Json* spin = get(section, "spin");
+    bool known = false;
+    int64_t n = 0;
+    std::string member = "mo_coefficients";
+    auto single = rows.find("");
+    if (single != rows.end()) {
+        if (spin)
+            errs.emplace_back("spin", sec + "spin " + show(*spin) +
+                                          " selects a spin channel, but wavefunction " +
+                                          quote_str(wf) +
+                                          " carries one set of orbitals in "
+                                          "mo_coefficients (spec § 5.2)");
+        known = true;
+        n = single->second;
+    } else if (rows.count("alpha") || rows.count("beta")) {
+        if (!spin) {
+            if (mo)
+                errs.emplace_back("mo_index", sec + "mo_index " + show(*mo) +
+                                                  " needs spin: wavefunction " +
+                                                  quote_str(wf) +
+                                                  " carries alpha and beta coefficients "
+                                                  "(spec § 5.2)");
+            return errs;
+        }
+        if (spin->is_string() &&
+            (spin->as_string() == "alpha" || spin->as_string() == "beta")) {
+            auto c = rows.find(spin->as_string());
+            if (c != rows.end()) {
+                known = true;
+                n = c->second;
+                member = "mo_coefficients_" + spin->as_string();
+            }
+        }
+    }
+    if (is_int(mo) && known && (mo->as_int() < 0 || mo->as_int() >= n))
+        errs.emplace_back("mo_index", sec + "mo_index " + std::to_string(mo->as_int()) +
+                                          " is not one of the " + std::to_string(n) +
+                                          " rows of " + member + " of wavefunction " +
+                                          quote_str(wf) + " (spec § 5.2)");
+    return errs;
+}
+
 // An excited_states section, a spectrum with states_ref, a transition
 // density, or a standalone bonds section, checked after every section has
 // been read.
@@ -2611,7 +2687,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
     std::map<std::string, StateIndices> state_indices_of;
     std::vector<DeferredSection> nto_sections;
     std::vector<DeferredSection> excited_sections, states_ref_spectra,
-        transition_densities;
+        transition_densities, wavefunction_volumes;
     std::map<std::string, Json> cells;          // structure id -> payload
     std::vector<GridMember> grid_members;       // grid payloads, checked last
     std::vector<PropertySection> property_sections;      // checked last
@@ -2991,6 +3067,8 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         }
         if (kind == "volume.transition_density")
             transition_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
+        if (is_wavefunction_volume_kind(kind) && s.contains("wavefunction_ref"))
+            wavefunction_volumes.push_back(DeferredSection{i, sid, &s, false, Json()});
         for (const auto& e : volume_errors(sid, kind, members, docs, kinds_by_id))
             f.error(e.code, member_pointer(i, e.role), e.message);
         if (is_property_kind(kind)) {
@@ -3096,6 +3174,13 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         for (const auto& e : transition_density_errors(d.sid, *d.section, kinds_by_id,
                                                        state_indices_of))
             f.error("E_REF_UNRESOLVED", section_pointer(d.index) + "/" + e.first, e.second);
+    // Volumes that name their wavefunction and orbital (spec § 5.2).
+    for (const auto& d : wavefunction_volumes) {
+        const Json* k = get(*d.section, "kind");
+        for (const auto& e : wavefunction_volume_errors(d.sid, k ? k->as_string() : "",
+                                                        *d.section, kinds_by_id, mo_rows_of))
+            f.error("E_REF_UNRESOLVED", section_pointer(d.index) + "/" + e.first, e.second);
+    }
 
     // Grids: references and periodic spans against the structure (spec § 5.2).
     for (const auto& g : grid_members) {

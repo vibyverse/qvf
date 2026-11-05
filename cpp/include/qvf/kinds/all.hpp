@@ -340,6 +340,24 @@ struct BondOrdersPayload {
     }
 };
 
+struct VolumeDensityFields {
+    std::optional<std::string> wavefunction_ref{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("wavefunction_ref")) throw std::invalid_argument("use the typed field, not extra: wavefunction_ref");
+        if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
+        return out;
+    }
+    static VolumeDensityFields from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        VolumeDensityFields out;
+        if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
+        for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct VolumeGridPayloadUnits {
     std::optional<std::string> origin{};
     std::optional<std::string> voxel_vectors{};
@@ -400,6 +418,50 @@ struct VolumeGridPayload {
         if (j.has("structure_ref")) out.structure_ref.emplace(codec::get<std::string>(j, "structure_ref"));
         if (j.has("units")) out.units.emplace(codec::get<VolumeGridPayloadUnits>(j, "units"));
         for (const auto& kv : j.items()) if (kv.first != "origin" && kv.first != "voxel_vectors" && kv.first != "shape" && kv.first != "periodic" && kv.first != "includes_endpoint" && kv.first != "structure_ref" && kv.first != "units") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct VolumeOrbitalFields {
+    std::optional<std::string> wavefunction_ref{};
+    std::optional<int64_t> mo_index{};
+    std::optional<std::string> spin{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("wavefunction_ref")) throw std::invalid_argument("use the typed field, not extra: wavefunction_ref");
+        if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
+        if (out.has("mo_index")) throw std::invalid_argument("use the typed field, not extra: mo_index");
+        if (mo_index) codec::put(out, "mo_index", *mo_index);
+        if (out.has("spin")) throw std::invalid_argument("use the typed field, not extra: spin");
+        if (spin) codec::put(out, "spin", *spin);
+        return out;
+    }
+    static VolumeOrbitalFields from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        VolumeOrbitalFields out;
+        if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
+        if (j.has("mo_index")) out.mo_index.emplace(codec::get<int64_t>(j, "mo_index"));
+        if (j.has("spin")) out.spin.emplace(codec::get<std::string>(j, "spin"));
+        for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref" && kv.first != "mo_index" && kv.first != "spin") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct VolumeSpinFields {
+    std::optional<std::string> wavefunction_ref{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("wavefunction_ref")) throw std::invalid_argument("use the typed field, not extra: wavefunction_ref");
+        if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
+        return out;
+    }
+    static VolumeSpinFields from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        VolumeSpinFields out;
+        if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
+        for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -4391,10 +4453,13 @@ struct BondOrders : SectionFields {
 struct VolumeDensity : SectionFields {
     static constexpr std::string_view kind = "volume.density";
     VolumeDensity() { id = "volume_density"; }
+    VolumeDensityFields fields;
     VolumeGridPayload grid{};
     TensorData data{};
     std::string to_section(Writer& writer) const {
         Section s = descriptor(std::string(kind));
+        const Json peer_fields = fields.to_json();
+        for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
         std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
         json.push_back({"grid", codec::Value<VolumeGridPayload>::encode(grid)});
         binary.push_back({"data", data});
@@ -4403,6 +4468,10 @@ struct VolumeDensity : SectionFields {
     static VolumeDensity from_section(const Reader& reader, const Section& section) {
         if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
         VolumeDensity out; out.load(section);
+        out.fields = VolumeDensityFields::from_json(section.extra);
+        out.fields.extra.clear();
+        out.extra = Json::object();
+        for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;
@@ -4412,10 +4481,13 @@ struct VolumeDensity : SectionFields {
 struct VolumeOrbital : SectionFields {
     static constexpr std::string_view kind = "volume.orbital";
     VolumeOrbital() { id = "volume_orbital"; }
+    VolumeOrbitalFields fields;
     VolumeGridPayload grid{};
     TensorData data{};
     std::string to_section(Writer& writer) const {
         Section s = descriptor(std::string(kind));
+        const Json peer_fields = fields.to_json();
+        for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
         std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
         json.push_back({"grid", codec::Value<VolumeGridPayload>::encode(grid)});
         binary.push_back({"data", data});
@@ -4424,6 +4496,10 @@ struct VolumeOrbital : SectionFields {
     static VolumeOrbital from_section(const Reader& reader, const Section& section) {
         if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
         VolumeOrbital out; out.load(section);
+        out.fields = VolumeOrbitalFields::from_json(section.extra);
+        out.fields.extra.clear();
+        out.extra = Json::object();
+        for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref" && kv.first != "mo_index" && kv.first != "spin") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;
@@ -4433,10 +4509,13 @@ struct VolumeOrbital : SectionFields {
 struct VolumeSpin : SectionFields {
     static constexpr std::string_view kind = "volume.spin";
     VolumeSpin() { id = "volume_spin"; }
+    VolumeSpinFields fields;
     VolumeGridPayload grid{};
     TensorData data{};
     std::string to_section(Writer& writer) const {
         Section s = descriptor(std::string(kind));
+        const Json peer_fields = fields.to_json();
+        for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
         std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
         json.push_back({"grid", codec::Value<VolumeGridPayload>::encode(grid)});
         binary.push_back({"data", data});
@@ -4445,6 +4524,10 @@ struct VolumeSpin : SectionFields {
     static VolumeSpin from_section(const Reader& reader, const Section& section) {
         if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
         VolumeSpin out; out.load(section);
+        out.fields = VolumeSpinFields::from_json(section.extra);
+        out.fields.extra.clear();
+        out.extra = Json::object();
+        for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;

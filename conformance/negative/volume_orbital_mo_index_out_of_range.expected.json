@@ -1,0 +1,10 @@
+{
+  "archive": "volume_orbital_mo_index_out_of_range.qvf",
+  "description": "A volume.orbital with mo_index 2, but the wavefunction.gto that wavefunction_ref names has 2 rows (0 and 1) in mo_coefficients (spec \u00a7 5.2).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

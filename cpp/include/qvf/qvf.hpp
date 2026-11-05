@@ -774,6 +774,20 @@ public:
                                               int state_index = 0,
                                               const std::string& label = "",
                                               const std::string& section_id = "");
+    // Name the wavefunction.gto section `wavefunction_ref` that the added
+    // volume.density, volume.spin or volume.orbital section `volume_id` was
+    // computed from (QVF spec § 5.2, Volumes of a wavefunction). For a
+    // volume.orbital, mo_index (-1 = omit) is the 0-based row of the orbital
+    // in that section's coefficient member and spin ("alpha" or "beta",
+    // empty = omit) the member of an unrestricted wavefunction: required
+    // with mo_coefficients_alpha/_beta, refused with mo_coefficients. The
+    // wavefunction must already be added. Throws, changing nothing, on a
+    // wrong kind, an unresolved reference or a row outside the member.
+    // Returns `volume_id`.
+    std::string link_volume_wavefunction(const std::string& volume_id,
+                                         const std::string& wavefunction_ref,
+                                         int64_t mo_index = -1,
+                                         const std::string& spin = "");
     std::string add_basis_ao(const Json& ao_metadata, const Grid& grid,
                              const Tensor& data, const std::string& label = "",
                              const std::string& section_id = "");

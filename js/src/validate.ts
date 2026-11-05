@@ -62,7 +62,8 @@ import { checkDefinition, checkManifest, jsonEqual, payloadDefinition } from "./
  *   `vibrations` `hessian_ref`, the structure of `forces` and `hessian`
  *   sections and their atom counts, the references and orbital rows of
  *   `excited_states`, a spectrum's `states_ref`, a transition density's
- *   `excited_states_ref`, a `volume.series` axis `trajectory_ref`, a grid
+ *   `excited_states_ref`, the `wavefunction_ref`, `mo_index` and `spin` of
+ *   a density, spin density or orbital volume, a `volume.series` axis `trajectory_ref`, a grid
  *   `structure_ref`, and the span of a periodic grid against the cell of its
  *   structure, the Born charge count of `properties.dielectric`, and the
  *   periodic structure of a `wavefunction.bloch` section).
@@ -1000,6 +1001,59 @@ function transitionDensityErrors(
     return [["state_index", `${sec}state_index ${state} names no state of excited_states section ${quote(ref)} (spec § 5.2)`]];
   }
   return [];
+}
+
+/** Volume kinds that may name the wavefunction they were computed from (spec § 5.2). */
+const WAVEFUNCTION_VOLUME_KINDS: ReadonlySet<string> = new Set(["volume.density", "volume.spin", "volume.orbital"]);
+
+/**
+ * A `volume.density`, `volume.spin` or `volume.orbital` section's
+ * `wavefunction_ref` names a `wavefunction.gto` section. For a
+ * `volume.orbital`, `spin` is absent when that section carries
+ * `mo_coefficients` and present, whenever `mo_index` is, when it carries the
+ * alpha and beta coefficients, and `mo_index` is a row of the member they
+ * select, from the manifest shapes (spec § 5.2, Volumes of a wavefunction).
+ * Returns `[field, message]` pairs, all `E_REF_UNRESOLVED`.
+ */
+function wavefunctionVolumeErrors(
+  sid: string,
+  kind: string,
+  section: Obj,
+  kindsById: ReadonlyMap<string, string>,
+  moRowsOf: ReadonlyMap<string, Map<string, number>>,
+): Array<[string, string]> {
+  if (!has(section, "wavefunction_ref")) return [];
+  const ref = section.wavefunction_ref;
+  const sec = `section ${quote(sid)}: `;
+  if (typeof ref !== "string" || kindsById.get(ref) !== "wavefunction.gto") {
+    return [["wavefunction_ref", `${sec}wavefunction_ref ${show(ref)} does not name a wavefunction.gto section (spec § 5.2)`]];
+  }
+  if (kind !== "volume.orbital") return [];
+  const errors: Array<[string, string]> = [];
+  const rows = moRowsOf.get(ref) ?? new Map<string, number>();
+  const mo = section.mo_index;
+  const spin = section.spin;
+  let n: number | undefined;
+  const single = rows.get("");
+  if (single !== undefined) {
+    if (has(section, "spin")) {
+      errors.push(["spin", `${sec}spin ${show(spin)} selects a spin channel, but wavefunction ${quote(ref)} carries one set of orbitals in mo_coefficients (spec § 5.2)`]);
+    }
+    n = single;
+  } else if (rows.has("alpha") || rows.has("beta")) {
+    if (!has(section, "spin")) {
+      if (has(section, "mo_index")) {
+        errors.push(["mo_index", `${sec}mo_index ${show(mo)} needs spin: wavefunction ${quote(ref)} carries alpha and beta coefficients (spec § 5.2)`]);
+      }
+      return errors;
+    }
+    if (spin === "alpha" || spin === "beta") n = rows.get(spin);
+  }
+  if (isInt(mo) && n !== undefined && !(mo >= 0 && mo < n)) {
+    const member = single !== undefined ? "mo_coefficients" : `mo_coefficients_${String(spin)}`;
+    errors.push(["mo_index", `${sec}mo_index ${mo} is not one of the ${n} rows of ${member} of wavefunction ${quote(ref)} (spec § 5.2)`]);
+  }
+  return errors;
 }
 
 /**
@@ -2099,6 +2153,7 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
   const excitedSections: Array<{ i: number; sid: string; s: Obj; payload: unknown }> = [];
   const statesRefSpectra: Array<{ i: number; sid: string; payload: Obj }> = [];
   const transitionDensities: Array<{ i: number; sid: string; s: Obj }> = [];
+  const wavefunctionVolumes: Array<{ i: number; sid: string; kind: string; s: Obj }> = [];
   const cellsOf = new Map<string, Obj>(); // structure id -> structure payload
   const periodicOf = new Map<string, boolean>(); // structure id -> any(pbc)
   // wavefunction.bloch sections, checked once every structure has been read
@@ -2265,6 +2320,9 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
       if (isObject(spectrum) && has(spectrum, "states_ref")) statesRefSpectra.push({ i, sid, payload: spectrum });
     }
     if (rank >= AT_REFERENCES && kind === "volume.transition_density") transitionDensities.push({ i, sid, s });
+    if (rank >= AT_REFERENCES && WAVEFUNCTION_VOLUME_KINDS.has(kind) && has(s, "wavefunction_ref")) {
+      wavefunctionVolumes.push({ i, sid, kind, s });
+    }
     if (rank >= AT_SEMANTICS && kind === "atom_properties" && isObject(members)) {
       for (const [role, msg] of atomPropertiesMetaErrors(sid, members, docs)) {
         out.error("E_MEMBER_MALFORMED", `${here}/members/${escapePointer(role)}`, msg);
@@ -2431,6 +2489,11 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
   }
   for (const d of transitionDensities) {
     for (const [field, msg] of transitionDensityErrors(d.sid, d.s, kindsById, stateIndicesOf)) {
+      out.error("E_REF_UNRESOLVED", `${sectionPointer(d.i)}/${field}`, msg);
+    }
+  }
+  for (const d of wavefunctionVolumes) {
+    for (const [field, msg] of wavefunctionVolumeErrors(d.sid, d.kind, d.s, kindsById, moRowsOf)) {
       out.error("E_REF_UNRESOLVED", `${sectionPointer(d.i)}/${field}`, msg);
     }
   }

@@ -279,6 +279,13 @@ Method families (see the header for exact signatures):
   `state_index`; `add_volume_transition_density(grid, data,
   excited_states_ref, state_index)` writes the transition density. A 1-D
   spectrum names the table with a `states_ref` in its payload.
+- **Volumes of a wavefunction:** `link_volume_wavefunction(volume_id,
+  wavefunction_ref, mo_index, spin)` names the `wavefunction.gto` section an
+  added `volume.density`, `volume.spin` or `volume.orbital` was computed from
+  and, for an orbital, its 0-based row and, for an unrestricted
+  wavefunction, its `"alpha"` or `"beta"` channel (spec § 5.2).
+  The Python `add_volume` takes the same fields as `wavefunction_ref=`,
+  `mo_index=` and `spin=`.
 - **Property kinds:** `add_electric_properties(json)` (dipole in debye,
   quadrupole in debye·Å with its `convention` and `traceless` flag, octupole,
   polarizability and hyperpolarizability in atomic units),
@@ -1406,6 +1413,7 @@ browser example (`js/examples/browser.html`) and the test commands.
 | Excited states (energies, strengths, transition dipoles, contributions) | `add_excited_states` | `excited_states` |
 | Natural transition orbitals (hole + particle) | `add_wavefunction_gto(..., orbital_kind="nto", nto_role=, state_ref=, state_index=)` | `wavefunction.gto` |
 | Transition density grid | `add_volume("volume.transition_density", …)` (C++ `add_volume_transition_density`) | `volume.transition_density` |
+| Orbital or density grid that names its wavefunction and orbital row | `add_volume(..., wavefunction_ref=, mo_index=, spin=)` (C++ `link_volume_wavefunction`) | `volume.orbital`, `volume.density`, `volume.spin` |
 | Dipole, quadrupole, octupole, polarizability, hyperpolarizability | `add_electric_properties` | `properties.electric` |
 | Elastic constants (Voigt stiffness, moduli) | `add_elastic_properties` | `properties.elastic` |
 | Dielectric tensors, Born charges, piezoelectric tensor | `add_dielectric_properties` | `properties.dielectric` |
