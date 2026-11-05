@@ -209,10 +209,10 @@ list does not change, because no kind is added or promoted.
 
 ### 2026-11-04: The data unit of a volume grid checked per kind
 
-**Status.** Proposed. The maintainer chose the finding code
-(`E_UNIT_CONTRADICTED`, a new error) and the scope (five kinds) on
-2026-11-04. The record awaits acceptance under "Change process"; the
-readings at the end are open until then.
+**Status.** Accepted by the maintainer on 2026-11-05 under "Change
+process" (vibyverse/qvf#20), with the finding code (`E_UNIT_CONTRADICTED`, a
+new error), the scope (five kinds) and the readings at the end of this record
+settled as proposed. It is a public contract change.
 
 **Decision.** Reading (b) of the compound unit names record left one fixed
 unit unchecked: the grid payload (`$defs/VolumeGridPayload`) serves every

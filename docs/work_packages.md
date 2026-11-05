@@ -378,8 +378,9 @@ import/export, mmCIF import/export (#37) and opt-in PDB NCS copy generation
 Molden f/g shells (#41) are on main (Unreleased). Explicit Molden producer
 dialects (`dialect=`: ORCA, Turbomole, CFOUR, old Psi4, xTB) and Quantum
 ESPRESSO (pw.x input, `data-file-schema.xml`, pp.x cube) and FHI-aims
-`geometry.in` converters are on main (Unreleased); pp.x `filplot` and QE
-`space_group` input remain open.
+`geometry.in` converters are on main (Unreleased), with pp.x `filplot`
+import and pw.x `space_group` expansion (#26) and a Gaussian fchk importer and
+exporter (#23). Wyckoff labels in `crystal_sg` input remain open.
 **Scope.** `qvf.convert`: import/export Gaussian cube (↔ `volume.*`, with
 the endpoint rule), XYZ/extXYZ (↔ `structure`/`trajectory`), Molden
 (↔ `structure` + `wavefunction.gto`, with Appendix A normalization and
@@ -431,8 +432,10 @@ with the shared finding codes, conformance runner over the corpus in CI
 positive, negative and legacy corpora (#8), streaming writer with section
 builders (#13), generated typed kinds and a `qvf` CLI that matches the Python
 CLI on every corpus archive (#22), and release-candidate CI on stable and the
-MSRV (#21). An editor, trajectory/bands/spectra builders and the remaining CLI
-commands are open.
+MSRV (#21), and builders for trajectory, bands, DOS and spectra, an `Editor`
+with repack, and the CLI commands diff, repack, scrub, conformance and schema
+(#28). The WP-61 scope is complete apart from CI-independent polish; the
+program-specific Python commands are not ported.
 **Scope.** `rust/` crate `qvf`: reader, writer, validator (finding codes),
 typed kinds for structure/volume/wavefunction/trajectory/bands/spectra,
 conformance runner as an integration test, `qvf-cli` feature. Certified by
@@ -470,8 +473,9 @@ projectors (`basis.ecp[].projectors`) are written from `mol._ecpbas`.
 Spin-orbit terms are omitted. Excited-state transition densities are written
 as `volume.transition_density` on request. Periodic Γ-point SCF/DFT writes a
 periodic structure and a Γ wavefunction (spec § 5.3 Γ-point overlap note).
-Restricted-open and spin-flip response, k-point sampling and periodic
-response remain deferred.
+k-point sampled KRHF/KUHF/KRKS/KUKS results are written as
+`wavefunction.bloch` (#27). Restricted-open and spin-flip response and
+periodic response remain deferred.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone
