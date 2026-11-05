@@ -1,5 +1,5 @@
-Proposed (GOVERNANCE.md, 2026-11-04 record on the data unit of a volume
-grid): a new error `E_UNIT_CONTRADICTED` in spec Appendix B. The Python, C++,
+Accepted by the maintainer on 2026-11-05 (#20, GOVERNANCE.md record of
+2026-11-04 on the data unit of a volume grid): a new error `E_UNIT_CONTRADICTED` in spec Appendix B. The Python, C++,
 JavaScript and Rust validators report a grid `units.data` that is a unit name
 other than the one spec § 4.3 fixes for the section's kind: `e_per_bohr3`
 for `volume.density` and `volume.transition_density`, `hartree_per_e` for
