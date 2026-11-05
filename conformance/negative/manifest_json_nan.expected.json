@@ -1,0 +1,10 @@
+{
+  "archive": "manifest_json_nan.qvf",
+  "description": "manifest.json holds the bare token NaN, which some JSON parsers accept as an extension but RFC 8259 JSON does not have.",
+  "expect": [
+    {
+      "code": "E_MANIFEST_JSON",
+      "severity": "error"
+    }
+  ]
+}

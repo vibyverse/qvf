@@ -1,0 +1,10 @@
+{
+  "archive": "entry_size_impossible.qvf",
+  "description": "A member of a few compressed bytes whose ZIP headers declare 2 GiB uncompressed, under the 8 GiB per-member cap but far beyond what DEFLATE can expand those bytes to (about 1032:1). A reader must refuse it without allocating the declared size (spec \u00a7 2.1, \u00a7 6.1).",
+  "expect": [
+    {
+      "code": "E_ZIP_UNREADABLE",
+      "severity": "error"
+    }
+  ]
+}

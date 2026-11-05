@@ -1,0 +1,10 @@
+{
+  "archive": "compression_method_unsupported.qvf",
+  "description": "The structure member is a well-formed bzip2 entry (ZIP method 12) with correct CRC-32 and sha256. QVF members are STORE or DEFLATE only (spec \u00a7 2.1), so the entry is unreadable even to a reader whose ZIP library could decode it.",
+  "expect": [
+    {
+      "code": "E_ZIP_UNREADABLE",
+      "severity": "error"
+    }
+  ]
+}
