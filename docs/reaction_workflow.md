@@ -10,7 +10,7 @@ particular released program implements this entire profile.
 ## Compatibility and ownership
 
 The family currently pins toolkit **v0.6.0**. The canonical
-`reaction.scheme.steps[].energies` contract from QVF #16 is on later main;
+`reaction.scheme.steps[].energies` contract from QVF #16 is in toolkit 0.7.0;
 producers must not write it under the v0.6.0 pin. Existing Sketch reports use
 `step.x_vibesketch.energies`. View's reaction analysis uses
 `step.x_vibeview.energies`, containing the #16 terms/deltas shape and selection
@@ -21,7 +21,7 @@ after a containing QVF release and explicit consumer adoption.
 This is the **28 October 2026 source integration agreement**, tracked under
 QVF #15/#16, QC #702 and View #164 with the Sketch and Queue owners. It is
 not a claim that the pending fixes have shipped. The critical-content
-preparation fix and audit example are later than v0.6.0. Record the actual
+preparation fix and audit example are in toolkit 0.7.0, not v0.6.0. Record the actual
 containing release and component test evidence when the release owner
 qualifies them; do not infer release capability from this document.
 
@@ -199,7 +199,7 @@ audit never asserts scientific validity, launches work, or modifies inputs.
 
 Reuse `conformance/corpus/reaction_scheme.qvf`, `reaction_scheme_energies.qvf`
 and their existing negative counterparts for role/reference/sum/method tests.
-The canonical energies fixtures test later toolkit main, not the v0.6.0 pin.
+The canonical energies fixtures test toolkit 0.7.0, not the v0.6.0 pin.
 `test_prepare_job.py` checks drawing preservation, corrupt payloads and
 unsupported critical content; `test_interchange_audit.py` checks additive
 handoffs and structurally valid lossy saves. Component tests additionally

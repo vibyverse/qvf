@@ -16,11 +16,14 @@ Three documents hold the detail:
 
 Status legend: ✅ done · 🔨 in progress · ⬜ planned.
 
-## Where we are (2026-10-26)
+## Where we are (2026-11-05)
 
 Phases 1 and the scheduled Phase 2 work are complete. Phase 0 still has
 schema hosting (WP-06) open; the core of Phase 3 and the JavaScript reader
-of Phase 4 have landed. Toolkit 0.5.0 collects WP-42, WP-43, WP-44, WP-46
+of Phase 4 have landed. Toolkit 0.7.0 (2026-11-05) is the latest release. It
+adds the Rust crate, the JavaScript writer, the PySCF adapter, broader
+converters and six additive contract changes, and keeps format version 1.
+Toolkit 0.5.0 collects WP-42, WP-43, WP-44, WP-46
 and WP-47: C++/C/Python facades and a unified CLI, plus optional Fortran
 bindings, cube/XYZ converters and native packaging improvements.
 Toolkit 0.4.0 (2026-10-15) defines canonical unrestricted NTO pairing and
@@ -35,7 +38,7 @@ vibe-qc family and merges what its programs already wrote or read.
 - ✅ Reference **writers** in Python and C++17 (zero-dependency, streaming, ZIP64, `open_for_update`, `repack`), **validators** in Python, C++ and JavaScript with the same stable finding codes; C++ and JavaScript check the schema with the checker generated from it (`scripts/gen_kinds.py`), so the three validators agree on the conformance corpus.
 - ✅ Sketch documents (2026-10-14): chemical identity on `structure` sections, `reaction.scheme`, `preview` with the member field `media_type`, job sets (`run.record` `job_ref`), one media type and macOS UTI for `.qvf`, `x_vibesketch` registered, and the withdrawn `qvf_version` 2 read as a warning.
 - ✅ Family data (2026-10-15, toolkit 0.3.0): `localization_reference_basis` and three deprecated `mo_metadata` keys, `null` for a `job.spec` `functional` or `basis`, the viewer hints `energy_window`, `camera` and `crossfade`, `structure_ref` on standalone `bonds` sections, and one rule for the withdrawn `qvf_version` 2; qvf is the single source of the format for the family.
-- ✅ **Conformance suite**: current main has 78 golden archives (canonical kinds, edge cases and compatibility), 118 must-fail archives and one legacy archive; toolkit 0.6.0 has 75 / 110 / 1. Python, C++ and JavaScript runners share the corpus. The additional main cases are Unreleased.
+- ✅ **Conformance suite**: toolkit 0.7.0 has 84 golden archives (canonical kinds, edge cases and compatibility), 142 must-fail archives and one legacy archive; toolkit 0.6.0 has 75 / 110 / 1. Python, C++ and JavaScript runners share the corpus. The additional cases are new in 0.7.0.
 - ✅ Typed `Manifest` / `Section` / `MemberSpec` model in C++ and Python, generated kind and unit tables, single-header amalgamation, and `@qvf/core` reader. The complete C ABI covers every canonical kind and preserves all legacy symbols.
 - ✅ Governance: every contract change has a dated record in `GOVERNANCE.md` and a `registry.json` promotion; nothing bumped `qvf_version`.
 
@@ -49,10 +52,10 @@ distinguishes reference and correlated results and the consumer limits.
 Broader format and toolkit development follows in compatible releases; it
 does not expand the scope of these frozen releases.
 
-The latest tagged toolkit is **0.6.0** (2026-10-22), implementing **QVF v1**.
-It passed the six candidate CI checks and installed Python/C/C++ acceptance.
-GitHub publication is verified against the qualified source inventory, and
-vibe-qc, vibe-view, vibe-sketch and vibe-queue pin this toolkit on main.
+The latest toolkit is **0.7.0** (2026-11-05), implementing **QVF v1**.
+Its release checks are the candidate CI and installed Python/C/C++ package
+acceptance. Toolkit 0.6.0 (2026-10-22) remains the frozen family pin:
+vibe-qc, vibe-view, vibe-sketch and vibe-queue pin it on main.
 These source pins do not claim that every packaged consumer has been rebuilt.
 A toolkit version increment does not require a new archive format, and the
 v2 ledger below is not a release gate for additive toolkit work.
@@ -64,13 +67,13 @@ pending single-job request; the [family workflow](docs/family_workflow.md)
 includes an executable Sketch example. These additions are included in **0.6.0**;
 they do not imply registry publication, full biomolecular PDB conversion or
 multi-species reaction scheduling. See [CHANGELOG](CHANGELOG.md) and the
-individual work packages for supported boundaries. Current main additionally
-contains the following **Unreleased** work:
+individual work packages for supported boundaries. Toolkit **0.7.0** adds the
+following work:
 
 | Landed work | Compatibility and adoption boundary |
 |---|---|
 | Bounded molecular Molden conversion (WP-48) | Independently checked against PySCF; uses existing v1 structure/wavefunction members. |
-| Typed biomolecular atom-site identity (#18) | Optional insertion code, alternate location, occupancy and hetero fields. The PDB converter now maps them (#27, Unreleased). Consumers adopt the fields after pinning a release containing them. |
+| Typed biomolecular atom-site identity (#18) | Optional insertion code, alternate location, occupancy and hetero fields. The PDB converter now maps them (#27, 0.7.0). Consumers adopt the fields after pinning a release containing them. |
 | Canonical reaction-step energies (#16) | Typed terms, method and run provenance, with shared validator checks. Frozen Sketch keeps `x_vibesketch.energies`; the canonical field requires a later release pin. |
 | Kind catalogue, documentation site and Python, C++ and C API references (WP-64, #19–#22) | Source and local build support landed; site publication remains separate work. |
 
@@ -89,7 +92,7 @@ consumer/packaging work for the next bounded release. The second tracks
 selection and acceptance of independent consumers and language bindings.
 Their acceptance issues link the existing work packages rather than replacing
 the briefs. Toolkit 0.6.0 completed source qualification, publication and family
-source-pin acceptance. The next toolkit version and date remain unselected.
+source-pin acceptance. Toolkit 0.7.0 (2026-11-05) is that next bounded release.
 These milestones do not schedule a breaking archive format or require all ecosystem proposals for
 an additive release.
 
@@ -148,18 +151,18 @@ Each item is spec + schema + registry + both writers + validator + corpus + docs
 - ✅ **WP-28** Container rules: member `size`, orphans, in-place update semantics, `byte_order` (P19, P20)
 - ✅ **WP-29** Periodic extras: Fermi mesh shifts, electric/elastic/dielectric properties, magnetic moments (P14, P17)
 - ✅ **WP-30** `wavefunction.bloch` provisional canonical (P15) — promoted provisionally
-- ✅ **Unreleased, #16:** canonical reaction-step energies with signed participant
+- ✅ **0.7.0, #16:** canonical reaction-step energies with signed participant
   terms, absolute values, method/run provenance and consistent thermal conditions.
   Shared validators check the terms and sums; atom/charge balance and source
   freshness remain producer obligations. Frozen consumers retain the vendor
   extension until adopting a release that contains this contract.
-- ✅ **Unreleased, #18:** typed biomolecular atom-site identity preserves insertion
+- ✅ **0.7.0, #18:** typed biomolecular atom-site identity preserves insertion
   codes, alternate locations and occupancies; converter and consumer adoption
   remain separate from the format definition.
-- ✅ **Unreleased, #11:** twenty compound unit names (for example `hartree_per_bohr`) in the § 4.3 vocabulary, accepted 2026-11-04.
-- ✅ **Unreleased, #17:** volume sections name the `wavefunction.gto` and orbital row they were computed from (`wavefunction_ref`, `mo_index`, `spin`), accepted 2026-11-05.
-- ✅ **Unreleased, #20:** a grid `units.data` that contradicts the unit § 4.3 fixes for its kind is the new error `E_UNIT_CONTRADICTED`, accepted 2026-11-05.
-- ✅ **Unreleased, #19:** typed `spectra.xas`, `spectra.xes` and `spectra.mossbauer` kinds (P13), accepted 2026-11-05.
+- ✅ **0.7.0, #11:** twenty compound unit names (for example `hartree_per_bohr`) in the § 4.3 vocabulary, accepted 2026-11-04.
+- ✅ **0.7.0, #17:** volume sections name the `wavefunction.gto` and orbital row they were computed from (`wavefunction_ref`, `mo_index`, `spin`), accepted 2026-11-05.
+- ✅ **0.7.0, #20:** a grid `units.data` that contradicts the unit § 4.3 fixes for its kind is the new error `E_UNIT_CONTRADICTED`, accepted 2026-11-05.
+- ✅ **0.7.0, #19:** typed `spectra.xas`, `spectra.xes` and `spectra.mossbauer` kinds (P13), accepted 2026-11-05.
 - ⬜ Demand-driven, not scheduled: `wavefunction.nao` / `.sto` (P16)
 
 ## Phase 3 — libqvf (core and C++/C/Python facades landed)
@@ -171,18 +174,18 @@ The library other codes link. Core first, then the facades, then every binding o
 - ✅ **WP-42** C++ `Writer`, chunked `TensorView`, all canonical typed kinds and `Editor` (append, optional atomic commit, streaming repack)
 - ✅ **WP-43** C++ lazy `Reader`, typed manifest/tensor access, streaming, `get<K>` protocol and staged validation with shared finding codes; canonical kind decoders are supplied by WP-42
 - ✅ **WP-44** Complete C ABI: writer for every kind, reader, validator, editor; shared-library export; ABI versioning (D16)
-- 🔨 **WP-45** Fortran module over the complete C ABI and checked writers landed; Linux GNU 12 candidate and focused GNU 16/Python interoperability checks pass; focused development checks cover gfortran 11 to 14 and LLVM flang 18 to 20 on Ubuntu 24.04 x86_64 (Unreleased, two wrapper fixes); other platforms remain
+- 🔨 **WP-45** Fortran module over the complete C ABI and checked writers landed; Linux GNU 12 candidate and focused GNU 16/Python interoperability checks pass; focused development checks cover gfortran 11 to 14 and LLVM flang 18 to 20 on Ubuntu 24.04 x86_64 (0.7.0, two wrapper fixes); other platforms remain
 - ✅ **WP-46** Python `qvf` package: model, streaming writer, lazy typed reader, editor, shims (D20)
 - ✅ **WP-47** CLI `qvf`: staged validate, info, cat, extract, numeric diff, repack, reported scrub, conformance, schema
-- 🔨 **WP-48** Converters: scalar cube and geometry-only XYZ/extXYZ with trajectories are in 0.5.0 ([guide](docs/converters.md)); static XSF primitive geometry/scalar grids and single-model PDB geometry are included in 0.6.0. Bounded real molecular s/p/sp/d Molden conversion is on main (Unreleased), with independent orbital-value checks. PDB import/export of atom-site identity, alternate locations and model ensembles is on main (Unreleased, #27), with independent gemmi and RDKit read-back checks. PDB `HELIX`/`SHEET` ranges map to typed `secondary_structure` (#28) and `CONECT` to structure bonds (#29) and `CRYST1`/`SCALE` to a periodic cell with its space group (#30), `SSBOND`/`LINK` to structure bonds (#31), `REMARK 350` assemblies to expanded structures (#32), and opt-in crystal symmetry expansion to the unit cell (#33), all Unreleased. Core crystal CIF import (unit cell from the space group) and P 1 export (#34), VASP POSCAR/CONTCAR (#35) and CHGCAR (#36) and mmCIF (#37) import/export and opt-in PDB NCS copy generation (#38) are on main (Unreleased). extXYZ energy/forces/stress (#39) XSF forces/several grids (#40) and Molden f/g shells (#41) are on main (Unreleased), and so are explicit Molden producer dialects (ORCA, Turbomole, CFOUR, old Psi4, xTB) Quantum ESPRESSO (pw.x input with `space_group` expansion, XML output, pp.x cube and `filplot`) and FHI-aims `geometry.in` converters, and a Gaussian fchk importer and exporter.
-- 🔨 **WP-49** Packaging: CMake library-only options and pkg-config metadata landed; a local Conan 2 recipe, installed C/C++ consumers and release/adoption checklist are included in 0.6.0. A vcpkg overlay port (`packaging/vcpkg`), cleaned Python sdist/wheel and npm tarball contents and a PyPI trusted-publisher checklist are on main (Unreleased). Setting up trusted publishing and registry distribution remain maintainer actions.
-- 🔨 **WP-50** Fuzzing in CI, big-endian QEMU job: a local big-endian check under emulated s390x passes all C++ tests and the corpus, and a coverage-guided libFuzzer campaign over the ZIP reader and a new manifest target fixed two undefined-behaviour defects, and structure-aware fuzzing of the Python and JavaScript readers and validators fixed nine defects with seven new negative archives (Unreleased). The release-candidate CI now runs both C++ fuzz targets and the s390x QEMU job; neither runs on development pushes.
+- 🔨 **WP-48** Converters: scalar cube and geometry-only XYZ/extXYZ with trajectories are in 0.5.0 ([guide](docs/converters.md)); static XSF primitive geometry/scalar grids and single-model PDB geometry are included in 0.6.0. Bounded real molecular s/p/sp/d Molden conversion is in 0.7.0, with independent orbital-value checks. PDB import/export of atom-site identity, alternate locations and model ensembles is in 0.7.0 (#27), with independent gemmi and RDKit read-back checks. PDB `HELIX`/`SHEET` ranges map to typed `secondary_structure` (#28) and `CONECT` to structure bonds (#29) and `CRYST1`/`SCALE` to a periodic cell with its space group (#30), `SSBOND`/`LINK` to structure bonds (#31), `REMARK 350` assemblies to expanded structures (#32), and opt-in crystal symmetry expansion to the unit cell (#33), all in 0.7.0. Core crystal CIF import (unit cell from the space group) and P 1 export (#34), VASP POSCAR/CONTCAR (#35) and CHGCAR (#36) and mmCIF (#37) import/export and opt-in PDB NCS copy generation (#38) are in 0.7.0. extXYZ energy/forces/stress (#39) XSF forces/several grids (#40) and Molden f/g shells (#41) are in 0.7.0, and so are explicit Molden producer dialects (ORCA, Turbomole, CFOUR, old Psi4, xTB) Quantum ESPRESSO (pw.x input with `space_group` expansion, XML output, pp.x cube and `filplot`) and FHI-aims `geometry.in` converters, and a Gaussian fchk importer and exporter.
+- 🔨 **WP-49** Packaging: CMake library-only options and pkg-config metadata landed; a local Conan 2 recipe, installed C/C++ consumers and release/adoption checklist are included in 0.6.0. A vcpkg overlay port (`packaging/vcpkg`), cleaned Python sdist/wheel and npm tarball contents and a PyPI trusted-publisher checklist are in 0.7.0. Setting up trusted publishing and registry distribution remain maintainer actions.
+- 🔨 **WP-50** Fuzzing in CI, big-endian QEMU job: a local big-endian check under emulated s390x passes all C++ tests and the corpus, and a coverage-guided libFuzzer campaign over the ZIP reader and a new manifest target fixed two undefined-behaviour defects, and structure-aware fuzzing of the Python and JavaScript readers and validators fixed nine defects with seven new negative archives (0.7.0). The release-candidate CI now runs both C++ fuzz targets and the s390x QEMU job; neither runs on development pushes.
 
 ## Phase 4 — ecosystem
 
-- ✅ **WP-60** JavaScript/TypeScript reader (`@qvf/core`) — enables web viewers and notebooks; a browser-capable writer with typed builders is on main (Unreleased)
-- 🔨 **WP-61** Rust crate — independent implementation certified by the corpus: the `rust/` reader, validator, streaming writer with builders for every canonical kind family, generated typed kinds, an `Editor` with repack, and a `qvf` CLI matching the Python CLI on all corpus archives (validate, info, cat, extract, diff, repack, scrub, conformance, schema) are on main (Unreleased), and the release-candidate CI tests it on stable and its MSRV. Only the program-specific Python commands (convert, prepare-job, xTB) are not ported.
-- 🔨 **WP-62** PySCF adapter — molecular SCF/DFT (#23), explicit spherical signs (#24), closed-shell TDA/TDHF/TDDFT states, spectra and singlet-TDA NTOs (#25), singlet full-response NTOs retaining X+Y and non-unit weights (#26), closed-shell triplet NTOs as α/β spin-orbital channels, UHF/UKS response with per-spin NTO channels, transition densities of excited states, grid densities, spin densities and orbitals (`volume.*`), scalar ECP projectors periodic Γ-point SCF/DFT and k-point sampled KRHF/KUHF/KRKS/KUKS as `wavefunction.bloch` are on main (Unreleased), with optional adapter coverage in candidate CI ([guide](docs/adapters/pyscf.md)). Restricted-open and spin-flip response and periodic response remain.
+- ✅ **WP-60** JavaScript/TypeScript reader (`@qvf/core`) — enables web viewers and notebooks; a browser-capable writer with typed builders is in 0.7.0
+- 🔨 **WP-61** Rust crate — independent implementation certified by the corpus: the `rust/` reader, validator, streaming writer with builders for every canonical kind family, generated typed kinds, an `Editor` with repack, and a `qvf` CLI matching the Python CLI on all corpus archives (validate, info, cat, extract, diff, repack, scrub, conformance, schema) are in 0.7.0, and the release-candidate CI tests it on stable and its MSRV. Only the program-specific Python commands (convert, prepare-job, xTB) are not ported.
+- 🔨 **WP-62** PySCF adapter — molecular SCF/DFT (#23), explicit spherical signs (#24), closed-shell TDA/TDHF/TDDFT states, spectra and singlet-TDA NTOs (#25), singlet full-response NTOs retaining X+Y and non-unit weights (#26), closed-shell triplet NTOs as α/β spin-orbital channels, UHF/UKS response with per-spin NTO channels, transition densities of excited states, grid densities, spin densities and orbitals (`volume.*`), scalar ECP projectors periodic Γ-point SCF/DFT and k-point sampled KRHF/KUHF/KRKS/KUKS as `wavefunction.bloch` are in 0.7.0, with optional adapter coverage in candidate CI ([guide](docs/adapters/pyscf.md)). Restricted-open and spin-flip response and periodic response remain.
 - ⬜ **WP-63** vibe-qc links libqvf instead of carrying its own implementation (maintainer note; after WP-42/43/46 stabilise; not high priority)
 - 🔨 **WP-64** Docs site with generated API reference and kind catalogue: the generated kind catalogue (`docs/kinds.md`, checked by `gen_kinds.py --check`) the mkdocs site configuration (`mkdocs.yml`, strict local build) the mkdocstrings Python API reference and the Doxygen C++/C API reference landed, the strict build with Doxygen is clean and a dispatch-only GitHub Pages workflow is prepared; publication remains a maintainer action
 - ⬜ **WP-65** Julia binding (demand-driven)
@@ -230,9 +233,9 @@ The 2026-10-10 pause has ended. The remaining work is:
 
 - Toolkit 0.6.0 is published and pinned on all four family main branches.
   Reuse the accepted drawing-to-job round trip and installed-consumer evidence.
-  Current main's Molden subset, two additive contract changes and documentation
-  tranches await a later compatible release and explicit consumer adoption.
-  The frozen releases take priority; no new version or release date is selected.
+  Toolkit 0.7.0 (2026-11-05) releases the Molden subset, the additive contract
+  changes and the documentation tranches. Adopting them in consumers is a
+  separate, explicit step. The frozen releases take priority.
 - After the frozen releases, Phase 3 continues with WP-45 / WP-48, then packaging and broader platform checks. WP-46 supplies the Python `qvf` package while keeping `qvf_writer`, `qvf_reader`, `qvf_kinds`, `qvf_model` and `qvf_units` as compatibility imports. `pip install <checkout>/python` preserves those imports for consumers such as vibe-sketch.
 - Parked: WP-06 (hosting the retained schema `$id`). The release-candidate CI now runs the Rust crate, the three-toolchain schema-checker parity test, both fuzz targets and the s390x job (#21). Compound unit names were accepted on 2026-11-04 (#11).
 - Known consumer gap: no consumer renders `wavefunction.bloch` yet. The cc-pV6Z `l = 6` channel-export defect is fixed on vibe-qc main (#546); existing consumer releases may still need that fix. Fresh checks did not reproduce `space_group_number: 0`: absent symmetry is omitted and a genuine group 221 passes.

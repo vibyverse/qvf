@@ -10,7 +10,8 @@ Done and on `main`: WP-01 to WP-05, WP-07, WP-10 to WP-15, WP-20 to WP-30,
 WP-40 to WP-44, WP-46, WP-47 and WP-60. Work continues with WP-45 / WP-48 / WP-49.
 Toolkit 0.5.0 includes the earlier released slices. Toolkit 0.6.0 adds
 XSF/PDB conversion, the local Conan recipe and drawing-preserving pending-job
-preparation. See [the release boundary](../ROADMAP.md#release-boundary-and-current-main).
+preparation. Toolkit 0.7.0 adds the Rust crate, the JavaScript writer, the
+PySCF adapter, the further converters and the vcpkg overlay port. See [the release boundary](../ROADMAP.md#release-boundary-and-current-main).
 WP-42 supplies every canonical typed kind, Writer and Editor; WP-43 supplies
 the Reader and `get<K>` protocol. Writer shares the compatibility backend
 rather than duplicating ZIP/update machinery.
@@ -320,7 +321,7 @@ checks verify descriptor sizes, refusal/ownership and Python-validated array
 layouts. Installed CMake consumption is checked. The 0.5.0 Linux GNU 12
 candidate passed all 12 CTests, including Fortran layout/ownership checks
 with runtime bounds checking, alongside prior focused GNU 16 checks.
-Unreleased focused development checks add gfortran 11, 12, 13 and 14 and LLVM
+Focused development checks for toolkit 0.7.0 add gfortran 11, 12, 13 and 14 and LLVM
 flang 18, 19 and 20 on Ubuntu 24.04 x86_64, with two wrapper fixes (message
 text on gfortran 11/12, NaN exponent refusal without an IEEE trap). Other
 platforms remain; WP-45 stays in progress.
@@ -361,12 +362,12 @@ primitive geometries and one scalar grid with explicit field periodicity,
 unit/layout conversion and preserved endpoint samples. The 0.6.0 PDB
 geometry slice handles explicit element/coordinate columns, refuses
 ensembles and alternate locations, and reports metadata and precision losses.
-The Unreleased Molden slice supports real molecular s/p/sp/d orbitals with
+The 0.7.0 Molden slice supports real molecular s/p/sp/d orbitals with
 explicit spin, AO normalization/order conversion and loss reports. Independent
 PySCF import/export checks compare orbital values. Broader Molden dialects,
 richer extXYZ and the other periodic formats remain open. PDB atom-site identity
 (names, residues, chains, insertion codes, alternate locations, occupancy,
-B-factors, `HETATM`) and model ensembles are on main (Unreleased, #27), and
+B-factors, `HETATM`) and model ensembles are in 0.7.0 (#27), and
 so are `HELIX`/`SHEET` secondary-structure ranges (#28), `CONECT` bonds
 (#29), `CRYST1`/`SCALE` cells with the space group (#30), `SSBOND`/`LINK`
 bonds (#31) and `REMARK 350` biological assemblies with `MTRIX` accounting
@@ -375,10 +376,10 @@ copy generation remains open. Core crystal CIF import with unit-cell expansion
 and P 1 CIF export (#34), VASP POSCAR/CONTCAR (#35) and CHGCAR (#36)
 import/export, mmCIF import/export (#37) and opt-in PDB NCS copy generation
 (#38) extXYZ energy/forces/stress (#39), XSF forces and several grids (#40) and
-Molden f/g shells (#41) are on main (Unreleased). Explicit Molden producer
+Molden f/g shells (#41) are in 0.7.0. Explicit Molden producer
 dialects (`dialect=`: ORCA, Turbomole, CFOUR, old Psi4, xTB) and Quantum
 ESPRESSO (pw.x input, `data-file-schema.xml`, pp.x cube) and FHI-aims
-`geometry.in` converters are on main (Unreleased), with pp.x `filplot`
+`geometry.in` converters are in 0.7.0, with pp.x `filplot`
 import and pw.x `space_group` expansion (#26) and a Gaussian fchk importer and
 exporter (#23). Wyckoff labels in `crystal_sg` input remain open.
 **Scope.** `qvf.convert`: import/export Gaussian cube (↔ `volume.*`, with
@@ -395,7 +396,7 @@ round-trip-tested on small fixtures and validated.
 options and relocatable `qvf.pc` metadata are included in toolkit 0.5.0.
 The 0.6.0 local Conan 2 recipe and installed C/C++ consumers are in
 `packaging/conan`; the release/adoption checklist is in `CONTRIBUTING.md`.
-Unreleased: a vcpkg overlay port in `packaging/vcpkg` (static and shared
+Toolkit 0.7.0 adds a vcpkg overlay port in `packaging/vcpkg` (static and shared
 triplets, tag archive or local source), cleaned sdist/wheel and npm tarball
 contents, and a PyPI trusted-publisher checklist in `docs/python-release.md`.
 Registry publishing and broader platform acceptance remain open.
@@ -405,7 +406,7 @@ port and conan recipe in `packaging/`, release checklist in
 `CONTRIBUTING.md`, `scripts/make_archive.sh` updated for the new layout.
 
 ### WP-50 · Fuzzing and big-endian CI — M · Sonnet · design § 10
-**Status.** Unreleased local checks, no CI jobs: a coverage-guided libFuzzer
+**Status.** Local checks included in toolkit 0.7.0, no CI jobs: a coverage-guided libFuzzer
 campaign over the ZIP reader and a new `manifest_fuzzer` target fixed two
 undefined-behaviour defects, and the C++ tests and corpus pass under emulated
 s390x (QEMU user mode) with a bit-for-bit cross-host tensor check. The CI
@@ -418,7 +419,7 @@ writes the corpus with both writers on a big-endian host and validates it.
 ## Phase 4 — ecosystem
 
 ### WP-60 · JavaScript/TypeScript reader — L · Sonnet · design § 8
-**Status.** Done for the reader. Unreleased on main: a `Writer` that runs in
+**Status.** Done for the reader. Toolkit 0.7.0 adds a `Writer` that runs in
 Node and browsers (WebCrypto sha256, fflate deflate, ZIP64, streaming output)
 with typed builders following the Python writer (#15). Slab-wise input of a
 single large member remains open.
@@ -428,7 +429,7 @@ with the shared finding codes, conformance runner over the corpus in CI
 (Node), browser smoke test, `README` with a 20-line viewer example.
 
 ### WP-61 · Rust crate — L · Sonnet · design § 8
-**Status.** Unreleased on main: reader and validator certified by the
+**Status.** In toolkit 0.7.0: reader and validator certified by the
 positive, negative and legacy corpora (#8), streaming writer with section
 builders (#13), generated typed kinds and a `qvf` CLI that matches the Python
 CLI on every corpus archive (#22), and release-candidate CI on stable and the

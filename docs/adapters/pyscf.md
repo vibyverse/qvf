@@ -4,9 +4,9 @@
 results, and periodic Γ-point and k-point sampled SCF/DFT results, as QVF
 archives (WP-62). It is the second independent producer of
 `wavefunction.gto` beside vibe-qc, and it uses only existing QVF v1 kinds and
-members: no format change. The adapter is unreleased and is not included in
-toolkit v0.6.0. From a checkout containing it, install the optional dependency
-and validator support:
+members: no format change. The adapter is part of toolkit 0.7.0 and is not
+included in toolkit v0.6.0. From a checkout at the v0.7.0 tag or later, install
+the optional dependency and validator support:
 
 ```sh
 pip install -e 'python/[pyscf,validate]'  # PySCF 2.14 or later, and NumPy
@@ -18,8 +18,7 @@ such as `real_solid_harmonics` do not need the chemistry engine.
 
 For a runnable first calculation and installed-package checks, follow the
 [PySCF-to-QVF tutorial](../tutorials/pyscf-to-qvf.md). The adapter is included
-in the prepared Python package candidate `0.7.0rc1`; that candidate is separate
-from the existing toolkit v0.6.0 tag.
+in the Python package `qvf-writer` 0.7.0, the same version as toolkit 0.7.0.
 
 ## SCF example
 
@@ -220,7 +219,7 @@ and are empty when omitted. `states_id`, `spectrum_id` and `nto_prefix`
 customize response IDs, while `add_scf` options customize reference IDs and
 optional sections. All references use those selected IDs.
 
-These APIs are unreleased. The output uses existing v0.6.0 schema fields,
+These APIs are part of toolkit 0.7.0. The output uses existing v0.6.0 schema fields,
 but consumer display support remains specific to each application; see the
 [family workflow](../family_workflow.md). Frozen consumer pins stay v0.6.0.
 

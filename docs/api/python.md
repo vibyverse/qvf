@@ -16,7 +16,7 @@ Names starting with an underscore are internal and not listed.
 
 The optional PySCF adapter, `qvf.adapters.pyscf` (the `pyscf` extra), is
 documented after the package modules; the [PySCF adapter guide](../adapters/pyscf.md)
-shows it in use. It is unreleased and is not part of the v0.6.0 package.
+shows it in use. It is part of the 0.7.0 package and is not part of the v0.6.0 package.
 
 ::: qvf.writer
 

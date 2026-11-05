@@ -17,20 +17,20 @@ python3 -m venv .venv
 python -m pip install --upgrade pip
 ```
 
-The first Python package candidate is `0.7.0rc1`. **Before publication**, download
-its wheel from the release preparation artifacts, then install it:
+The adapter is part of toolkit 0.7.0, and the Python package `qvf-writer` has
+the same version. **Before PyPI publication**, install it from the tagged source:
 
 ```sh
-python -m pip install "./qvf_writer-0.7.0rc1-py3-none-any.whl[pyscf,validate]"
+python -m pip install "qvf-writer[pyscf,validate] @ git+https://github.com/vibyverse/qvf.git@v0.7.0#subdirectory=python"
 ```
 
 **After publication**, the equivalent command will be:
 
 ```sh
-python -m pip install "qvf-writer[pyscf,validate]==0.7.0rc1"
+python -m pip install "qvf-writer[pyscf,validate]==0.7.0"
 ```
 
-The explicit candidate pin makes this example reproducible. Toolkit v0.6.0
+The explicit version pin makes this example reproducible. Toolkit v0.6.0
 predates the adapter; installing that tag does not provide this example.
 `pyscf` installs the optional engine and NumPy; `validate` enables full JSON
 Schema checks in addition to the always-enabled semantic checks.
@@ -61,7 +61,7 @@ The full example uses exclusive file creation to protect previous results.
 For a second run choose another output filename. Expected output includes:
 
 ```text
-qvf-writer 0.7.0rc1
+qvf-writer 0.7.0
 RHF/STO-3G total energy: -1.1167593074 hartree
 MO coefficient shape: (2, 2) (orbitals, AOs)
 Maximum orbital orthonormality error: ...

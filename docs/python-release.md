@@ -1,12 +1,10 @@
 # Python package release
 
-The first PyPI candidate is `qvf-writer==0.7.0rc1`. This is a Python-only
-candidate from current source, including the optional PySCF adapter. It does
-not modify toolkit v0.6.0, format version 1, or frozen consumers' pins. Python
-package metadata and `qvf.__version__` identify the candidate; `VERSION` and
-other language packages continue to identify the existing toolkit series.
-A later coordinated toolkit release must reconcile all language versions.
-The candidate has not yet been uploaded. Do not advertise an index install
+The first PyPI release candidate is `qvf-writer==0.7.0`, the same version as
+toolkit 0.7.0. It includes the optional PySCF adapter. It does not modify
+format version 1 or frozen consumers' v0.6.0 pins. Python package metadata,
+`qvf.__version__`, `VERSION` and the other language packages all identify
+0.7.0. The candidate has not yet been uploaded. Do not advertise an index install
 as available until anonymous installation succeeds.
 
 ## Prepare and verify
@@ -121,20 +119,20 @@ workflow change.
 2. Land the clean candidate source on the canonical GitHub repository.
    Verify that the candidate includes this workflow and the exact qualified
    source. Do not push private pre-migration ancestry to the public repository.
-3. Create the immutable public package tag `python-v0.7.0rc1` at that verified
+3. Create the immutable public package tag `python-v0.7.0` at that verified
    snapshot. This is a Python distribution tag, not a replacement toolkit tag.
 4. Manually run **Python package release** from the trusted default branch,
-   with `release_tag=python-v0.7.0rc1` and `publish=false` to build/check it.
+   with `release_tag=python-v0.7.0` and `publish=false` to build/check it.
    The workflow verifies the tag matches the package version.
 5. After the maintainer authorizes upload, run with the same tag and
    `publish=true`, and approve the `pypi` environment. The workflow rebuilds
    and checks the exact tagged source before uploading those artifacts.
 6. In another clean environment install
-   `qvf-writer[pyscf,validate]==0.7.0rc1` from PyPI, rerun the tutorial, and
+   `qvf-writer[pyscf,validate]==0.7.0` from PyPI, rerun the tutorial, and
    verify the index files and hashes. Then update installation documentation
    from “prepared candidate” to “published candidate”.
 
-A final `0.7.0` release needs its own versioned artifacts; never overwrite an
-uploaded version. Base Python 3.9 support does not imply PySCF support on
+A later Python release needs its own version and artifacts. Never overwrite
+an uploaded version. Base Python 3.9 support does not imply PySCF support on
 every Python/platform combination. The workflow tests the optional adapter
 on Linux/Python 3.13; report other verified platforms separately.

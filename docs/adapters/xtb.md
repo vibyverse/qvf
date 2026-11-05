@@ -1,11 +1,11 @@
 # xTB results to QVF
 
-The development version of `qvf-writer` provides `qvf export-xtb` and
+Toolkit 0.7.0 of `qvf-writer` provides `qvf export-xtb` and
 `qvf.adapters.xtb.write_xtb`. This companion exporter reads completed
 **molecular GFN0/1/2-xTB** output files and writes a new, validated QVF. It
 does not run a calculation and does not require xTB, NumPy or a viewer at
-export time. It is not present in the released toolkit v0.6.0; install from
-a source checkout containing the adapter:
+export time. It is not present in toolkit v0.6.0. Install from a source
+checkout at the v0.7.0 tag or later:
 
 ```sh
 python -m pip install './python[validate]'

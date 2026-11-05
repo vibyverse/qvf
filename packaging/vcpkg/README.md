@@ -8,6 +8,9 @@ checkout and tool, Git, CMake 3.16 or later and a C++17 toolchain. The
 development verification used the vcpkg tool `2026-10-29` with a vcpkg
 checkout from 2026-11-04 on x86_64 Linux and GCC.
 
+The port still builds the `v0.6.0` tag archive, with its SHA512 pinned in
+`portfile.cmake`, and moves to `v0.7.0` once that tag's archive exists.
+
 The port version in `ports/qvf/vcpkg.json` matches `VERSION`. It builds
 from one of two sources:
 

@@ -1514,9 +1514,9 @@ source and tests installed consumers for static/shared packages. It retains
 `qvf::qvf`, `qvf.pc` and the Apache notices. This path does not upload to a
 registry or package compiler-specific Fortran modules.
 
-### vcpkg overlay port (development source)
+### vcpkg overlay port (toolkit 0.7.0)
 
 The [overlay port](../packaging/vcpkg/README.md) builds the library from the
 `v0.6.0` tag archive or from a local QVF source tree, for static and shared
-triplets. Consumers use the same `find_package(qvf CONFIG)` and `qvf::qvf`.
+triplets. It moves to the `v0.7.0` tag archive once that archive exists. Consumers use the same `find_package(qvf CONFIG)` and `qvf::qvf`.
 It is not a vcpkg registry entry.
