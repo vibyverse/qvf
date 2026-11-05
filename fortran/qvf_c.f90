@@ -1168,6 +1168,30 @@ module qvf_c
       type(c_ptr), value :: a2
       integer(c_int) :: value
     end function c_qvf_writer_add_preview
+    function c_qvf_writer_add_spectra_xas( &
+        a1, a2) &
+        bind(C, name="qvf_writer_add_spectra_xas") result(value)
+      import
+      type(c_ptr), value :: a1
+      type(c_ptr), value :: a2
+      integer(c_int) :: value
+    end function c_qvf_writer_add_spectra_xas
+    function c_qvf_writer_add_spectra_xes( &
+        a1, a2) &
+        bind(C, name="qvf_writer_add_spectra_xes") result(value)
+      import
+      type(c_ptr), value :: a1
+      type(c_ptr), value :: a2
+      integer(c_int) :: value
+    end function c_qvf_writer_add_spectra_xes
+    function c_qvf_writer_add_spectra_mossbauer( &
+        a1, a2) &
+        bind(C, name="qvf_writer_add_spectra_mossbauer") result(value)
+      import
+      type(c_ptr), value :: a1
+      type(c_ptr), value :: a2
+      integer(c_int) :: value
+    end function c_qvf_writer_add_spectra_mossbauer
     function c_qvf_writer_add_volume( &
         a1, a2, a3) &
         bind(C, name="qvf_writer_add_volume") result(value)

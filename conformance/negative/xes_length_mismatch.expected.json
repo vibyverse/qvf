@@ -1,0 +1,10 @@
+{
+  "archive": "xes_length_mismatch.qvf",
+  "description": "A spectra.xes payload with two frequencies but one intensity; an X-ray spectrum is a one-dimensional spectrum, whose arrays have one length (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

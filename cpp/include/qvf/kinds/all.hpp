@@ -1573,6 +1573,7 @@ struct VibrationsMetadataPayload {
 struct SpectrumPeakAssignment {
     std::optional<int64_t> mode_index{};
     std::optional<int64_t> state_index{};
+    std::optional<int64_t> atom_index{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -1580,6 +1581,8 @@ struct SpectrumPeakAssignment {
         if (mode_index) codec::put(out, "mode_index", *mode_index);
         if (out.has("state_index")) throw std::invalid_argument("use the typed field, not extra: state_index");
         if (state_index) codec::put(out, "state_index", *state_index);
+        if (out.has("atom_index")) throw std::invalid_argument("use the typed field, not extra: atom_index");
+        if (atom_index) codec::put(out, "atom_index", *atom_index);
         return out;
     }
     static SpectrumPeakAssignment from_json(const Json& j) {
@@ -1587,7 +1590,8 @@ struct SpectrumPeakAssignment {
         SpectrumPeakAssignment out;
         if (j.has("mode_index")) out.mode_index.emplace(codec::get<int64_t>(j, "mode_index"));
         if (j.has("state_index")) out.state_index.emplace(codec::get<int64_t>(j, "state_index"));
-        for (const auto& kv : j.items()) if (kv.first != "mode_index" && kv.first != "state_index") out.extra[kv.first] = kv.second;
+        if (j.has("atom_index")) out.atom_index.emplace(codec::get<int64_t>(j, "atom_index"));
+        for (const auto& kv : j.items()) if (kv.first != "mode_index" && kv.first != "state_index" && kv.first != "atom_index") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -1692,6 +1696,48 @@ struct SpectrumPayloadUvvis {
     }
 };
 
+struct XraySpectrumBlock {
+    std::string edge{};
+    std::optional<std::string> element{};
+    std::optional<std::vector<int64_t>> atom_indices{};
+    std::optional<std::string> core_orbital{};
+    std::optional<std::string> line{};
+    std::optional<std::string> intensity{};
+    std::optional<double> energy_shift_ev{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("edge")) throw std::invalid_argument("use the typed field, not extra: edge");
+        codec::put(out, "edge", edge);
+        if (out.has("element")) throw std::invalid_argument("use the typed field, not extra: element");
+        if (element) codec::put(out, "element", *element);
+        if (out.has("atom_indices")) throw std::invalid_argument("use the typed field, not extra: atom_indices");
+        if (atom_indices) codec::put(out, "atom_indices", *atom_indices);
+        if (out.has("core_orbital")) throw std::invalid_argument("use the typed field, not extra: core_orbital");
+        if (core_orbital) codec::put(out, "core_orbital", *core_orbital);
+        if (out.has("line")) throw std::invalid_argument("use the typed field, not extra: line");
+        if (line) codec::put(out, "line", *line);
+        if (out.has("intensity")) throw std::invalid_argument("use the typed field, not extra: intensity");
+        if (intensity) codec::put(out, "intensity", *intensity);
+        if (out.has("energy_shift_ev")) throw std::invalid_argument("use the typed field, not extra: energy_shift_ev");
+        if (energy_shift_ev) codec::put(out, "energy_shift_ev", *energy_shift_ev);
+        return out;
+    }
+    static XraySpectrumBlock from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        XraySpectrumBlock out;
+        out.edge = codec::get<std::string>(j, "edge");
+        if (j.has("element")) out.element.emplace(codec::get<std::string>(j, "element"));
+        if (j.has("atom_indices")) out.atom_indices.emplace(codec::get<std::vector<int64_t>>(j, "atom_indices"));
+        if (j.has("core_orbital")) out.core_orbital.emplace(codec::get<std::string>(j, "core_orbital"));
+        if (j.has("line")) out.line.emplace(codec::get<std::string>(j, "line"));
+        if (j.has("intensity")) out.intensity.emplace(codec::get<std::string>(j, "intensity"));
+        if (j.has("energy_shift_ev")) out.energy_shift_ev.emplace(codec::get<double>(j, "energy_shift_ev"));
+        for (const auto& kv : j.items()) if (kv.first != "edge" && kv.first != "element" && kv.first != "atom_indices" && kv.first != "core_orbital" && kv.first != "line" && kv.first != "intensity" && kv.first != "energy_shift_ev") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct SpectrumPayload {
     std::vector<double> frequencies{};
     std::vector<double> intensities{};
@@ -1703,6 +1749,7 @@ struct SpectrumPayload {
     std::optional<double> temperature_k{};
     std::optional<SpectrumPayloadRaman> raman{};
     std::optional<SpectrumPayloadUvvis> uvvis{};
+    std::optional<XraySpectrumBlock> xray{};
     std::optional<std::string> states_ref{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -1727,6 +1774,8 @@ struct SpectrumPayload {
         if (raman) codec::put(out, "raman", *raman);
         if (out.has("uvvis")) throw std::invalid_argument("use the typed field, not extra: uvvis");
         if (uvvis) codec::put(out, "uvvis", *uvvis);
+        if (out.has("xray")) throw std::invalid_argument("use the typed field, not extra: xray");
+        if (xray) codec::put(out, "xray", *xray);
         if (out.has("states_ref")) throw std::invalid_argument("use the typed field, not extra: states_ref");
         if (states_ref) codec::put(out, "states_ref", *states_ref);
         return out;
@@ -1744,8 +1793,9 @@ struct SpectrumPayload {
         if (j.has("temperature_k")) out.temperature_k.emplace(codec::get<double>(j, "temperature_k"));
         if (j.has("raman")) out.raman.emplace(codec::get<SpectrumPayloadRaman>(j, "raman"));
         if (j.has("uvvis")) out.uvvis.emplace(codec::get<SpectrumPayloadUvvis>(j, "uvvis"));
+        if (j.has("xray")) out.xray.emplace(codec::get<XraySpectrumBlock>(j, "xray"));
         if (j.has("states_ref")) out.states_ref.emplace(codec::get<std::string>(j, "states_ref"));
-        for (const auto& kv : j.items()) if (kv.first != "frequencies" && kv.first != "intensities" && kv.first != "x" && kv.first != "x_units" && kv.first != "y_units" && kv.first != "peaks" && kv.first != "broadening" && kv.first != "temperature_k" && kv.first != "raman" && kv.first != "uvvis" && kv.first != "states_ref") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "frequencies" && kv.first != "intensities" && kv.first != "x" && kv.first != "x_units" && kv.first != "y_units" && kv.first != "peaks" && kv.first != "broadening" && kv.first != "temperature_k" && kv.first != "raman" && kv.first != "uvvis" && kv.first != "xray" && kv.first != "states_ref") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -4214,6 +4264,128 @@ struct ReactionSchemePayload {
     }
 };
 
+struct MossbauerSpectrumPayloadCalibration {
+    double alpha{};
+    std::optional<double> beta{};
+    double c{};
+    std::optional<std::string> label{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("alpha")) throw std::invalid_argument("use the typed field, not extra: alpha");
+        codec::put(out, "alpha", alpha);
+        if (out.has("beta")) throw std::invalid_argument("use the typed field, not extra: beta");
+        if (beta) codec::put(out, "beta", *beta);
+        if (out.has("c")) throw std::invalid_argument("use the typed field, not extra: c");
+        codec::put(out, "c", c);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        return out;
+    }
+    static MossbauerSpectrumPayloadCalibration from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        MossbauerSpectrumPayloadCalibration out;
+        out.alpha = codec::get<double>(j, "alpha");
+        if (j.has("beta")) out.beta.emplace(codec::get<double>(j, "beta"));
+        out.c = codec::get<double>(j, "c");
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        for (const auto& kv : j.items()) if (kv.first != "alpha" && kv.first != "beta" && kv.first != "c" && kv.first != "label") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct MossbauerSite {
+    int64_t atom_index{};
+    std::optional<std::string> symbol{};
+    std::optional<std::string> label{};
+    std::optional<double> isomer_shift_mm_s{};
+    std::optional<double> quadrupole_splitting_mm_s{};
+    std::optional<double> asymmetry{};
+    std::optional<std::array<std::array<double, 3>, 3>> efg_au{};
+    std::optional<double> contact_density_au{};
+    std::optional<double> hyperfine_field_t{};
+    std::optional<double> linewidth_mm_s{};
+    std::optional<double> population{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("atom_index")) throw std::invalid_argument("use the typed field, not extra: atom_index");
+        codec::put(out, "atom_index", atom_index);
+        if (out.has("symbol")) throw std::invalid_argument("use the typed field, not extra: symbol");
+        if (symbol) codec::put(out, "symbol", *symbol);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        if (out.has("isomer_shift_mm_s")) throw std::invalid_argument("use the typed field, not extra: isomer_shift_mm_s");
+        if (isomer_shift_mm_s) codec::put(out, "isomer_shift_mm_s", *isomer_shift_mm_s);
+        if (out.has("quadrupole_splitting_mm_s")) throw std::invalid_argument("use the typed field, not extra: quadrupole_splitting_mm_s");
+        if (quadrupole_splitting_mm_s) codec::put(out, "quadrupole_splitting_mm_s", *quadrupole_splitting_mm_s);
+        if (out.has("asymmetry")) throw std::invalid_argument("use the typed field, not extra: asymmetry");
+        if (asymmetry) codec::put(out, "asymmetry", *asymmetry);
+        if (out.has("efg_au")) throw std::invalid_argument("use the typed field, not extra: efg_au");
+        if (efg_au) codec::put(out, "efg_au", *efg_au);
+        if (out.has("contact_density_au")) throw std::invalid_argument("use the typed field, not extra: contact_density_au");
+        if (contact_density_au) codec::put(out, "contact_density_au", *contact_density_au);
+        if (out.has("hyperfine_field_t")) throw std::invalid_argument("use the typed field, not extra: hyperfine_field_t");
+        if (hyperfine_field_t) codec::put(out, "hyperfine_field_t", *hyperfine_field_t);
+        if (out.has("linewidth_mm_s")) throw std::invalid_argument("use the typed field, not extra: linewidth_mm_s");
+        if (linewidth_mm_s) codec::put(out, "linewidth_mm_s", *linewidth_mm_s);
+        if (out.has("population")) throw std::invalid_argument("use the typed field, not extra: population");
+        if (population) codec::put(out, "population", *population);
+        return out;
+    }
+    static MossbauerSite from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        MossbauerSite out;
+        out.atom_index = codec::get<int64_t>(j, "atom_index");
+        if (j.has("symbol")) out.symbol.emplace(codec::get<std::string>(j, "symbol"));
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        if (j.has("isomer_shift_mm_s")) out.isomer_shift_mm_s.emplace(codec::get<double>(j, "isomer_shift_mm_s"));
+        if (j.has("quadrupole_splitting_mm_s")) out.quadrupole_splitting_mm_s.emplace(codec::get<double>(j, "quadrupole_splitting_mm_s"));
+        if (j.has("asymmetry")) out.asymmetry.emplace(codec::get<double>(j, "asymmetry"));
+        if (j.has("efg_au")) out.efg_au.emplace(codec::get<std::array<std::array<double, 3>, 3>>(j, "efg_au"));
+        if (j.has("contact_density_au")) out.contact_density_au.emplace(codec::get<double>(j, "contact_density_au"));
+        if (j.has("hyperfine_field_t")) out.hyperfine_field_t.emplace(codec::get<double>(j, "hyperfine_field_t"));
+        if (j.has("linewidth_mm_s")) out.linewidth_mm_s.emplace(codec::get<double>(j, "linewidth_mm_s"));
+        if (j.has("population")) out.population.emplace(codec::get<double>(j, "population"));
+        for (const auto& kv : j.items()) if (kv.first != "atom_index" && kv.first != "symbol" && kv.first != "label" && kv.first != "isomer_shift_mm_s" && kv.first != "quadrupole_splitting_mm_s" && kv.first != "asymmetry" && kv.first != "efg_au" && kv.first != "contact_density_au" && kv.first != "hyperfine_field_t" && kv.first != "linewidth_mm_s" && kv.first != "population") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct MossbauerSpectrumPayload {
+    std::optional<std::string> isotope{};
+    std::optional<std::string> reference{};
+    std::optional<double> temperature_k{};
+    std::optional<MossbauerSpectrumPayloadCalibration> calibration{};
+    std::vector<MossbauerSite> sites{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("isotope")) throw std::invalid_argument("use the typed field, not extra: isotope");
+        if (isotope) codec::put(out, "isotope", *isotope);
+        if (out.has("reference")) throw std::invalid_argument("use the typed field, not extra: reference");
+        if (reference) codec::put(out, "reference", *reference);
+        if (out.has("temperature_k")) throw std::invalid_argument("use the typed field, not extra: temperature_k");
+        if (temperature_k) codec::put(out, "temperature_k", *temperature_k);
+        if (out.has("calibration")) throw std::invalid_argument("use the typed field, not extra: calibration");
+        if (calibration) codec::put(out, "calibration", *calibration);
+        if (out.has("sites")) throw std::invalid_argument("use the typed field, not extra: sites");
+        codec::put(out, "sites", sites);
+        return out;
+    }
+    static MossbauerSpectrumPayload from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        MossbauerSpectrumPayload out;
+        if (j.has("isotope")) out.isotope.emplace(codec::get<std::string>(j, "isotope"));
+        if (j.has("reference")) out.reference.emplace(codec::get<std::string>(j, "reference"));
+        if (j.has("temperature_k")) out.temperature_k.emplace(codec::get<double>(j, "temperature_k"));
+        if (j.has("calibration")) out.calibration.emplace(codec::get<MossbauerSpectrumPayloadCalibration>(j, "calibration"));
+        out.sites = codec::get<std::vector<MossbauerSite>>(j, "sites");
+        for (const auto& kv : j.items()) if (kv.first != "isotope" && kv.first != "reference" && kv.first != "temperature_k" && kv.first != "calibration" && kv.first != "sites") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct Structure : SectionFields {
     static constexpr std::string_view kind = "structure";
     Structure() { id = "structure"; }
@@ -5616,6 +5788,60 @@ struct Preview : SectionFields {
     }
 };
 
+struct SpectraXAS : SectionFields {
+    static constexpr std::string_view kind = "spectra.xas";
+    SpectraXAS() { id = "spectra_xas"; }
+    SpectrumPayload spectrum{};
+    std::string to_section(Writer& writer) const {
+        Section s = descriptor(std::string(kind));
+        std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
+        json.push_back({"spectrum", codec::Value<SpectrumPayload>::encode(spectrum)});
+        return writer.add_payload(std::move(s), json, binary, opaque);
+    }
+    static SpectraXAS from_section(const Reader& reader, const Section& section) {
+        if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
+        SpectraXAS out; out.load(section);
+        out.spectrum = codec::Value<SpectrumPayload>::decode(reader.json(section, "spectrum"));
+        return out;
+    }
+};
+
+struct SpectraXES : SectionFields {
+    static constexpr std::string_view kind = "spectra.xes";
+    SpectraXES() { id = "spectra_xes"; }
+    SpectrumPayload spectrum{};
+    std::string to_section(Writer& writer) const {
+        Section s = descriptor(std::string(kind));
+        std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
+        json.push_back({"spectrum", codec::Value<SpectrumPayload>::encode(spectrum)});
+        return writer.add_payload(std::move(s), json, binary, opaque);
+    }
+    static SpectraXES from_section(const Reader& reader, const Section& section) {
+        if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
+        SpectraXES out; out.load(section);
+        out.spectrum = codec::Value<SpectrumPayload>::decode(reader.json(section, "spectrum"));
+        return out;
+    }
+};
+
+struct SpectraMossbauer : SectionFields {
+    static constexpr std::string_view kind = "spectra.mossbauer";
+    SpectraMossbauer() { id = "spectra_mossbauer"; }
+    MossbauerSpectrumPayload spectrum{};
+    std::string to_section(Writer& writer) const {
+        Section s = descriptor(std::string(kind));
+        std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
+        json.push_back({"spectrum", codec::Value<MossbauerSpectrumPayload>::encode(spectrum)});
+        return writer.add_payload(std::move(s), json, binary, opaque);
+    }
+    static SpectraMossbauer from_section(const Reader& reader, const Section& section) {
+        if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
+        SpectraMossbauer out; out.load(section);
+        out.spectrum = codec::Value<MossbauerSpectrumPayload>::decode(reader.json(section, "spectrum"));
+        return out;
+    }
+};
+
 inline std::string copy_section(const Reader& reader, const Section& section, Writer& writer) {
     if (!section.kind || !section.id) throw std::invalid_argument("section id/kind absent");
     if (*section.kind == "structure") return writer.add(Structure::from_section(reader, section));
@@ -5674,6 +5900,9 @@ inline std::string copy_section(const Reader& reader, const Section& section, Wr
     if (*section.kind == "properties.dielectric") return writer.add(PropertiesDielectric::from_section(reader, section));
     if (*section.kind == "reaction.scheme") return writer.add(ReactionScheme::from_section(reader, section));
     if (*section.kind == "preview") return writer.add(Preview::from_section(reader, section));
+    if (*section.kind == "spectra.xas") return writer.add(SpectraXAS::from_section(reader, section));
+    if (*section.kind == "spectra.xes") return writer.add(SpectraXES::from_section(reader, section));
+    if (*section.kind == "spectra.mossbauer") return writer.add(SpectraMossbauer::from_section(reader, section));
     throw std::invalid_argument("copy_section requires a canonical kind");
 }
 } } // qvf::kinds

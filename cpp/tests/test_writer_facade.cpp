@@ -72,6 +72,48 @@ int main(int argc, char** argv) {
         auto job=reader.get<kinds::JobSpec>("job_spec");
         check(job.spec.basis && !*job.spec.basis && !job.spec.functional,"absent and explicit null remain distinct");
         check(throws([&]{reader.get<kinds::Trajectory>("structure");}),"wrong canonical kind rejected");
+        // X-ray and Mössbauer spectra (QVF spec § 5.4) through the typed kinds.
+        {
+            Writer xw({"facade-test","1","xray"}); xw.set_auto_metadata(false); xw.add(structure());
+            kinds::SpectraXAS xas;
+            xas.spectrum.frequencies={7112.1,7113.4}; xas.spectrum.intensities={2e-5,6e-5};
+            kinds::XraySpectrumBlock block; block.edge="K"; block.element="Fe";
+            block.atom_indices=std::vector<int64_t>{0}; block.core_orbital="1s";
+            block.intensity="oscillator_strength"; block.energy_shift_ev=151.3;
+            xas.spectrum.xray=block;
+            kinds::SpectrumPeak peak; peak.x=7112.1;
+            kinds::SpectrumPeakAssignment assignment; assignment.atom_index=0;
+            peak.assignment=assignment; xas.spectrum.peaks=std::vector<kinds::SpectrumPeak>{peak};
+            xw.add(xas);
+            kinds::SpectraXES xes; xes.spectrum.frequencies={7105.0}; xes.spectrum.intensities={1.0};
+            kinds::XraySpectrumBlock eblock; eblock.edge="K"; eblock.line="Kβ2,5";
+            eblock.intensity="normalized"; xes.spectrum.xray=eblock; xw.add(xes);
+            kinds::SpectraMossbauer moss; kinds::MossbauerSite site;
+            site.atom_index=0; site.isomer_shift_mm_s=0.45; site.quadrupole_splitting_mm_s=-0.72;
+            site.asymmetry=0.6; site.hyperfine_field_t=-48.0; site.population=1.0;
+            moss.spectrum.sites.push_back(site); moss.spectrum.temperature_k=4.2; xw.add(moss);
+            auto xr=Reader::from_bytes(xw.to_bytes());
+            check(xr.validate().ok,"typed X-ray and Mössbauer archive validates");
+            auto back=xr.get<kinds::SpectraXAS>("spectra_xas");
+            check(back.spectrum.xray && back.spectrum.xray->edge=="K" &&
+                      back.spectrum.xray->atom_indices && (*back.spectrum.xray->atom_indices)[0]==0 &&
+                      back.spectrum.peaks && (*back.spectrum.peaks)[0].assignment &&
+                      (*back.spectrum.peaks)[0].assignment->atom_index==0,
+                  "typed xray block and atom_index round-trip");
+            auto mback=xr.get<kinds::SpectraMossbauer>("spectra_mossbauer");
+            check(mback.spectrum.sites.size()==1 && mback.spectrum.sites[0].hyperfine_field_t==-48.0 &&
+                      !mback.spectrum.isotope,"typed Mössbauer sites round-trip, isotope left absent");
+            // An edge label outside IUPAC notation is refused by the shared schema.
+            Writer bw({"facade-test","1","xray-bad"}); bw.set_auto_metadata(false); bw.add(structure());
+            kinds::SpectraXAS badxas=xas; badxas.spectrum.xray->edge="L4";
+            bool refused=throws([&]{bw.add(badxas);});
+            check(refused || !Reader::from_bytes(bw.to_bytes()).validate().ok,"edge L4 is not a valid edge");
+            Writer cw({"facade-test","1","xray-bad"}); cw.set_auto_metadata(false); cw.add(structure());
+            kinds::SpectraXAS cross=xas; cross.spectrum.xray->intensity="cross_section_mb";
+            cross.spectrum.y_units="dimensionless";
+            refused=throws([&]{cw.add(cross);});
+            check(refused || !Reader::from_bytes(cw.to_bytes()).validate().ok,"cross sections carry no y_units");
+        }
         // Conversion is chunked, byte-order independent, exact for integer copies.
         auto expected=tensor_f64({1.25,-2.5,3.75},{3}); auto big=expected.bytes;
         for(size_t i=0;i<big.size();i+=8) std::reverse(big.begin()+i,big.begin()+i+8);

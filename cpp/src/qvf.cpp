@@ -248,7 +248,8 @@ static void check_payload_units(const std::string& what, const Json& payload,
 
 static bool is_spectrum_1d(const std::string& kind) {
     return kind == "spectra.ir" || kind == "spectra.raman" || kind == "spectra.uvvis" ||
-           kind == "spectra.ecd" || kind == "spectra.vcd" || kind == "spectra.generic";
+           kind == "spectra.ecd" || kind == "spectra.vcd" || kind == "spectra.xas" ||
+           kind == "spectra.xes" || kind == "spectra.generic";
 }
 
 // Automatic root metadata (QVF spec § 3.5)

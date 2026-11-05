@@ -1,0 +1,10 @@
+{
+  "archive": "xas_xray_unknown_key.qvf",
+  "description": "A spectra.xas xray block with the unknown key 'absorber'; the block is strict, and the absorbing atoms are atom_indices (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

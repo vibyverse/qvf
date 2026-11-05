@@ -1180,6 +1180,8 @@ pub struct SpectrumPeakAssignment {
     pub mode_index: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state_index: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atom_index: Option<i64>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -1235,6 +1237,26 @@ pub struct SpectrumPayloadUvvis {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XraySpectrumBlock {
+    pub edge: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub element: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atom_indices: Option<Vec<i64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub core_orbital: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intensity: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energy_shift_ev: Option<f64>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SpectrumPayload {
     pub frequencies: Vec<f64>,
     pub intensities: Vec<f64>,
@@ -1254,6 +1276,8 @@ pub struct SpectrumPayload {
     pub raman: Option<SpectrumPayloadRaman>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uvvis: Option<SpectrumPayloadUvvis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub xray: Option<XraySpectrumBlock>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub states_ref: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
@@ -3041,6 +3065,123 @@ pub struct PreviewFields {
     pub run_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpectraXASFields {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structure_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpectraXESFields {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structure_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpectraMossbauerFields {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structure_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MossbauerSpectrumPayloadCalibration {
+    pub alpha: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beta: Option<f64>,
+    pub c: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MossbauerSite {
+    pub atom_index: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub isomer_shift_mm_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quadrupole_splitting_mm_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asymmetry: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub efg_au: Option<[[f64; 3]; 3]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contact_density_au: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyperfine_field_t: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub linewidth_mm_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub population: Option<f64>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MossbauerSpectrumPayload {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub isotope: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature_k: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration: Option<MossbauerSpectrumPayloadCalibration>,
+    pub sites: Vec<MossbauerSite>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -5041,6 +5182,90 @@ impl TypedKind for Preview {
     }
 }
 
+/// A `spectra.xas` section with typed members (`SectionSpectraXAS`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpectraXAS {
+    /// The section fields other than `kind` and `members`.
+    pub fields: SpectraXASFields,
+    pub spectrum: SpectrumPayload,
+}
+
+impl TypedKind for SpectraXAS {
+    const KIND: &'static str = "spectra.xas";
+
+    fn from_section(reader: &Reader, section: Section<'_>) -> Result<Self, QvfError> {
+        check_kind(section, Self::KIND)?;
+        let spectrum = json_member(reader, section, "spectrum")?;
+        Ok(Self { fields: section_fields(section)?, spectrum, })
+    }
+
+    fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {
+        let id = add_section(writer, Self::KIND, &self.fields)?;
+        put_json(writer, &id, "spectrum", &self.spectrum)?;
+        Ok(id)
+    }
+
+    fn id(&self) -> &str {
+        &self.fields.id
+    }
+}
+
+/// A `spectra.xes` section with typed members (`SectionSpectraXES`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpectraXES {
+    /// The section fields other than `kind` and `members`.
+    pub fields: SpectraXESFields,
+    pub spectrum: SpectrumPayload,
+}
+
+impl TypedKind for SpectraXES {
+    const KIND: &'static str = "spectra.xes";
+
+    fn from_section(reader: &Reader, section: Section<'_>) -> Result<Self, QvfError> {
+        check_kind(section, Self::KIND)?;
+        let spectrum = json_member(reader, section, "spectrum")?;
+        Ok(Self { fields: section_fields(section)?, spectrum, })
+    }
+
+    fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {
+        let id = add_section(writer, Self::KIND, &self.fields)?;
+        put_json(writer, &id, "spectrum", &self.spectrum)?;
+        Ok(id)
+    }
+
+    fn id(&self) -> &str {
+        &self.fields.id
+    }
+}
+
+/// A `spectra.mossbauer` section with typed members (`SectionSpectraMossbauer`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpectraMossbauer {
+    /// The section fields other than `kind` and `members`.
+    pub fields: SpectraMossbauerFields,
+    pub spectrum: MossbauerSpectrumPayload,
+}
+
+impl TypedKind for SpectraMossbauer {
+    const KIND: &'static str = "spectra.mossbauer";
+
+    fn from_section(reader: &Reader, section: Section<'_>) -> Result<Self, QvfError> {
+        check_kind(section, Self::KIND)?;
+        let spectrum = json_member(reader, section, "spectrum")?;
+        Ok(Self { fields: section_fields(section)?, spectrum, })
+    }
+
+    fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {
+        let id = add_section(writer, Self::KIND, &self.fields)?;
+        put_json(writer, &id, "spectrum", &self.spectrum)?;
+        Ok(id)
+    }
+
+    fn id(&self) -> &str {
+        &self.fields.id
+    }
+}
+
 /// A section of any canonical kind, decoded with its typed model.
 #[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::large_enum_variant)]
@@ -5101,6 +5326,9 @@ pub enum AnyKind {
     PropertiesDielectric(PropertiesDielectric),
     ReactionScheme(ReactionScheme),
     Preview(Preview),
+    SpectraXAS(SpectraXAS),
+    SpectraXES(SpectraXES),
+    SpectraMossbauer(SpectraMossbauer),
 }
 
 impl AnyKind {
@@ -5163,6 +5391,9 @@ impl AnyKind {
             PropertiesDielectric::KIND => AnyKind::PropertiesDielectric(PropertiesDielectric::from_section(reader, section)?),
             ReactionScheme::KIND => AnyKind::ReactionScheme(ReactionScheme::from_section(reader, section)?),
             Preview::KIND => AnyKind::Preview(Preview::from_section(reader, section)?),
+            SpectraXAS::KIND => AnyKind::SpectraXAS(SpectraXAS::from_section(reader, section)?),
+            SpectraXES::KIND => AnyKind::SpectraXES(SpectraXES::from_section(reader, section)?),
+            SpectraMossbauer::KIND => AnyKind::SpectraMossbauer(SpectraMossbauer::from_section(reader, section)?),
             _ => return Ok(None),
         }))
     }
@@ -5226,6 +5457,9 @@ impl AnyKind {
             AnyKind::PropertiesDielectric(_) => PropertiesDielectric::KIND,
             AnyKind::ReactionScheme(_) => ReactionScheme::KIND,
             AnyKind::Preview(_) => Preview::KIND,
+            AnyKind::SpectraXAS(_) => SpectraXAS::KIND,
+            AnyKind::SpectraXES(_) => SpectraXES::KIND,
+            AnyKind::SpectraMossbauer(_) => SpectraMossbauer::KIND,
         }
     }
 
@@ -5288,6 +5522,9 @@ impl AnyKind {
             AnyKind::PropertiesDielectric(v) => v.id(),
             AnyKind::ReactionScheme(v) => v.id(),
             AnyKind::Preview(v) => v.id(),
+            AnyKind::SpectraXAS(v) => v.id(),
+            AnyKind::SpectraXES(v) => v.id(),
+            AnyKind::SpectraMossbauer(v) => v.id(),
         }
     }
 
@@ -5350,6 +5587,9 @@ impl AnyKind {
             AnyKind::PropertiesDielectric(v) => v.to_writer(writer),
             AnyKind::ReactionScheme(v) => v.to_writer(writer),
             AnyKind::Preview(v) => v.to_writer(writer),
+            AnyKind::SpectraXAS(v) => v.to_writer(writer),
+            AnyKind::SpectraXES(v) => v.to_writer(writer),
+            AnyKind::SpectraMossbauer(v) => v.to_writer(writer),
         }
     }
 }

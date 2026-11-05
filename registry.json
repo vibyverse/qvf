@@ -97,7 +97,10 @@
     "properties.elastic",
     "properties.dielectric",
     "reaction.scheme",
-    "preview"
+    "preview",
+    "spectra.xas",
+    "spectra.xes",
+    "spectra.mossbauer"
   ],
   "reserved_kinds": [
     "volume.orbital_projection",
@@ -131,6 +134,24 @@
     }
   ],
   "promotions": [
+    {
+      "kind": "spectra.xas",
+      "from": null,
+      "promoted_in": "1 (2026-11)",
+      "note": "Added directly by maintainer decision (GOVERNANCE.md, Change process: clear ecosystem need + reference consumer, format review P13). A one-dimensional X-ray absorption spectrum on the shared SpectrumPayload, x in eV: TDDFT, CVS-ADC, CVS-EOM-CC or ROCIS core excitations (peaks name excited_states through states_ref) or ΔSCF sticks, with a strict xray block (edge in IUPAC notation, element, atom_indices, core_orbital, intensity quantity, energy_shift_ev) and the per-peak assignment.atom_index."
+    },
+    {
+      "kind": "spectra.xes",
+      "from": null,
+      "promoted_in": "1 (2026-11)",
+      "note": "Added directly by maintainer decision with spectra.xas (format review P13). A one-dimensional X-ray emission spectrum on the shared SpectrumPayload, x in eV, with the same xray block, whose edge names the core hole and whose line names the emission line (Kα1, Kβ1,3, valence-to-core)."
+    },
+    {
+      "kind": "spectra.mossbauer",
+      "from": null,
+      "promoted_in": "1 (2026-11)",
+      "note": "Added directly by maintainer decision with spectra.xas (format review P13). Per-site Mössbauer parameters in one strict JSON payload: isotope (57Fe when absent), reference, temperature, an optional isomer-shift calibration, and per site atom_index, isomer shift and quadrupole splitting (mm/s), asymmetry parameter, EFG tensor and contact density (atomic units), hyperfine field (T), linewidth (mm/s) and population. Units are fixed by field name because the § 4.3 vocabulary names neither mm/s nor tesla."
+    },
     {
       "kind": "reaction.scheme",
       "from": null,

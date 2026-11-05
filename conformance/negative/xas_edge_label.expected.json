@@ -1,0 +1,10 @@
+{
+  "archive": "xas_edge_label.qvf",
+  "description": "A spectra.xas xray block with edge 'K-edge'; the edge is an IUPAC label such as K, L3 or L2,3 (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

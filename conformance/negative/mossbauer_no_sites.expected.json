@@ -1,0 +1,10 @@
+{
+  "archive": "mossbauer_no_sites.qvf",
+  "description": "A spectra.mossbauer payload with an empty sites list; it needs at least one site (spec \u00a7 5.4).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}
