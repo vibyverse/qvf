@@ -384,8 +384,6 @@ def test_unsupported_periodic_inputs_are_refused(tmp_path):
     from qvf.adapters.pyscf import (add_density_grid, add_orbital_grid, molecular_grid,
                                     write_scf, write_td)
     cell = _cell(H_BOX)
-    with pytest.raises(NotImplementedError, match="k-point sampling"):
-        write_scf(scf.KUHF(cell, kpts=cell.make_kpts([1, 1, 1])).run(), tmp_path / "k.qvf")
     kpt = cell.make_kpts([2, 1, 1])[1]
     shifted = scf.UHF(cell, kpt=kpt).run()
     with pytest.raises(NotImplementedError, match="not the Γ point"):

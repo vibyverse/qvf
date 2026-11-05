@@ -283,7 +283,7 @@ Method families (see the header for exact signatures):
   wavefunction_ref, mo_index, spin)` names the `wavefunction.gto` section an
   added `volume.density`, `volume.spin` or `volume.orbital` was computed from
   and, for an orbital, its 0-based row and, for an unrestricted
-  wavefunction, its `"alpha"` or `"beta"` channel (spec § 5.2, proposed).
+  wavefunction, its `"alpha"` or `"beta"` channel (spec § 5.2).
   The Python `add_volume` takes the same fields as `wavefunction_ref=`,
   `mo_index=` and `spin=`.
 - **Property kinds:** `add_electric_properties(json)` (dipole in debye,
@@ -1513,3 +1513,10 @@ The [local recipe](../packaging/conan/README.md) exports exact committed C/C++
 source and tests installed consumers for static/shared packages. It retains
 `qvf::qvf`, `qvf.pc` and the Apache notices. This path does not upload to a
 registry or package compiler-specific Fortran modules.
+
+### vcpkg overlay port (development source)
+
+The [overlay port](../packaging/vcpkg/README.md) builds the library from the
+`v0.6.0` tag archive or from a local QVF source tree, for static and shared
+triplets. Consumers use the same `find_package(qvf CONFIG)` and `qvf::qvf`.
+It is not a vcpkg registry entry.

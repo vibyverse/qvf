@@ -131,6 +131,9 @@ def test_writer_accepts_split_real_coefficients_and_divides_libint_norms(tmp_pat
     ({"mesh": [2, 0, 1]}, "mesh"),
     ({"shift": [0, 0]}, "shift"),
     ({"n_mo_per_k": [2, 3]}, "n_mo_per_k"),
+    ({"n_electrons": 1000, "weights": [0.5, 0.5]}, "n_electrons"),
+    ({"n_electrons": -1}, "n_electrons"),
+    ({"ecp": [{"center": 0}]}, "ecp"),
 ])
 def test_writer_refusals(change, message):
     coeff, eps, occ = _orbitals()

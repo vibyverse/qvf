@@ -78,17 +78,11 @@ def iter_member(zf, member, limits, *, verify=True, chunk_size=1 << 20):
         raise ValueError("chunk_size must be positive")
     info = checked_member(zf, member, limits)
     digest = hashlib.sha256()
-    size = 0
-    with zf.open(info) as source:
-        while True:
-            chunk = source.read(chunk_size)
-            if not chunk:
-                break
-            size += len(chunk)
-            digest.update(chunk)
-            yield memoryview(chunk)
-    if size != info.file_size:
-        raise ValueError(f"E_BINARY_SIZE: {info.filename!r}")
+    # Bounded by the declared size; a short, long or damaged stream and a
+    # CRC-32 mismatch raise E_ZIP_UNREADABLE (spec § 6.1).
+    for chunk in _validation._iter_entry(zf, info, chunk_size):
+        digest.update(chunk)
+        yield memoryview(chunk)
     if verify and "sha256" in member and digest.hexdigest() != member["sha256"]:
         raise ValueError(f"E_SHA256_MISMATCH: {info.filename!r}")
 

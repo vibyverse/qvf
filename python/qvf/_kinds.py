@@ -443,7 +443,12 @@ UNITS: Tuple[str, ...] = (
     "angstrom", "bohr", "hartree", "ev", "kcal_per_mol", "kj_per_mol", "cm-1",
     "nm", "debye", "mhz", "hz", "ppm", "km_per_mol", "a3", "bohr3", "gpa",
     "fs", "ps", "kelvin", "atm", "e", "amu", "radian", "degree",
-    "dimensionless",
+    "dimensionless", "angstrom-1", "gpa-1", "angstrom_per_fs",
+    "hartree_per_bohr", "hartree_per_bohr2", "hartree_per_bohr3",
+    "ev_per_angstrom", "hartree_per_e", "hartree_per_e_bohr", "e_per_bohr3",
+    "e_per_bohr4", "e_per_bohr5", "e_bohr", "e_bohr2", "debye_angstrom",
+    "debye_angstrom2", "e2_bohr2_per_hartree", "e3_bohr3_per_hartree2",
+    "c_per_m2", "states_per_ev",
 )
 #: The deprecated spellings a {value, units} object accepts
 #: ($defs/LegacyUnitName), in schema order.
@@ -524,12 +529,16 @@ FIXED_UNITS: Mapping[str, Mapping[str, str]] = MappingProxyType({
         "coords": "angstrom",
         "times": "fs",
         "timestep_fs": "fs",
+        "velocities": "angstrom_per_fs",
+        "gradient": "hartree_per_bohr",
     }),
     "TrajectoryMetadataPayload": MappingProxyType({
         "energies": "hartree",
         "coords": "angstrom",
         "times": "fs",
         "timestep_fs": "fs",
+        "velocities": "angstrom_per_fs",
+        "gradient": "hartree_per_bohr",
         "lattice": "angstrom",
         "cell_volumes": "a3",
         "temperatures": "kelvin",
@@ -539,6 +548,8 @@ FIXED_UNITS: Mapping[str, Mapping[str, str]] = MappingProxyType({
         "coords": "angstrom",
         "times": "fs",
         "timestep_fs": "fs",
+        "velocities": "angstrom_per_fs",
+        "gradient": "hartree_per_bohr",
         "lattice": "bohr",
     }),
     "BlochKpointsPayload": MappingProxyType({
@@ -557,13 +568,25 @@ FIXED_UNITS: Mapping[str, Mapping[str, str]] = MappingProxyType({
         "fermi_energy_ev": "ev",
         "energies": "ev",
         "lattice_vectors": "angstrom",
+        "reciprocal_lattice": "angstrom-1",
     }),
     "QpathPayload": MappingProxyType({"frequencies": "cm-1"}),
     "PhononMetaPayload": MappingProxyType({"frequencies": "cm-1"}),
-    "ExcitedStatesMeta": MappingProxyType({"oscillator_strength": "dimensionless"}),
-    "ElectricPropertiesPayload": MappingProxyType({"dipole": "debye", "origin": "bohr"}),
+    "ExcitedStatesMeta": MappingProxyType({
+        "oscillator_strength": "dimensionless",
+        "transition_dipole": "e_bohr",
+    }),
+    "ElectricPropertiesPayload": MappingProxyType({
+        "dipole": "debye",
+        "origin": "bohr",
+        "quadrupole": "debye_angstrom",
+        "octupole": "debye_angstrom2",
+        "polarizability": "e2_bohr2_per_hartree",
+        "hyperpolarizability": "e3_bohr3_per_hartree2",
+    }),
     "ElasticPropertiesPayload": MappingProxyType({
         "stiffness": "gpa",
+        "compliance": "gpa-1",
         "bulk_modulus_gpa": "gpa",
         "shear_modulus_gpa": "gpa",
         "youngs_modulus_gpa": "gpa",
@@ -574,6 +597,7 @@ FIXED_UNITS: Mapping[str, Mapping[str, str]] = MappingProxyType({
         "ionic": "dimensionless",
         "static": "dimensionless",
         "born_charges": "e",
+        "piezoelectric": "c_per_m2",
     }),
 })
 
@@ -615,4 +639,5 @@ FINDING_CODES: Mapping[str, str] = MappingProxyType({
     "W_UNIT_UNKNOWN": "warning",
     "E_ROOT_INCONSISTENT": "error",
     "E_NORMALIZATION": "error",
+    "E_UNIT_CONTRADICTED": "error",
 })

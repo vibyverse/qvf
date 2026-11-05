@@ -320,7 +320,10 @@ checks verify descriptor sizes, refusal/ownership and Python-validated array
 layouts. Installed CMake consumption is checked. The 0.5.0 Linux GNU 12
 candidate passed all 12 CTests, including Fortran layout/ownership checks
 with runtime bounds checking, alongside prior focused GNU 16 checks.
-Other compiler/platform coverage remains; WP-45 stays in progress.
+Unreleased focused development checks add gfortran 11, 12, 13 and 14 and LLVM
+flang 18, 19 and 20 on Ubuntu 24.04 x86_64, with two wrapper fixes (message
+text on gfortran 11/12, NaN exponent refusal without an IEEE trap). Other
+platforms remain; WP-45 stays in progress.
 **Scope.** `fortran/qvf.f90` (`module qvf`, `bind(C)` interfaces + wrappers
 handling column-major → row-major), CMake `QVF_FORTRAN` option, example
 writing structure + grid + trajectory + wavefunction, CI job with gfortran
@@ -372,7 +375,11 @@ copy generation remains open. Core crystal CIF import with unit-cell expansion
 and P 1 CIF export (#34), VASP POSCAR/CONTCAR (#35) and CHGCAR (#36)
 import/export, mmCIF import/export (#37) and opt-in PDB NCS copy generation
 (#38) extXYZ energy/forces/stress (#39), XSF forces and several grids (#40) and
-Molden f/g shells (#41) are on main (Unreleased).
+Molden f/g shells (#41) are on main (Unreleased). Explicit Molden producer
+dialects (`dialect=`: ORCA, Turbomole, CFOUR, old Psi4, xTB) and Quantum
+ESPRESSO (pw.x input, `data-file-schema.xml`, pp.x cube) and FHI-aims
+`geometry.in` converters are on main (Unreleased); pp.x `filplot` and QE
+`space_group` input remain open.
 **Scope.** `qvf.convert`: import/export Gaussian cube (↔ `volume.*`, with
 the endpoint rule), XYZ/extXYZ (↔ `structure`/`trajectory`), Molden
 (↔ `structure` + `wavefunction.gto`, with Appendix A normalization and
@@ -387,13 +394,21 @@ round-trip-tested on small fixtures and validated.
 options and relocatable `qvf.pc` metadata are included in toolkit 0.5.0.
 The 0.6.0 local Conan 2 recipe and installed C/C++ consumers are in
 `packaging/conan`; the release/adoption checklist is in `CONTRIBUTING.md`.
-Registry publishing, vcpkg and broader platform acceptance remain open.
+Unreleased: a vcpkg overlay port in `packaging/vcpkg` (static and shared
+triplets, tag archive or local source), cleaned sdist/wheel and npm tarball
+contents, and a PyPI trusted-publisher checklist in `docs/python-release.md`.
+Registry publishing and broader platform acceptance remain open.
 **Scope.** PyPI release workflow (trusted publishing from GitHub Actions,
 tag-driven), `qvf.pc`, `QVF_BUILD_SHARED` with SONAME = ABI version, vcpkg
 port and conan recipe in `packaging/`, release checklist in
 `CONTRIBUTING.md`, `scripts/make_archive.sh` updated for the new layout.
 
 ### WP-50 · Fuzzing and big-endian CI — M · Sonnet · design § 10
+**Status.** Unreleased local checks, no CI jobs: a coverage-guided libFuzzer
+campaign over the ZIP reader and a new `manifest_fuzzer` target fixed two
+undefined-behaviour defects, and the C++ tests and corpus pass under emulated
+s390x (QEMU user mode) with a bit-for-bit cross-host tensor check. The CI
+jobs remain.
 **Scope.** libFuzzer targets for `ZipReader`, inflate, `Json::parse`,
 `Manifest::from_json`, `validate::run`; a GitHub Actions job running each
 target for a bounded time; OSS-Fuzz-ready layout; one QEMU s390x job that
@@ -402,12 +417,22 @@ writes the corpus with both writers on a big-endian host and validates it.
 ## Phase 4 — ecosystem
 
 ### WP-60 · JavaScript/TypeScript reader — L · Sonnet · design § 8
+**Status.** Done for the reader. Unreleased on main: a `Writer` that runs in
+Node and browsers (WebCrypto sha256, fflate deflate, ZIP64, streaming output)
+with typed builders following the Python writer (#15). Slab-wise input of a
+single large member remains open.
 **Scope.** `js/` package `@qvf/core`: ZIP (central directory, ZIP64) + inflate
 via `fflate`, SHA-256 via WebCrypto, manifest model, typed accessors, validator
 with the shared finding codes, conformance runner over the corpus in CI
 (Node), browser smoke test, `README` with a 20-line viewer example.
 
 ### WP-61 · Rust crate — L · Sonnet · design § 8
+**Status.** Unreleased on main: reader and validator certified by the
+positive, negative and legacy corpora (#8), streaming writer with section
+builders (#13), generated typed kinds and a `qvf` CLI that matches the Python
+CLI on every corpus archive (#22), and release-candidate CI on stable and the
+MSRV (#21). An editor, trajectory/bands/spectra builders and the remaining CLI
+commands are open.
 **Scope.** `rust/` crate `qvf`: reader, writer, validator (finding codes),
 typed kinds for structure/volume/wavefunction/trajectory/bands/spectra,
 conformance runner as an integration test, `qvf-cli` feature. Certified by
@@ -435,10 +460,18 @@ RHF/RKS TDA and TDHF/TDDFT `excited_states` + `spectra.uvvis`, with paired
 singlet-TDA NTOs and source-amplitude preservation. Frozen MO indices map
 to the full reference wavefunction. Tranche 3 (#26) adds singlet full-response
 NTOs from PySCF's `sqrt(2)(X+Y)`, retaining non-unit squared singular-value
-weights and reconstructing the length-gauge transition moments. Triplet NTOs and
-unrestricted/open-shell response remain deferred; grid densities → `volume.density`;
-PBC Γ-point → periodic structure + Γ wavefunction. Scalar ECP projectors
-(`basis.ecp[].projectors`) are written from `mol._ecpbas`. Spin-orbit terms are omitted.
+weights and reconstructing the length-gauge transition moments. Closed-shell
+triplet NTOs are written as unrestricted α/β spin-orbital channels (β particle
+sign reversed), checked against PySCF's UHF response. UHF/UKS TDA and full
+response are exported with spin-labelled contributions and per-spin NTO
+channels. Grid output adds `volume.density`, `volume.spin` and
+`volume.orbital` (`add_density_grid`, `add_orbital_grid`). Scalar ECP
+projectors (`basis.ecp[].projectors`) are written from `mol._ecpbas`.
+Spin-orbit terms are omitted. Excited-state transition densities are written
+as `volume.transition_density` on request. Periodic Γ-point SCF/DFT writes a
+periodic structure and a Γ wavefunction (spec § 5.3 Γ-point overlap note).
+Restricted-open and spin-flip response, k-point sampling and periodic
+response remain deferred.
 
 ### WP-63 · vibe-qc links libqvf — L · Opus · maintainer note (low priority)
 **Scope.** Replace vibe-qc's internal QVF writer/reader with the standalone

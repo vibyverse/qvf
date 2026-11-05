@@ -38,3 +38,21 @@ for (const name of ["entry_size_understated", "member_too_large", "total_too_lar
     }
   });
 }
+
+test("a tiny entry declaring gigabytes is refused before allocation", async () => {
+  const { ZipArchive } = await import("../dist/index.js");
+  const { buildZip } = await import("./helpers.mjs");
+  // 4 KiB of zeros deflate to a few bytes; the headers claim 2 GiB and, through
+  // ZIP64, 7 GiB, both under the 8 GiB per-member cap.
+  for (const fields of [{ usize: 2 ** 31 }, { zip64: true, zip64Size: 7 * 1024 ** 3 }]) {
+    const bytes = buildZip([{ name: "x.bin", data: new Uint8Array(4096), ...fields }]);
+    const zip = ZipArchive.open(bytes);
+    assert.throws(() => zip.read("x.bin"), (err) => {
+      assert.equal(/** @type {any} */ (err).code, "E_ZIP_UNREADABLE");
+      assert.match(String(err), /compressed bytes can inflate to/);
+      return true;
+    });
+    const report = await validate(bytes);
+    assert.equal(report.ok, false);
+  }
+});

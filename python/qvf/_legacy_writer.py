@@ -2512,6 +2512,8 @@ class QvfWriter:
                                shift: Sequence[float] | None = None,
                                time_reversal: bool | None = None,
                                n_mo_per_k: Sequence[int] | None = None,
+                               ecp: Sequence[Mapping[str, Any]] | None = None,
+                               n_electrons: int | None = None,
                                label: str | None = None,
                                section_id: str = "wf_bloch") -> str:
         """Add a ``wavefunction.bloch`` section (spec § 5.3.1, provisional).
@@ -2531,7 +2533,10 @@ class QvfWriter:
         ``mesh``, ``shift`` and ``time_reversal`` fill the ``kpoints``
         payload; ``fermi_energy_ev`` and ``n_mo_per_k`` (the number of
         defined orbitals at each k-point, for a producer whose count varies)
-        fill ``mo_metadata``. ``structure_ref`` must name a periodic
+        fill ``mo_metadata``. ``ecp`` and ``n_electrons`` go into the
+        ``basis`` payload as for ``add_wavefunction_gto``; ``n_electrons`` is
+        the count of one cell and, with ``weights``, must equal the
+        weighted sum of the occupations within 1e-6. ``structure_ref`` must name a periodic
         structure. Raises ``ValueError`` before anything is written when the
         shapes disagree.
         """
@@ -2606,11 +2611,25 @@ class QvfWriter:
             meta["n_mo_per_k"] = per_k
         if fermi_energy_ev is not None:
             meta["fermi_energy"] = {"value": float(fermi_energy_ev), "units": "ev"}
+        basis_json: dict[str, Any] = {
+            "structure_ref": structure_ref, "pure": pure, "n_ao": n_ao,
+            "shells": out_shells}
+        if ecp is not None:
+            basis_json["ecp"] = _wf_ecp(ecp)
+        if n_electrons is not None:
+            if not _is_int(n_electrons) or n_electrons < 0:
+                raise ValueError("n_electrons must be an integer >= 0")
+            if weights is not None:
+                total = math.fsum(float(w) * float(occ[k].sum())
+                                  for k, w in enumerate(kp["weights"]))
+                if abs(total - n_electrons) > 1e-6:
+                    raise ValueError(
+                        f"n_electrons is {n_electrons} but the weighted "
+                        f"occupations sum to {total:.9g}")
+            basis_json["n_electrons"] = int(n_electrons)
         sid = self._reserve_id(section_id)
         members = {
-            "basis": self._json_member(f"{sid}/basis.json", {
-                "structure_ref": structure_ref, "pure": pure, "n_ao": n_ao,
-                "shells": out_shells}),
+            "basis": self._json_member(f"{sid}/basis.json", basis_json),
             "kpoints": self._json_member(f"{sid}/kpoints.json", kp),
             "mo_metadata": self._json_member(f"{sid}/mo_metadata.json", meta),
             "mo_coefficients": self._binary_member(

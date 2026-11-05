@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import dataclasses
 import io
-import json as _json
+import math
 import struct
-import zipfile
 from typing import Any
 
 from . import model, validate as _validation
@@ -28,7 +27,16 @@ class Tensor:
         import numpy as np
         return np.frombuffer(self.data, dtype=np.dtype(self.dtype).newbyteorder("<")).reshape(self.shape)
 
+    #: Most empty lists ``tolist()`` builds for a zero-extent shape, whose
+    #: nested lists cost memory that no stored byte pays for.
+    MAX_EMPTY_LISTS = 1 << 20
+
     def tolist(self):
+        if 0 in self.shape:
+            lists = math.prod(self.shape[:self.shape.index(0)])
+            if lists > self.MAX_EMPTY_LISTS:
+                raise ValueError(f"tolist(): shape {self.shape} holds no elements but "
+                                 f"would need {lists} nested empty lists; use data")
         fmt = "<" + DTYPES[self.dtype][1]
         values = iter(x[0] for x in struct.iter_unpack(fmt, self.data))
         def unpack(shape):
@@ -47,7 +55,7 @@ class Reader:
     """
     def __init__(self, source, *, limits=None):
         self.limits = limits or Limits()
-        self._zip = zipfile.ZipFile(source, "r")
+        self._zip = _validation._open_zip(source)
         try:
             check_archive(self._zip, self.limits)
             try:
@@ -56,7 +64,7 @@ class Reader:
                 raise ValueError("E_MANIFEST_MISSING: manifest.json") from None
             raw = self._json_bytes({"path": "manifest.json"}, verify=False)
             try:
-                self.raw_manifest = _json.loads(raw)
+                self.raw_manifest = _validation._parse_json(raw)
             except (ValueError, UnicodeError) as exc:
                 raise ValueError(f"E_MANIFEST_JSON: {exc}") from exc
             if not isinstance(self.raw_manifest, dict):
@@ -124,7 +132,7 @@ class Reader:
         if member.get("format") != "json":
             raise TypeError(f"member {role!r} is not JSON")
         try:
-            return _json.loads(self._json_bytes(member, verify=verify))
+            return _validation._parse_json(self._json_bytes(member, verify=verify))
         except (ValueError, UnicodeError) as exc:
             if str(exc).startswith("E_"):
                 raise

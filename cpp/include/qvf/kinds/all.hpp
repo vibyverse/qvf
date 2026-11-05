@@ -1105,6 +1105,8 @@ struct TrajectoryMetadataPayloadUnits {
     std::optional<std::string> coords{};
     std::optional<std::string> times{};
     std::optional<std::string> timestep_fs{};
+    std::optional<std::string> velocities{};
+    std::optional<std::string> gradient{};
     std::optional<std::string> lattice{};
     std::optional<std::string> cell_volumes{};
     std::optional<std::string> temperatures{};
@@ -1119,6 +1121,10 @@ struct TrajectoryMetadataPayloadUnits {
         if (times) codec::put(out, "times", *times);
         if (out.has("timestep_fs")) throw std::invalid_argument("use the typed field, not extra: timestep_fs");
         if (timestep_fs) codec::put(out, "timestep_fs", *timestep_fs);
+        if (out.has("velocities")) throw std::invalid_argument("use the typed field, not extra: velocities");
+        if (velocities) codec::put(out, "velocities", *velocities);
+        if (out.has("gradient")) throw std::invalid_argument("use the typed field, not extra: gradient");
+        if (gradient) codec::put(out, "gradient", *gradient);
         if (out.has("lattice")) throw std::invalid_argument("use the typed field, not extra: lattice");
         if (lattice) codec::put(out, "lattice", *lattice);
         if (out.has("cell_volumes")) throw std::invalid_argument("use the typed field, not extra: cell_volumes");
@@ -1134,10 +1140,12 @@ struct TrajectoryMetadataPayloadUnits {
         if (j.has("coords")) out.coords.emplace(codec::get<std::string>(j, "coords"));
         if (j.has("times")) out.times.emplace(codec::get<std::string>(j, "times"));
         if (j.has("timestep_fs")) out.timestep_fs.emplace(codec::get<std::string>(j, "timestep_fs"));
+        if (j.has("velocities")) out.velocities.emplace(codec::get<std::string>(j, "velocities"));
+        if (j.has("gradient")) out.gradient.emplace(codec::get<std::string>(j, "gradient"));
         if (j.has("lattice")) out.lattice.emplace(codec::get<std::string>(j, "lattice"));
         if (j.has("cell_volumes")) out.cell_volumes.emplace(codec::get<std::string>(j, "cell_volumes"));
         if (j.has("temperatures")) out.temperatures.emplace(codec::get<std::string>(j, "temperatures"));
-        for (const auto& kv : j.items()) if (kv.first != "energies" && kv.first != "coords" && kv.first != "times" && kv.first != "timestep_fs" && kv.first != "lattice" && kv.first != "cell_volumes" && kv.first != "temperatures") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "energies" && kv.first != "coords" && kv.first != "times" && kv.first != "timestep_fs" && kv.first != "velocities" && kv.first != "gradient" && kv.first != "lattice" && kv.first != "cell_volumes" && kv.first != "temperatures") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -1205,6 +1213,8 @@ struct ReactionPathMetadataPayloadUnits {
     std::optional<std::string> coords{};
     std::optional<std::string> times{};
     std::optional<std::string> timestep_fs{};
+    std::optional<std::string> velocities{};
+    std::optional<std::string> gradient{};
     std::optional<std::string> lattice{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -1217,6 +1227,10 @@ struct ReactionPathMetadataPayloadUnits {
         if (times) codec::put(out, "times", *times);
         if (out.has("timestep_fs")) throw std::invalid_argument("use the typed field, not extra: timestep_fs");
         if (timestep_fs) codec::put(out, "timestep_fs", *timestep_fs);
+        if (out.has("velocities")) throw std::invalid_argument("use the typed field, not extra: velocities");
+        if (velocities) codec::put(out, "velocities", *velocities);
+        if (out.has("gradient")) throw std::invalid_argument("use the typed field, not extra: gradient");
+        if (gradient) codec::put(out, "gradient", *gradient);
         if (out.has("lattice")) throw std::invalid_argument("use the typed field, not extra: lattice");
         if (lattice) codec::put(out, "lattice", *lattice);
         return out;
@@ -1228,8 +1242,10 @@ struct ReactionPathMetadataPayloadUnits {
         if (j.has("coords")) out.coords.emplace(codec::get<std::string>(j, "coords"));
         if (j.has("times")) out.times.emplace(codec::get<std::string>(j, "times"));
         if (j.has("timestep_fs")) out.timestep_fs.emplace(codec::get<std::string>(j, "timestep_fs"));
+        if (j.has("velocities")) out.velocities.emplace(codec::get<std::string>(j, "velocities"));
+        if (j.has("gradient")) out.gradient.emplace(codec::get<std::string>(j, "gradient"));
         if (j.has("lattice")) out.lattice.emplace(codec::get<std::string>(j, "lattice"));
-        for (const auto& kv : j.items()) if (kv.first != "energies" && kv.first != "coords" && kv.first != "times" && kv.first != "timestep_fs" && kv.first != "lattice") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "energies" && kv.first != "coords" && kv.first != "times" && kv.first != "timestep_fs" && kv.first != "velocities" && kv.first != "gradient" && kv.first != "lattice") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -2614,6 +2630,7 @@ struct FermiMeshPayloadUnits {
     std::optional<std::string> fermi_energy_ev{};
     std::optional<std::string> energies{};
     std::optional<std::string> lattice_vectors{};
+    std::optional<std::string> reciprocal_lattice{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -2623,6 +2640,8 @@ struct FermiMeshPayloadUnits {
         if (energies) codec::put(out, "energies", *energies);
         if (out.has("lattice_vectors")) throw std::invalid_argument("use the typed field, not extra: lattice_vectors");
         if (lattice_vectors) codec::put(out, "lattice_vectors", *lattice_vectors);
+        if (out.has("reciprocal_lattice")) throw std::invalid_argument("use the typed field, not extra: reciprocal_lattice");
+        if (reciprocal_lattice) codec::put(out, "reciprocal_lattice", *reciprocal_lattice);
         return out;
     }
     static FermiMeshPayloadUnits from_json(const Json& j) {
@@ -2631,7 +2650,8 @@ struct FermiMeshPayloadUnits {
         if (j.has("fermi_energy_ev")) out.fermi_energy_ev.emplace(codec::get<std::string>(j, "fermi_energy_ev"));
         if (j.has("energies")) out.energies.emplace(codec::get<std::string>(j, "energies"));
         if (j.has("lattice_vectors")) out.lattice_vectors.emplace(codec::get<std::string>(j, "lattice_vectors"));
-        for (const auto& kv : j.items()) if (kv.first != "fermi_energy_ev" && kv.first != "energies" && kv.first != "lattice_vectors") out.extra[kv.first] = kv.second;
+        if (j.has("reciprocal_lattice")) out.reciprocal_lattice.emplace(codec::get<std::string>(j, "reciprocal_lattice"));
+        for (const auto& kv : j.items()) if (kv.first != "fermi_energy_ev" && kv.first != "energies" && kv.first != "lattice_vectors" && kv.first != "reciprocal_lattice") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -3404,6 +3424,7 @@ struct ExcitedStatesMetaUnits {
     std::optional<std::string> excitation_energy{};
     std::optional<std::string> total_energy{};
     std::optional<std::string> oscillator_strength{};
+    std::optional<std::string> transition_dipole{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -3413,6 +3434,8 @@ struct ExcitedStatesMetaUnits {
         if (total_energy) codec::put(out, "total_energy", *total_energy);
         if (out.has("oscillator_strength")) throw std::invalid_argument("use the typed field, not extra: oscillator_strength");
         if (oscillator_strength) codec::put(out, "oscillator_strength", *oscillator_strength);
+        if (out.has("transition_dipole")) throw std::invalid_argument("use the typed field, not extra: transition_dipole");
+        if (transition_dipole) codec::put(out, "transition_dipole", *transition_dipole);
         return out;
     }
     static ExcitedStatesMetaUnits from_json(const Json& j) {
@@ -3421,7 +3444,8 @@ struct ExcitedStatesMetaUnits {
         if (j.has("excitation_energy")) out.excitation_energy.emplace(codec::get<std::string>(j, "excitation_energy"));
         if (j.has("total_energy")) out.total_energy.emplace(codec::get<std::string>(j, "total_energy"));
         if (j.has("oscillator_strength")) out.oscillator_strength.emplace(codec::get<std::string>(j, "oscillator_strength"));
-        for (const auto& kv : j.items()) if (kv.first != "excitation_energy" && kv.first != "total_energy" && kv.first != "oscillator_strength") out.extra[kv.first] = kv.second;
+        if (j.has("transition_dipole")) out.transition_dipole.emplace(codec::get<std::string>(j, "transition_dipole"));
+        for (const auto& kv : j.items()) if (kv.first != "excitation_energy" && kv.first != "total_energy" && kv.first != "oscillator_strength" && kv.first != "transition_dipole") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -3633,6 +3657,10 @@ struct ElectricPropertiesPayloadHyperpolarizability {
 struct ElectricPropertiesPayloadUnits {
     std::optional<std::string> dipole{};
     std::optional<std::string> origin{};
+    std::optional<std::string> quadrupole{};
+    std::optional<std::string> octupole{};
+    std::optional<std::string> polarizability{};
+    std::optional<std::string> hyperpolarizability{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -3640,6 +3668,14 @@ struct ElectricPropertiesPayloadUnits {
         if (dipole) codec::put(out, "dipole", *dipole);
         if (out.has("origin")) throw std::invalid_argument("use the typed field, not extra: origin");
         if (origin) codec::put(out, "origin", *origin);
+        if (out.has("quadrupole")) throw std::invalid_argument("use the typed field, not extra: quadrupole");
+        if (quadrupole) codec::put(out, "quadrupole", *quadrupole);
+        if (out.has("octupole")) throw std::invalid_argument("use the typed field, not extra: octupole");
+        if (octupole) codec::put(out, "octupole", *octupole);
+        if (out.has("polarizability")) throw std::invalid_argument("use the typed field, not extra: polarizability");
+        if (polarizability) codec::put(out, "polarizability", *polarizability);
+        if (out.has("hyperpolarizability")) throw std::invalid_argument("use the typed field, not extra: hyperpolarizability");
+        if (hyperpolarizability) codec::put(out, "hyperpolarizability", *hyperpolarizability);
         return out;
     }
     static ElectricPropertiesPayloadUnits from_json(const Json& j) {
@@ -3647,7 +3683,11 @@ struct ElectricPropertiesPayloadUnits {
         ElectricPropertiesPayloadUnits out;
         if (j.has("dipole")) out.dipole.emplace(codec::get<std::string>(j, "dipole"));
         if (j.has("origin")) out.origin.emplace(codec::get<std::string>(j, "origin"));
-        for (const auto& kv : j.items()) if (kv.first != "dipole" && kv.first != "origin") out.extra[kv.first] = kv.second;
+        if (j.has("quadrupole")) out.quadrupole.emplace(codec::get<std::string>(j, "quadrupole"));
+        if (j.has("octupole")) out.octupole.emplace(codec::get<std::string>(j, "octupole"));
+        if (j.has("polarizability")) out.polarizability.emplace(codec::get<std::string>(j, "polarizability"));
+        if (j.has("hyperpolarizability")) out.hyperpolarizability.emplace(codec::get<std::string>(j, "hyperpolarizability"));
+        for (const auto& kv : j.items()) if (kv.first != "dipole" && kv.first != "origin" && kv.first != "quadrupole" && kv.first != "octupole" && kv.first != "polarizability" && kv.first != "hyperpolarizability") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -3696,6 +3736,7 @@ struct ElectricPropertiesPayload {
 
 struct ElasticPropertiesPayloadUnits {
     std::optional<std::string> stiffness{};
+    std::optional<std::string> compliance{};
     std::optional<std::string> bulk_modulus_gpa{};
     std::optional<std::string> shear_modulus_gpa{};
     std::optional<std::string> youngs_modulus_gpa{};
@@ -3705,6 +3746,8 @@ struct ElasticPropertiesPayloadUnits {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
         if (out.has("stiffness")) throw std::invalid_argument("use the typed field, not extra: stiffness");
         if (stiffness) codec::put(out, "stiffness", *stiffness);
+        if (out.has("compliance")) throw std::invalid_argument("use the typed field, not extra: compliance");
+        if (compliance) codec::put(out, "compliance", *compliance);
         if (out.has("bulk_modulus_gpa")) throw std::invalid_argument("use the typed field, not extra: bulk_modulus_gpa");
         if (bulk_modulus_gpa) codec::put(out, "bulk_modulus_gpa", *bulk_modulus_gpa);
         if (out.has("shear_modulus_gpa")) throw std::invalid_argument("use the typed field, not extra: shear_modulus_gpa");
@@ -3719,11 +3762,12 @@ struct ElasticPropertiesPayloadUnits {
         codec::require(j.is_object(), "expected typed payload object");
         ElasticPropertiesPayloadUnits out;
         if (j.has("stiffness")) out.stiffness.emplace(codec::get<std::string>(j, "stiffness"));
+        if (j.has("compliance")) out.compliance.emplace(codec::get<std::string>(j, "compliance"));
         if (j.has("bulk_modulus_gpa")) out.bulk_modulus_gpa.emplace(codec::get<std::string>(j, "bulk_modulus_gpa"));
         if (j.has("shear_modulus_gpa")) out.shear_modulus_gpa.emplace(codec::get<std::string>(j, "shear_modulus_gpa"));
         if (j.has("youngs_modulus_gpa")) out.youngs_modulus_gpa.emplace(codec::get<std::string>(j, "youngs_modulus_gpa"));
         if (j.has("poisson_ratio")) out.poisson_ratio.emplace(codec::get<std::string>(j, "poisson_ratio"));
-        for (const auto& kv : j.items()) if (kv.first != "stiffness" && kv.first != "bulk_modulus_gpa" && kv.first != "shear_modulus_gpa" && kv.first != "youngs_modulus_gpa" && kv.first != "poisson_ratio") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "stiffness" && kv.first != "compliance" && kv.first != "bulk_modulus_gpa" && kv.first != "shear_modulus_gpa" && kv.first != "youngs_modulus_gpa" && kv.first != "poisson_ratio") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -3779,6 +3823,7 @@ struct DielectricPropertiesPayloadUnits {
     std::optional<std::string> ionic{};
     std::optional<std::string> static_{};
     std::optional<std::string> born_charges{};
+    std::optional<std::string> piezoelectric{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -3790,6 +3835,8 @@ struct DielectricPropertiesPayloadUnits {
         if (static_) codec::put(out, "static", *static_);
         if (out.has("born_charges")) throw std::invalid_argument("use the typed field, not extra: born_charges");
         if (born_charges) codec::put(out, "born_charges", *born_charges);
+        if (out.has("piezoelectric")) throw std::invalid_argument("use the typed field, not extra: piezoelectric");
+        if (piezoelectric) codec::put(out, "piezoelectric", *piezoelectric);
         return out;
     }
     static DielectricPropertiesPayloadUnits from_json(const Json& j) {
@@ -3799,7 +3846,8 @@ struct DielectricPropertiesPayloadUnits {
         if (j.has("ionic")) out.ionic.emplace(codec::get<std::string>(j, "ionic"));
         if (j.has("static")) out.static_.emplace(codec::get<std::string>(j, "static"));
         if (j.has("born_charges")) out.born_charges.emplace(codec::get<std::string>(j, "born_charges"));
-        for (const auto& kv : j.items()) if (kv.first != "electronic" && kv.first != "ionic" && kv.first != "static" && kv.first != "born_charges") out.extra[kv.first] = kv.second;
+        if (j.has("piezoelectric")) out.piezoelectric.emplace(codec::get<std::string>(j, "piezoelectric"));
+        for (const auto& kv : j.items()) if (kv.first != "electronic" && kv.first != "ionic" && kv.first != "static" && kv.first != "born_charges" && kv.first != "piezoelectric") out.extra[kv.first] = kv.second;
         return out;
     }
 };

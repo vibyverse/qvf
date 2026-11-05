@@ -1,7 +1,8 @@
 ! Focused ownership, refusal and raw ABI checks. License: Apache-2.0.
 program test_binding
   use qvf
-  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_invalid, &
+    ieee_support_halting, ieee_get_halting_mode, ieee_set_halting_mode
   implicit none
   interface
     function c_size(index) bind(C,name='qvf_test_c_size') result(n)
@@ -27,6 +28,8 @@ program test_binding
   type(qvf_finding_t) :: finding
   real(c_double) :: coords(2,2,3), mo(2,2), bad(2,2)
   integer(c_int) :: status
+  logical :: halting
+  real(c_double) :: nan
   call get_command_argument(1,path)
   if (len_trim(path)==0) error stop 'supply output path'
   call expect(c_size(0_c_int)==c_sizeof(limits),'limits ABI')
@@ -55,17 +58,35 @@ program test_binding
     [1.0_c_double],mo)/=QVF_OK,'primitive count bounds')
   call expect(qvf_gto(writer,[0_c_int],[0_c_int],[1_c_int],[1.0_c_double], &
     [1.0_c_double],mo,energies=[0.0_c_double])/=QVF_OK,'energy bounds')
+  ! NaN inputs must be refused, not trapped, when the caller halts on IEEE invalid.
+  nan=ieee_value(0.0_c_double,ieee_quiet_nan)
+  if (ieee_support_halting(ieee_invalid)) then
+    call ieee_get_halting_mode(ieee_invalid,halting)
+    call ieee_set_halting_mode(ieee_invalid,.true.)
+  end if
+  call expect(qvf_gto(writer,[0_c_int],[0_c_int],[1_c_int],[nan], &
+    [1.0_c_double],mo)/=QVF_OK,'NaN exponent under halting')
+  call expect(qvf_gto(writer,[0_c_int],[0_c_int],[1_c_int],[1.0_c_double], &
+    [nan],mo)/=QVF_OK,'NaN coefficient under halting')
+  if (ieee_support_halting(ieee_invalid)) call ieee_set_halting_mode(ieee_invalid,halting)
   call expect(qvf_trajectory(writer,'{"symbols":["H","H"]}',coords,times=[0.0_c_double])/=QVF_OK,'time bounds')
   call expect(qvf_trajectory(writer,'{"symbols":["H","H"]}',coords,lattice=coords)/=QVF_OK,'cell bounds')
   call expect(qvf_volume(writer,'volume.generic','{}'//achar(0),coords)/=QVF_OK,'embedded NUL')
   call expect(qvf_volume(writer,'volume.generic','{}',coords,message)/=QVF_OK,'C refusal')
   call expect(len(message)>0,'C error copied')
+  call expect(exact_message(message,qvf_error_message(writer)),'C error length')
   call expect(qvf_structure(writer,[1_c_int,1_c_int],coords(1,:,:))==QVF_OK,'valid strided structure')
   call expect(qvf_finish(writer)==QVF_OK,'finish')
   status=qvf_close(writer)
   call expect(status==QVF_OK .and. .not. c_associated(writer),'close clears ownership')
   call expect(qvf_close(writer)==QVF_OK,'repeat close')
   call expect(qvf_finish(writer)/=QVF_OK,'null handle')
+  ! Each optional message must carry exactly the C error text and length.
+  call expect(qvf_finish(writer,message)/=QVF_OK,'null handle message')
+  call expect(exact_message(message,qvf_error_message()),'null handle message length')
+  call expect(qvf_open(writer,trim(path)//'.missing/x.qvf','test','1','synthetic',message)/=QVF_OK, &
+    'open refusal')
+  call expect(exact_message(message,qvf_error_message()),'open refusal message length')
   text=qvf_c_string(trim(path)); reader=c_null_ptr
   call expect(c_qvf_reader_open(c_loc(text),c_loc(limits),c_loc(reader))==QVF_OK,'raw reader')
   call expect(c_qvf_reader_section_count(reader,c_loc(count))==QVF_OK,'raw count')
@@ -80,6 +101,11 @@ program test_binding
   call expect(c_qvf_reader_destroy(reader)==QVF_OK,'reader destroy')
   print *, 'Fortran ownership, raw ABI and refusal checks passed'
 contains
+  logical function exact_message(actual,expected)
+    character(len=*), intent(in) :: actual, expected
+    exact_message=len(expected)>0 .and. len(actual)==len(expected) .and. actual==expected
+  end function
+
   subroutine expect(condition,label)
     logical, intent(in) :: condition
     character(len=*), intent(in) :: label

@@ -1,0 +1,10 @@
+{
+  "archive": "zip_multi_volume.qvf",
+  "description": "The end of central directory record names disk 1: a split, multi-volume ZIP, which no QVF reader supports (spec \u00a7 2.1).",
+  "expect": [
+    {
+      "code": "E_ZIP_UNREADABLE",
+      "severity": "error"
+    }
+  ]
+}

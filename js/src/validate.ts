@@ -46,7 +46,8 @@ import { checkDefinition, checkManifest, jsonEqual, payloadDefinition } from "./
  *   `excited_states`, the `wavefunction.gto` rules of spec § 5.3 and the
  *   Appendix A.1 diagonal of its `overlap`, `E_NORMALIZATION`, the data shapes
  *   of the vector, complex, series and Laplacian volumes and a series `axis`
- *   against its slabs, `wavefunction.bloch` member shapes and k-point
+ *   against its slabs, a grid `units.data` against the unit § 4.3 fixes for
+ *   its volume kind, `E_UNIT_CONTRADICTED`, `wavefunction.bloch` member shapes and k-point
  *   weights, the property kinds' symmetry and sum rules and the
  *   agreement of a `properties.electric` dipole with the root
  *   `dipole_moment`, the shared array length of a 1-D spectrum, the step ids
@@ -1482,6 +1483,33 @@ function vec3(v: unknown): number[] | null {
 
 const showVec = (v: number[]): string => `[${v.map((x) => Number(x.toPrecision(6))).join(", ")}]`;
 
+/**
+ * The unit name spec § 4.3 fixes for the grid `units.data` of a volume kind.
+ * One grid payload serves every `volume.*` kind, so the schema cannot fix it
+ * per kind.
+ */
+const VOLUME_DATA_UNITS: ReadonlyMap<string, string> = new Map([
+  ["volume.density", "e_per_bohr3"],
+  ["volume.transition_density", "e_per_bohr3"],
+  ["volume.potential", "hartree_per_e"],
+  ["volume.rdg", "dimensionless"],
+  ["volume.laplacian", "e_per_bohr5"],
+]);
+
+/**
+ * A grid `units.data` that is a unit name other than the one § 4.3 fixes for
+ * the volume kind (`E_UNIT_CONTRADICTED`), as a message, or null. A string
+ * that is not a unit name is `W_UNIT_UNKNOWN` alone.
+ */
+function gridDataUnitError(sid: string, kind: string, grid: Obj): string | null {
+  const fixed = VOLUME_DATA_UNITS.get(kind);
+  const units = grid["units"];
+  if (fixed === undefined || !isObject(units)) return null;
+  const unit = units["data"];
+  if (typeof unit !== "string" || unit === fixed || !isUnitName(unit)) return null;
+  return `section ${quote(sid)}: grid units.data ${quote(unit)} contradicts the unit ${quote(fixed)} that spec § 4.3 fixes for ${kind} data`;
+}
+
 /** Largest relative difference between a periodic grid span and its lattice vector (spec § 5.2). */
 const GRID_SPAN_TOLERANCE = 1e-6;
 
@@ -2264,6 +2292,11 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
     if (rank >= AT_SEMANTICS) {
       for (const [code, role, msg] of volumeErrors(sid, kind, members, docs, rank >= AT_REFERENCES ? kindsById : null)) {
         out.error(code, memberPointer(i, role), msg);
+      }
+      for (const [role, doc] of docs) {
+        if (!isGridPayload(kind, role) || !isObject(doc)) continue;
+        const msg = gridDataUnitError(sid, kind, doc);
+        if (msg !== null) out.error("E_UNIT_CONTRADICTED", memberPointer(i, role), msg);
       }
     }
     if (rank >= AT_REFERENCES) {

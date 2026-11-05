@@ -2,8 +2,8 @@
 
 The `qvf.convert` Python API and `qvf convert` command started in
 toolkit **0.5.0**; XSF and PDB geometry joined in **0.6.0**. The development
-checkout also supports the Molden, core-CIF, mmCIF, POSCAR and CHGCAR subsets
-below. They use the standard library;
+checkout also supports the Molden, core-CIF, mmCIF, POSCAR, CHGCAR, Quantum
+ESPRESSO and FHI-aims subsets below. They use the standard library;
 NumPy is optional. Install the `validate` extra for JSON Schema checks as well
 as the always-on reference checks.
 
@@ -571,6 +571,226 @@ analysis and visualization tools, not a VASP restart. ASE's
 `VaspChargeDensity` reads the export back with the same densities, and
 ASE-written CHGCAR files import to the same grid.
 
+## Quantum ESPRESSO pw.x structures and results (Unreleased)
+
+```bash
+qvf convert si.pwi --from espresso-in --to qvf -o si.qvf
+qvf convert si.qvf --from qvf --to espresso-in -o si-export.pwi
+qvf convert data-file-schema.xml --from espresso-xml --to qvf -o si-result.qvf
+qvf convert rho.cube --from espresso-cube --to qvf -o rho.qvf
+qvf convert rho.filplot --from espresso-filplot --to qvf -o rho.qvf
+```
+
+**pw.x input.** Import reads the cell and atoms of one pw.x input as a
+`structure` periodic on all three axes, labelled with the `&CONTROL` title
+when one is given. Namelists follow Fortran namelist syntax: `key = value`
+pairs separated by commas or line breaks, `!` comments, quoted strings
+(which may contain `/`), logicals and reals with `d` exponents. Any other
+namelist syntax refuses the import, as does a key given twice. Only
+`&SYSTEM` is interpreted.
+
+The cell comes from `ibrav` as in INPUT_PW. With `ibrav = 0` it is the
+`CELL_PARAMETERS` card in `alat`, `bohr` or `angstrom`. Without a unit the
+deprecated pw.x rule applies: `alat` when `celldm(1)` or `A` is given, else
+`bohr`, and the report sets `cell_units_defaulted`. As in pw.x, `bohr` or
+`angstrom` vectors next to `celldm(1)` or `A` give the lattice parameter
+twice and are refused, and then alat is the length of the first vector.
+Every other Bravais index of INPUT_PW is built from its documented
+vectors: `1, 2, 3, -3, 4, 5, -5, 6, 7, 8, 9, -9, 91, 10, 11, 12, -12, 13, -13`
+and `14`, using the current (QE 6.4.1 and later) axes of `-13`. The parameters
+are `celldm(1..6)` with `celldm(1)` in bohr, or `A`, `B`, `C` in Å with
+`cosAB`, `cosAC`, `cosBC` mapped to celldm as pw.x does: all three for 14,
+`cosAC` for `-12` and `-13`, `cosAB` otherwise (the rhombohedral angle for
+`5` and `-5`). Both sets together, missing or nonpositive lengths, cosines
+with magnitude 1 or more and angles that describe no cell are refused.
+
+**Space-group input.** With `space_group` (the ITA number, 1 to 230) in
+`&SYSTEM` and `ATOMIC_POSITIONS crystal_sg`, each position line is one
+inequivalent site in crystal coordinates of the conventional cell, and the
+import writes every atom of the conventional unit cell. The operators come
+from the Hall symbol of the selected setting (`ita_hall` in
+`qvf/_spacegroups.py`, the same parser the CIF and PDB imports use), and
+the report gives it as `hall`. `uniqueb = .true.` selects unique axis b for
+monoclinic groups. The default `.false.` selects unique axis c with cell
+choice 1 for primitive groups and the B-centred cell (ITA cell choice 2,
+the lattice of `ibrav = 13`) for centred groups. `origin_choice = 2`
+selects the second ITA origin where there is one. For R groups,
+`rhombohedral = .true.` (the default) reads the sites on rhombohedral axes
+and `.false.` on hexagonal axes, where the cell is the triple hexagonal
+cell. The cell parameters follow the celldm (or `A`, `B`, `C`, `cosAB`,
+`cosAC`, `cosBC`) convention of the conventional lattice: `ibrav = 14`
+for triclinic, `12` (unique c, `cosAB`) or `-12` (unique b, `cosAC`) for
+monoclinic, `8`, `6`, `4` and `1` for orthorhombic, tetragonal, hexagonal
+and trigonal, and cubic groups, and `5` for R groups on rhombohedral axes.
+`CELL_PARAMETERS` and an `ibrav` are not used. A given `ibrav`, and a
+`uniqueb`, `origin_choice` or `rhombohedral` that does not apply to the
+group, are listed in `settings_ignored`. Images of a site within 0.01 Å of
+each other are one atom (`special_position_images_merged`), images of two
+sites that overlap are refused, and a frozen site freezes all its images.
+Wyckoff labels such as `Na 4a` or `O 8c 0.25` are refused: give the site as
+x y z. pw.x itself reduces a centred cell to the primitive cell of its
+`ibrav`, so a centred group imports with the centring multiplicity times
+the atoms that pw.x reports, in the same crystal.
+
+`ATOMIC_POSITIONS` is read in `alat`, `bohr`, `angstrom` or `crystal`
+(fractional). Without a unit, pw.x's default `alat` applies and the report
+sets `positions_units_defaulted`. A coordinate may be an arithmetic
+expression with `+ - * / ^` and parentheses, such as `1/3`, evaluated without
+`eval`. Elements come from the `ATOMIC_SPECIES` labels: a one or two letter
+element symbol, in any case, followed by nothing or by a character that is
+not a letter, so `Fe1`, `Fe_up` and `O-d` are Fe, Fe and O. The report maps
+every label to its element. An atom whose three `if_pos` flags are `0` goes
+into the root `constraints.frozen_atoms`. An atom fixed on only some axes is
+counted in `partially_fixed_atoms_omitted`. Other cards, such as
+`K_POINTS`, are listed in `cards_omitted`. Masses, pseudopotentials,
+magnetization, charge and calculation settings are not stored.
+
+Lengths in bohr are converted with the QVF constant (1 Å = 1.8897261246
+bohr, as the CHGCAR import uses), not pw.x's CODATA 2006 value. The two
+differ by 3·10⁻⁹ relative. `A` and `angstrom` input is used directly, with
+no detour through bohr.
+
+Export writes one structure periodic on all three axes as a pw.x input with
+`&CONTROL` (the title is the section label), `&SYSTEM` with `ibrav = 0`,
+`nat` and `ntyp`, an empty `&ELECTRONS`, one `ATOMIC_SPECIES` entry per
+element and `CELL_PARAMETERS` and `ATOMIC_POSITIONS` in Å with 15 decimals in
+archive order. Each species has mass `0.0`, which pw.x replaces by its
+tabulated atomic weight (`pos_iosys` in `PW/src/input.f90`), and the
+pseudopotential placeholder `<element>.UPF`. Add
+`ecutwfc`, the real pseudopotentials and `K_POINTS` before running pw.x.
+Frozen atoms get `if_pos` `0 0 0`, the others `1 1 1`, under the same
+first-structure rule as the POSCAR export.
+
+**pw.x XML data file.** Import reads `data-file-schema.xml` (the
+`qes:espresso` document, in hartree atomic units). The structure is the
+final `output/atomic_structure`: the cell vectors `a1`, `a2`, `a3` in bohr
+and `atomic_positions` in bohr, or `crystal_positions`. Wyckoff positions
+are refused. `input/free_positions` gives frozen atoms as for `if_pos`.
+`output/total_energy/etot` becomes the root `energies.total` in hartree.
+`output/forces` (hartree/bohr) becomes the `forces` section's gradient, the
+negative of the forces (spec § 5.10). `output/stress` (hartree/bohr³) is
+stored with its sign flipped: pw.x writes the negative of (1/V) ∂E/∂ε, positive
+under compression, and QVF stores (1/V) ∂E/∂ε. A stress that is not symmetric is
+refused, and a stress without forces is reported, not stored. When
+`convergence_info/scf_conv/convergence_achieved` is false, energy, forces
+and stress are omitted and `results_omitted_unconverged` is set. The report
+gives the SCF and optimization convergence, `exit_status`, the functional,
+the energy and the `output` elements that were not read, such as
+`band_structure`. A DOCTYPE or entity declaration refuses the file.
+
+**pp.x cube files.** With `output_format = 6`, pp.x writes a Gaussian cube
+in bohr whose voxel vectors are the cell vectors over the FFT grid size, so
+the last plane is not the first plane repeated. Import reads it with the
+cube reader as a grid periodic on all three axes with `includes_endpoint`
+false, so `voxel_vectors[a] × shape[a]` is lattice vector a (spec § 5.2), and
+the structure's cell follows from it. Values are stored as written. For
+`plot_num = 0` they are the charge density in e/bohr³, so the default kind
+is `volume.density` and the report's `integral` (mean value times the cell
+volume in bohr³) is the electron count. The cube does not record
+`plot_num`: assert another scalar kind with `kind=` / `--kind`, for example
+`volume.spin` for `plot_num = 6`. The valence charges in the atom lines are
+counted in `nonzero_atom_charges_omitted`. Use `--to cube` for the reverse
+direction.
+
+**pp.x filplot files.** The intermediate file that pp.x writes as `filplot`
+(INPUT_PP) holds the records of `plot_io` in `Modules/plot_io.f90`: a title,
+the FFT dimensions `nr1x nr2x nr3x nr1 nr2 nr3` with `nat` and `ntyp`,
+`ibrav` and `celldm(1..6)`, the three lattice vectors in alat for
+`ibrav = 0`, `gcutm dual ecutwfc plot_num`, one line per species (index,
+label, valence charge) and per atom (index, position in alat, species), and
+the values, x fastest over the padded dimensions `nr1x` and `nr2x`. The
+module docstring of `qvf/_espresso.py` gives the Fortran formats. `celldm(1)`
+is in bohr. For `ibrav` other than 0 the cell is that Bravais lattice of
+`celldm`, built as for pw.x input. The import writes the structure, labelled
+with the title, and one grid of `nr1 × nr2 × nr3` points without the padding,
+periodic on all three axes with `includes_endpoint` false, so
+`voxel_vectors[a] × shape[a]` is lattice vector a, and declares the unit as
+`grid.units.data`. The file has no version marker, so a header that does not
+fit these records is refused, as is a value count other than
+`nr1x × nr2x × nr3`. Values such as `1.25-120`, where Fortran drops the E
+of a three-digit exponent, are read.
+
+The kind and unit follow from `plot_num`. pp.x writes densities in
+e/bohr³, kept as written, and potentials in Ry as the potential energy of an
+electron. A potential that is electrostatic is stored as the electrostatic
+potential in hartree/e, which is −V/2 for V in Ry (1 Ry = 1/2 hartree, and
+an electron carries charge −e). Other potentials are stored as the
+electron potential energy in hartree, V/2.
+
+| `plot_num` | Field | Kind | Stored value | `units.data` |
+|---|---|---|---|---|
+| 0 | charge density | `volume.density` | as written | `e_per_bohr3` |
+| 1 | V_bare + V_H + V_xc | `volume.generic` | V/2 | `hartree` |
+| 2 | local ionic V_bare | `volume.generic` | V/2 | `hartree` |
+| 6 | spin polarization ρ↑ − ρ↓ | `volume.spin` | as written | `e_per_bohr3` |
+| 8 | ELF | `volume.elf` | as written | `dimensionless` |
+| 9 | ρ minus superposed atomic densities | `volume.difference` | as written | `e_per_bohr3` |
+| 11 | V_bare + V_H | `volume.potential` | −V/2 | `hartree_per_e` |
+| 12 | sawtooth field potential | `volume.potential` | −V/2 | `hartree_per_e` |
+| 17, 21 | all-electron (valence) density, PAW | `volume.density` | as written | `e_per_bohr3` |
+| 19 | reduced density gradient | `volume.rdg` | as written | `dimensionless` |
+| other | | `volume.generic` | as written | none |
+
+The report gives `plot_num`, the kind, `factor` (the multiplier applied),
+the unit, the FFT dimensions, `gcutm`, `dual`, `ecutwfc_ry`, the valence
+charges that are not stored and, for a density, the `integral` in
+electrons. V_bare is the local part of the pseudopotential, which is not a
+Coulomb potential inside the cores, so the plot_num 11 potential is the
+electrostatic potential only outside them.
+
+ASE's `read_espresso_in` reads the same `ibrav = 0` inputs, and the export, to
+the same cell and positions (to 10⁻¹⁰ relative once its CODATA 2006 bohr is
+rescaled), and inputs written by ASE import to the same structure. ASE
+supports no other `ibrav`. The tests check every Bravais index against its
+conventional cell: the conventional vectors are integer combinations of the
+imported vectors with the centring multiplicity as determinant, and the
+volume is the conventional volume over that multiplicity. ASE's cube reader
+reads pp.x-style cubes to the same cell and values.
+
+ASE's `read_espresso_in` refuses `crystal_sg` positions, so the
+space-group tests compare with `ase.spacegroup.crystal` instead: on the
+same sites, space group and setting it gives the same atom count, cell and
+positions modulo the lattice for every setting ASE tabulates (unique axis b
+only). The CIF import of the same cell, sites and Hall symbol gives the same
+atoms. With spglib installed, the Hall symbol of every pw.x setting (274 of
+them) matches spglib's symmetry database, and spglib finds the space group
+back from the expanded atoms of three general sites. The filplot fixtures
+are written by `scripts/gen_espresso_fixtures.py` (standard library only,
+`--check` for freshness) together with the pp.x cube of the same data, and
+the filplot import matches the espresso-cube import of that cube in cell,
+atoms, grid and values (times the factor of the table, to the cube's five
+significant digits).
+
+## FHI-aims geometry.in structures (Unreleased)
+
+```bash
+qvf convert geometry.in --from aims --to qvf -o cell.qvf
+qvf convert cell.qvf --from qvf --to aims -o geometry.in.out
+```
+
+Import reads one FHI-aims `geometry.in` in Å. Three `lattice_vector` lines
+make a `structure` periodic on all three axes. With none it is a molecule.
+One or two lattice vectors, or linearly dependent ones, are refused. `atom`
+lines are Cartesian, `atom_frac` lines fractional (they need the lattice),
+and the two may be mixed. Elements come from the species names under the
+pw.x label rule, so `N_tight` is N. An atom with `constrain_relaxation
+.true.`, or with `x`, `y` and `z` constrained, goes into the root
+`constraints.frozen_atoms`. An atom constrained on only some axes is counted
+in `partially_fixed_atoms_omitted`. Per-atom `initial_moment`,
+`initial_charge` and `velocity` lines, `empty` sites (basis functions
+without a nucleus), and symmetry, Hessian, field and multipole keywords are
+counted in `keywords_omitted` and not stored. Any other keyword, including
+`pseudocore`, refuses the import. `#` starts a comment.
+
+Export writes one structure periodic on all three axes, or a molecule, as
+the section label in a comment, `lattice_vector` rows and Cartesian `atom`
+lines in Å with 15 decimals in archive order, species named by element.
+Frozen atoms get `constrain_relaxation .true.`. A structure periodic on only
+some axes is refused, because FHI-aims takes no or three lattice vectors.
+ASE's FHI-aims reader reads the same inputs and the export to the same cell,
+positions and fixed atoms (to 10⁻¹⁰ relative), and files ASE writes, with
+Cartesian or fractional atoms, import to the same structure.
+
 ## Molecular Molden orbitals (Unreleased)
 
 ```sh
@@ -613,12 +833,64 @@ Export writes coordinates in bohr to avoid a second angstrom conversion.
 
 ECP/core sections, ghosts, Slater functions, h and higher shells, complex or
 spinor coefficients, periodic geometry, transition-weight occupations and
-unknown sections are refused. Non-unit shell scale factors and unnormalized
-input contractions are refused instead of guessing a producer's dialect.
+unknown sections are refused. Non-unit shell scale factors are refused, and
+unnormalized input contractions are refused unless an explicit producer
+dialect (below) accounts for them.
 Export requires a basis for every atom, contiguous shells per atom and one
 convention each for d, f and g, and writes the matching flags. PySCF-written
 f and g files give the same orbital values at off-axis points after import
 and after export. More than one wavefunction requires `--section`.
+
+### Molden dialects (Unreleased)
+
+Programs that write Molden files deviate from the format description in
+documented ways. Import never guesses the producer from orbital norms or the
+title: name it with `dialect=` (Python) or `--molden-dialect` (CLI). The
+default is `standard`. Each dialect maps the written values onto standard
+Molden before the Appendix A conversion above, and the report records it.
+The ORCA, Turbomole, CFOUR and Psi4 rules are the documented corrections in
+[IOData](https://github.com/theochem/iodata) 1.0.1 (`iodata/formats/molden.py`).
+In this table N_i is the Appendix A.1 primitive norm and Π is
+(2l_x−1)!!·(2l_y−1)!!·(2l_z−1)!! for one Cartesian component.
+
+| Dialect | Producers | Written values, mapped back on import |
+|---|---|---|
+| `standard` | Molden format description, PySCF `tools.molden`, Psi4 1.4 and later, Molpro, Multiwfn | Normalized contractions, unit-normalized AOs, Molden phases. Squared contraction norms must be within 1e-5 of one. |
+| `renormalize` | Any producer with unnormalized contractions and standard AOs | Every contraction is rescaled to unit norm, as the Molden program does when it reads a file. Norms are reported. |
+| `orca` | ORCA `orca_2mkl -molden` | Each contraction coefficient is multiplied by the norm of the Cartesian primitive (0,0,0), (1,0,0), (1,1,0), (1,1,1) or (2,1,1) for s, p, d, f, g. The spherical f and g components m = ±3 and g components m = ±4 have the opposite sign. Cartesian d, f and g shells are refused. |
+| `turbomole` | Turbomole `tm2molden` | Cartesian d, f and g contraction coefficients are divided by √3, √15 and √105. |
+| `cfour` | CFOUR up to 2.1 | Cartesian d, f and g MO coefficients are multiplied by 1/√Π. |
+| `psi4-1.3` | Psi4 up to 1.3.2 | Cartesian d, f and g MO coefficients are multiplied by √((2l−1)!!/Π), so they refer to axially normalized AOs. |
+| `xtb` | xTB `printmold` (used by `qvf export-xtb`) | Contraction coefficients include N_i, and odd-l MO coefficients have the opposite sign (xTB evaluates R_atom − r). |
+
+After the mapping, the squared contraction norm check applies to every
+dialect except `renormalize`, so a wrong dialect choice is refused when the
+norms disagree. A refusal names the contraction and its norm, and suggests
+`orca` when the title names ORCA. Psi4 1.0 and earlier, which multiplied
+primitive norms into the contraction coefficients, has no dialect.
+
+These text forms are accepted in every dialect:
+
+| Item | Accepted forms |
+|---|---|
+| Header | `[Molden Format]` in any letter case, followed by optional `[Title]` text |
+| Units | `[Atoms] AU`, `Angs`, `(AU)` or `(Angs)` in any letter case |
+| Atom labels | An element symbol in any case, optionally followed by a tag such as `O1` or `HE12` (Molpro style). The atomic number must match the element |
+| Angular flags | `[5D]`, `[5D7F]`, `[5D10F]`, `[7F]`, `[9G]`, and `[6D]`, `[10F]`, `[15G]`, alone or combined, before or after `[GTO]`, one per line, in any letter case. Absent flags mean Cartesian |
+| `[GTO]` | Atom lines `n 0` or `n`, with or without blank lines between atoms and at the end, shell scale `1.00`, `1.0` or absent |
+| Numbers | Fortran exponents with `D` or `d`, as in `0.2000D+01`, everywhere |
+| `[MO]` | `Sym=`, `Ene=`, `Spin=` and `Occup=` in any order and letter case, each once per orbital. `Sym` labels are kept as written (`1a1`, `1.1`, `a'`). Occupations may be fractional |
+
+These inputs are refused with a message saying what QVF cannot represent:
+
+- negative occupations (for example natural-orbital occupations from a
+  correlated calculation) and occupations above 2 (restricted) or 1
+  (unrestricted), with no clipping,
+- nuclear charges that differ from the element (ECP effective cores, ghosts,
+  point charges),
+- `[core]` and `[Pseudo]` sections, whose ECP parameters are not in the file,
+- missing `Sym`, `Ene`, `Spin` or `Occup` keys and sparse coefficient lists,
+- h and higher shells, Slater functions and unknown sections.
 
 Import reports omitted comments/title text. Export reports its selected spin,
 contraction norms, omitted sections/members and generated `A` symmetry labels
@@ -637,12 +909,16 @@ from qvf.convert import import_xsf, export_xsf, import_pdb, export_pdb
 from qvf.convert import import_molden, export_molden, import_cif, export_cif
 from qvf.convert import import_poscar, export_poscar, import_chgcar, export_chgcar
 from qvf.convert import import_mmcif, export_mmcif
+from qvf.convert import import_espresso_in, export_espresso_in, import_espresso_xml
+from qvf.convert import import_espresso_cube, import_espresso_filplot
+from qvf.convert import import_aims, export_aims
 
 report = import_xyz("molecule.xyz", "molecule.qvf")
 report = export_xyz("molecule.qvf", "geometry.xyz", extended=True)
 report = import_cube("field.cube", "field.qvf", kind="volume.generic")
 report = export_cube("field.qvf", "field-export.cube", section="volume")
 report = import_molden("orbitals.molden", "orbitals.qvf", spin="restricted")
+report = import_molden("orca.molden", "orca.qvf", spin="restricted", dialect="orca")
 ```
 
 Import text is capped at 64 MiB. Geometry/grid importers limit coordinate/scalar
@@ -650,7 +926,8 @@ values to five million; Molden limits coefficient matrices to five million
 entries and contractions to 512 primitives each.
 These initial converters parse bounded inputs in memory; they are not a
 replacement for the streaming QVF reader/writer for large datasets. QVF
-reader limits also apply on export. Remaining WP-48 work: Molden h shells
-and ECP sections, XSF animation, bonds to symmetry mates, centrosymmetric
-space groups in the PDB expansion, mmCIF assemblies and writing `REMARK 350`
-back. No QVF schema, canonical kind or finding code changes.
+reader limits also apply on export. Remaining WP-48 work: Molden h shells,
+ECP sections and natural-orbital occupations outside 0 to 2, XSF animation,
+bonds to symmetry mates, centrosymmetric space groups in the PDB expansion,
+mmCIF assemblies, writing `REMARK 350` back, QE `space_group` input and pp.x
+`filplot` files. No QVF schema, canonical kind or finding code changes.

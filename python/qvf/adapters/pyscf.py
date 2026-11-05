@@ -20,12 +20,25 @@ spec, ``⟨χ_μ|χ_ν⟩`` of the cell's AOs without images. The Γ-point orbit
 are orthonormal in the lattice-summed overlap ``Σ_T ⟨χ_μ|χ_ν(r − T)⟩``,
 which a consumer rebuilds from the basis and the lattice. The populations
 use it. GTH pseudopotentials are recorded by name and core count only.
-k-point sampling (``KRHF`` and the like) and a nonzero ``kpt`` are refused.
+A single-k object with a nonzero ``kpt`` is refused.
 
-``add_td`` and ``write_td`` add molecular closed-shell TDA/TDHF/TDDFT
-states and UV-visible sticks beside that SCF reference. Singlet TDA and
-full response can also carry paired natural transition orbitals. Full
-response retains both X and Y; triplet NTOs are not mapped (see ``add_td``).
+k-point sampled results (``pbc.scf.KRHF``, ``KUHF`` and ``pbc.dft.KRKS``,
+``KUKS``) are written as a ``wavefunction.bloch`` section (spec § 5.3.1,
+provisional): the k-points in fractional reciprocal-lattice coordinates with
+their weights and, for a uniform mesh, its ``mesh`` and ``shift``, and per k
+the complex orbitals through the same AO map, their energies and
+occupations. PySCF's Bloch functions ``Σ_T e^{ik·T} χ_μ(r − T)`` are the
+spec's (the phase without the atomic position), so its coefficients are
+written unchanged. The spec has no member for S(k): a consumer builds it from
+the basis and the lattice. KROHF, KGHF and k-symmetry-adapted objects are
+refused.
+
+``add_td`` and ``write_td`` add molecular TDA/TDHF/TDDFT states of
+closed-shell RHF/RKS and open-shell UHF/UKS references and UV-visible
+sticks beside that SCF reference. Singlet and triplet
+TDA and full response also carry paired natural transition orbitals. Full
+response retains both X and Y; triplet NTOs are written as alpha and beta
+spin-orbital channels (see ``add_td``).
 
 ``add_density_grid`` and ``add_orbital_grid`` evaluate the SCF density, the
 spin density of an open-shell reference and selected orbitals on a regular
@@ -78,11 +91,12 @@ from typing import Any
 from .._legacy_writer import BOHR_PER_ANGSTROM, primitive_norm
 
 __all__ = [
-    "AOMap", "DEFAULT_GRID_MARGIN_BOHR", "DEFAULT_GRID_SPACING_BOHR", "ao_map",
-    "add_density_grid", "add_job_spec", "add_orbital_grid", "add_populations", "add_scf",
-    "add_td", "add_structure", "add_wavefunction", "basis_name", "cartesian_powers",
-    "method_name", "molecular_grid", "real_solid_harmonics", "set_scf_provenance",
-    "write_scf", "write_td",
+    "AOMap", "DEFAULT_GRID_MARGIN_BOHR", "DEFAULT_GRID_SPACING_BOHR", "absolute_kpoints",
+    "ao_map", "add_bloch_wavefunction", "add_density_grid", "add_job_spec",
+    "add_orbital_grid", "add_populations", "add_scf", "add_td", "add_structure",
+    "add_wavefunction", "basis_name", "cartesian_powers", "fractional_kpoints",
+    "kpoint_mesh", "method_name", "molecular_grid", "real_solid_harmonics",
+    "set_scf_provenance", "write_scf", "write_td",
 ]
 
 _INSTALL_HINT = ("qvf.adapters.pyscf needs the optional qvf-writer[pyscf] dependencies; "
@@ -319,14 +333,37 @@ def _is_cell(mol):
     return hasattr(mol, "lattice_vectors")
 
 
+def _is_kscf(mf):
+    """Whether ``mf`` is a k-point sampled PySCF SCF object (``pbc.scf.KSCF``)."""
+    if not _is_cell(getattr(mf, "mol", None)):
+        return False
+    from pyscf.pbc.scf import khf
+    return isinstance(mf, khf.KSCF)
+
+
+def _kpoint_spin_kind(mf):
+    """'restricted' or 'unrestricted' for a supported k-point sampled SCF."""
+    from pyscf.pbc.scf import khf, khf_ksymm, krohf, kuhf
+    if isinstance(mf, khf_ksymm.KsymAdaptedKSCF):
+        raise NotImplementedError(
+            f"{type(mf).__name__}: k-point symmetry is not mapped. Its orbitals are "
+            f"known in the irreducible wedge only, and their weighted density is "
+            f"not the density of spec § 5.3.1; run without space_group_symmetry")
+    if isinstance(mf, kuhf.KUHF):
+        return "unrestricted"
+    if isinstance(mf, khf.KRHF) and not isinstance(mf, krohf.KROHF):
+        return "restricted"
+    raise NotImplementedError(
+        f"{type(mf).__name__}: for k-point sampled cells the PySCF adapter writes "
+        f"KRHF, KUHF, KRKS and KUKS results only (wavefunction.bloch has no "
+        f"restricted open-shell or generalized spin form)")
+
+
 def _periodic_spin_kind(mf):
-    """'restricted' or 'unrestricted' for a supported Γ-point SCF of a cell."""
+    """'restricted' or 'unrestricted' for a supported periodic SCF of a cell."""
     from pyscf.pbc.scf import ghf, hf, khf, rohf, uhf
     if isinstance(mf, khf.KSCF):
-        raise NotImplementedError(
-            f"{type(mf).__name__}: k-point sampling is not mapped. The adapter writes "
-            f"Γ-point pbc.scf.RHF/UHF and pbc.dft.RKS/UKS objects (k-resolved "
-            f"orbitals belong in wavefunction.bloch, a later tranche)")
+        return _kpoint_spin_kind(mf)
     if isinstance(mf, uhf.UHF):
         return "unrestricted"
     if isinstance(mf, hf.RHF) and not isinstance(mf, (rohf.ROHF, ghf.GHF)):
@@ -402,7 +439,9 @@ def _check_scf(mf):
         raise NotImplementedError("solvent models are not mapped by this tranche")
     _spin_kind(mf)
     _check_molecule(mf.mol)
-    if _is_cell(mf.mol):
+    if _is_kscf(mf):
+        _check_kpoints(mf)
+    elif _is_cell(mf.mol):
         _check_gamma(mf)
 
 
@@ -413,11 +452,148 @@ def _check_gamma(mf):
     if kpt.shape != (3,) or np.abs(kpt).max() > 1e-12:
         raise NotImplementedError(
             f"kpt {kpt.tolist()} is not the Γ point. Orbitals at other k-points "
-            f"belong in wavefunction.bloch, a later tranche")
+            f"belong in wavefunction.bloch: run the k-point class (KRHF, KUHF, "
+            f"KRKS, KUKS) with kpts=[kpt]")
     for name in ("mo_coeff", "mo_energy", "mo_occ"):
         if np.iscomplexobj(np.asarray(getattr(mf, name))):
             raise NotImplementedError(f"complex {name}: the adapter writes real "
                                       f"Γ-point orbitals only")
+
+
+# -- k-points ---------------------------------------------------------------------
+
+def _snap_fraction(x, tol=1e-10, max_denominator=1000):
+    """``x`` as the nearest fraction p/q (q <= 1000) when within ``tol``, else ``x``."""
+    f = Fraction(float(x)).limit_denominator(max_denominator)
+    return float(f) if abs(float(f) - x) <= tol else float(x)
+
+
+def fractional_kpoints(cell, kpts):
+    """PySCF's absolute k-points (bohr⁻¹) in the spec's fractional coordinates.
+
+    ``k = k₁b₁ + k₂b₂ + k₃b₃`` with ``a_i · b_j = 2π δ_ij`` (spec § 5.3.1),
+    so ``k_i = k · a_i / (2π)`` with the lattice rows ``a_i`` of
+    ``cell.lattice_vectors()``. Components within 1e-10 of a fraction with a
+    denominator of at most 1000 are snapped to it, which removes the rounding
+    noise of PySCF's own fractional to absolute conversion. Returns
+    ``[n_k, 3]``.
+    """
+    np = _np()
+    kpts = np.asarray(kpts, dtype=float).reshape(-1, 3)
+    frac = kpts @ np.asarray(cell.lattice_vectors(), dtype=float).T / (2.0 * math.pi)
+    return np.vectorize(_snap_fraction, otypes=[float])(frac)
+
+
+def absolute_kpoints(cell, frac):
+    """Fractional k-points (spec § 5.3.1) as PySCF's absolute k (bohr⁻¹)."""
+    np = _np()
+    frac = np.asarray(frac, dtype=float).reshape(-1, 3)
+    recip = 2.0 * math.pi * np.linalg.inv(np.asarray(cell.lattice_vectors(), dtype=float)).T
+    return frac @ recip
+
+
+def kpoint_mesh(frac, tol=1e-8):
+    """The uniform mesh a set of fractional k-points fills, or ``(None, None)``.
+
+    Returns ``(mesh, shift)`` when the k-points are, modulo reciprocal-lattice
+    vectors, every point ``shift + (j₁/n₁, j₂/n₂, j₃/n₃)`` of an
+    ``n₁ × n₂ × n₃`` mesh exactly once, with each ``shift`` component in
+    ``[0, 1/n_i)``. ``shift`` is ``None`` for a Γ-centred mesh. A set that is
+    not such a mesh (an explicit list, a path) returns ``(None, None)``.
+    """
+    np = _np()
+    frac = np.asarray(frac, dtype=float).reshape(-1, 3)
+    mesh, shift, index = [], [], []
+    for axis in range(3):
+        x = np.mod(frac[:, axis], 1.0)
+        x[np.abs(x - 1.0) < tol] = 0.0
+        values = []
+        for v in np.sort(x):
+            if not values or v - values[-1] > tol:
+                values.append(float(v))
+        n = len(values)
+        s = values[0]
+        if any(abs(v - (s + j / n)) > tol for j, v in enumerate(values)):
+            return None, None
+        mesh.append(n)
+        shift.append(_snap_fraction(s))
+        index.append((np.rint((x - s) * n).astype(int) % n).tolist())
+    if (len(frac) != mesh[0] * mesh[1] * mesh[2]
+            or len(set(zip(*index))) != len(frac)):
+        return None, None
+    return mesh, (shift if any(abs(x) > tol for x in shift) else None)
+
+
+def _per_k(value, n_k, name):
+    """A PySCF per-k list (or array) as a list of ``n_k`` arrays."""
+    np = _np()
+    items = [np.asarray(v) for v in value]
+    if len(items) != n_k:
+        raise ValueError(f"{name} has {len(items)} k-point entries, expected {n_k}")
+    return items
+
+
+def _kpoint_channels(mf, spin, n_k):
+    """``[(mo_coeff, mo_energy, mo_occ)]`` per spin channel, each a per-k list."""
+    names = ("mo_coeff", "mo_energy", "mo_occ")
+    if spin == "restricted":
+        return [tuple(_per_k(getattr(mf, n), n_k, n) for n in names)]
+    return [tuple(_per_k(getattr(mf, n)[ch], n_k, f"{n}[{ch}]") for n in names)
+            for ch in range(2)]
+
+
+def _check_kpoints(mf):
+    """Refuse a k-point sampled SCF the archive cannot represent."""
+    np = _np()
+    cell = mf.mol
+    kpts = np.asarray(mf.kpts, dtype=float)
+    if kpts.ndim != 2 or kpts.shape[1] != 3 or len(kpts) < 1:
+        raise ValueError(f"kpts must be [n_k, 3], got shape {list(kpts.shape)}")
+    n_k = len(kpts)
+    frac = fractional_kpoints(cell, kpts)
+    for axis in range(int(cell.dimension), 3):
+        if np.abs(frac[:, axis]).max() > 1e-10:
+            raise NotImplementedError(
+                f"k-points with a component along the non-periodic axis {axis} "
+                f"are not Bloch states of the structure (spec § 5.3.1)")
+    channels = _kpoint_channels(mf, _spin_kind(mf), n_k)
+    for k in range(n_k):
+        counts = set()
+        for coeff, energy, occ in channels:
+            if coeff[k].ndim != 2 or coeff[k].shape[0] != cell.nao_nr():
+                raise ValueError(f"mo_coeff at k-point {k} is not [n_ao, n_mo]")
+            n_mo = coeff[k].shape[1]
+            counts.add(n_mo)
+            if energy[k].shape != (n_mo,) or occ[k].shape != (n_mo,):
+                raise ValueError(f"mo_energy and mo_occ at k-point {k} do not have "
+                                 f"the {n_mo} orbitals of mo_coeff")
+            if np.iscomplexobj(energy[k]) or np.iscomplexobj(occ[k]):
+                raise ValueError(f"complex orbital energies or occupations at k-point {k}")
+        if len(counts) != 1:
+            raise NotImplementedError(
+                f"the α and β orbital counts differ at k-point {k}; "
+                f"mo_metadata.n_mo_per_k has one count per k-point for both spins")
+    _cell_spin(mf)
+
+
+def _cell_spin(mf):
+    """``2S`` of one cell. For KUHF PySCF reads ``cell.spin`` as the spin of the
+    whole k-point supercell, so the per-cell value is ``(n_α − n_β) / n_k``."""
+    if not _is_kscf(mf):
+        return int(mf.mol.spin)
+    if _spin_kind(mf) == "restricted":
+        return 0
+    n_alpha, n_beta = (int(n) for n in mf.nelec)
+    n_k = len(mf.kpts)
+    if (n_alpha - n_beta) % n_k:
+        raise NotImplementedError(
+            f"n_alpha - n_beta = {n_alpha - n_beta} over {n_k} k-points is not an "
+            f"integer spin per cell, which structure.multiplicity cannot state")
+    return (n_alpha - n_beta) // n_k
+
+
+def _multiplicity(mf):
+    return _cell_spin(mf) + 1
 
 
 # -- prepared data shared by the sections --------------------------------------
@@ -444,6 +620,40 @@ class _Prepared:
         else:
             self.dm_alpha = self.dm_beta = None
             self.dm_total = self.map.density(dm)
+
+
+class _PreparedBloch:
+    """The ``wavefunction.bloch`` arrays of a k-point sampled SCF."""
+
+    def __init__(self, mf):
+        _check_scf(mf)
+        np = _np()
+        self.mf = mf
+        self.mol = cell = mf.mol
+        self.spin = _spin_kind(mf)
+        self.map = amap = ao_map(cell)
+        kpts = np.asarray(mf.kpts, dtype=float)
+        n_k = len(kpts)
+        self.kpoints = fractional_kpoints(cell, kpts)
+        self.mesh, self.shift = kpoint_mesh(self.kpoints)
+        self.weights = [1.0 / n_k] * n_k  # PySCF's KSCF weighs every k-point equally
+        channels = _kpoint_channels(mf, self.spin, n_k)
+        per_k = [channels[0][0][k].shape[1] for k in range(n_k)]
+        n_mo = max(per_k)
+        self.n_mo_per_k = per_k if len(set(per_k)) > 1 else None
+        shape = (n_k, len(channels), n_mo)
+        self.coefficients = np.zeros(shape + (amap.n_ao,), dtype=complex)
+        self.energies = np.zeros(shape)
+        self.occupations = np.zeros(shape)
+        for s, (coeff, energy, occ) in enumerate(channels):
+            for k in range(n_k):
+                c = np.asarray(coeff[k])
+                m = c.shape[1]
+                # The AO map is real: it acts on both parts alike.
+                self.coefficients[k, s, :m] = (amap.coefficients(c.real)
+                                               + 1j * amap.coefficients(c.imag))
+                self.energies[k, s, :m] = np.asarray(energy[k], dtype=float)
+                self.occupations[k, s, :m] = np.asarray(occ[k], dtype=float)
 
 
 def _symmetry_labels(mol, mo_coeff):
@@ -481,6 +691,11 @@ def add_structure(writer, mol, *, section_id: str = "structure",
     and ``pbc`` marks the first ``cell.dimension`` axes periodic, as PySCF
     treats them. The positions are those of the cell, not wrapped.
     """
+    return _add_structure(writer, mol, section_id=section_id, label=label,
+                          multiplicity=None)
+
+
+def _add_structure(writer, mol, *, section_id, label, multiplicity):
     _pyscf()
     from pyscf.data import elements
     _check_molecule(mol)
@@ -497,8 +712,10 @@ def add_structure(writer, mol, *, section_id: str = "structure",
         lattice = Lattice.from_columns_bohr(rows_bohr.T.tolist())
         periodic = {"pbc": [i < int(mol.dimension) for i in range(3)],
                     "lattice_vectors": lattice.rows_angstrom()}
+    if multiplicity is None:
+        multiplicity = int(mol.spin) + 1
     return writer.add_structure(atoms, charge=int(mol.charge),
-                                multiplicity=int(mol.spin) + 1,
+                                multiplicity=multiplicity,
                                 section_id=section_id, label=label, **periodic)
 
 
@@ -637,7 +854,7 @@ def _add_wavefunction(writer, p, *, structure_ref, section_id, density, label,
 
 
 def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
-                     section_id: str = "wf", density: bool = True,
+                     section_id: str = "wf", density: bool | None = None,
                      label: str | None = None, ecp_projectors: bool = True) -> str:
     """Add the orbitals of ``mf`` as a ``wavefunction.gto`` section.
 
@@ -659,10 +876,72 @@ def add_wavefunction(writer, mf, *, structure_ref: str = "structure",
     A Γ-point cell result adds ``k_point`` ``[0, 0, 0]``. Its ``overlap`` is
     the AO overlap without images. The orbitals are orthonormal in the
     lattice-summed overlap instead (see the module notes).
+
+    A k-point sampled result is written by ``add_bloch_wavefunction``. It has
+    no density member, so ``density=True`` is refused for it; ``density``
+    defaults to true otherwise.
     """
+    if _is_kscf(mf):
+        _refuse_kpoint_option("density", density)
+        return add_bloch_wavefunction(writer, mf, structure_ref=structure_ref,
+                                      section_id=section_id, label=label,
+                                      ecp_projectors=ecp_projectors)
     return _add_wavefunction(writer, _Prepared(mf), structure_ref=structure_ref,
-                             section_id=section_id, density=density, label=label,
-                             ecp_projectors=ecp_projectors)
+                             section_id=section_id, density=density is not False,
+                             label=label, ecp_projectors=ecp_projectors)
+
+
+_KPOINT_REFUSALS = {
+    "density": "wavefunction.bloch has no density member",
+    "populations": "the adapter writes no AO populations for a k-point sampled result",
+}
+
+
+def _refuse_kpoint_option(name, value):
+    """Refuse an explicit ``density=True`` or ``populations=True`` for a KSCF."""
+    if value:
+        raise NotImplementedError(f"{name}=True: {_KPOINT_REFUSALS[name]}")
+
+
+def _add_bloch_wavefunction(writer, p, *, structure_ref, section_id, label,
+                            ecp_projectors=True):
+    sid = writer.add_wavefunction_bloch(
+        p.map.shells, p.kpoints.tolist(), p.coefficients, p.energies, p.occupations,
+        weights=p.weights, spin=p.spin, pure=p.map.pure, structure_ref=structure_ref,
+        mesh=p.mesh, shift=p.shift, n_mo_per_k=p.n_mo_per_k,
+        ecp=_ecp_entries(p.mol, ecp_projectors), n_electrons=int(p.mol.nelectron),
+        section_id=section_id, label=label)
+    writer.annotate_section(sid, structure_ref=structure_ref)
+    return sid
+
+
+def add_bloch_wavefunction(writer, mf, *, structure_ref: str = "structure",
+                           section_id: str = "wf", label: str | None = None,
+                           ecp_projectors: bool = True) -> str:
+    """Add the orbitals of a k-point sampled ``mf`` as a ``wavefunction.bloch``.
+
+    ``mf`` is a ``pbc.scf.KRHF``/``KUHF`` or ``pbc.dft.KRKS``/``KUKS``
+    object. The section (spec § 5.3.1, provisional) carries the ``basis``
+    payload of ``add_wavefunction`` (with the ``ecp`` entries and the
+    electron count of one cell), the k-points ``mf.kpts`` in fractional
+    reciprocal-lattice coordinates (``fractional_kpoints``) with PySCF's
+    equal weights ``1/n_k``, and ``mesh`` and ``shift`` when they fill a
+    uniform mesh (``kpoint_mesh``). ``mo_coefficients`` are PySCF's complex
+    ``mo_coeff`` at each k in the QVF AO basis, ``energies`` (hartree) and
+    ``occupations`` (electrons per orbital, unweighted) follow them. PySCF's
+    Bloch functions are those of the spec, ``Σ_T e^{ik·T} χ_μ(r − T)`` per
+    cell, so the orbitals satisfy ``C(k)ᴴ S(k) C(k) = 1`` with
+    ``S(k) = Σ_T e^{ik·T} ⟨χ_μ(r)|χ_ν(r − T)⟩`` built from the archive. When
+    the orbital count differs between k-points (linear dependencies removed)
+    the section carries ``n_mo_per_k`` and zero padding. Returns the section
+    id.
+    """
+    if not _is_kscf(mf):
+        raise TypeError(f"{type(mf).__name__} is not a k-point sampled SCF; "
+                        f"use add_wavefunction")
+    return _add_bloch_wavefunction(writer, _PreparedBloch(mf), structure_ref=structure_ref,
+                                   section_id=section_id, label=label,
+                                   ecp_projectors=ecp_projectors)
 
 
 def _populations(p):
@@ -710,8 +989,11 @@ def add_populations(writer, mf, *, structure_ref: str = "structure",
     order, so the values are PySCF's; for a Cartesian basis the Löwdin
     partition uses the Appendix A.1 AO normalization. An open-shell
     (``UHF``/``ROHF``-type) result adds ``spin_population``, the Mulliken α
-    minus β population. Returns the section id.
+    minus β population. Returns the section id. A k-point sampled result is
+    refused.
     """
+    if _is_kscf(mf):
+        _refuse_kpoint_option("populations", True)
     return _add_populations(writer, _Prepared(mf), structure_ref=structure_ref,
                             section_id=section_id, label=label)
 
@@ -732,6 +1014,11 @@ def add_job_spec(writer, mf, *, structure_ref: str = "structure",
     the FFT ``mesh``, the integral scheme (``fftdf``, ``gdf``, …), the
     pseudopotential and the exact-exchange treatment ``exxdiv`` (``null``
     for none).
+    A k-point sampled result is a ``"periodic"`` job whose ``kpoints`` is the
+    k mesh (``kpoint_mesh``), with ``options.kpoint_shift`` for a shifted one.
+    k-points that are not a uniform mesh omit ``kpoints`` and list their
+    fractional coordinates in ``options.kpoints_fractional``. Its
+    ``multiplicity`` is that of one cell.
     Returns the section id.
     """
     _check_scf(mf)
@@ -744,7 +1031,7 @@ def add_job_spec(writer, mf, *, structure_ref: str = "structure",
     kwargs: dict[str, Any] = {
         "job_type": "molecular", "method": method_name(mf),
         "functional": _functional(mf) if _is_ks(mf) else None,
-        "charge": int(mol.charge), "multiplicity": int(mol.spin) + 1,
+        "charge": int(mol.charge), "multiplicity": _multiplicity(mf),
         "tasks": ["single_point"], "structure_ref": structure_ref, "scf": scf_block,
         "section_id": section_id, "label": label}
     name = basis_name(mol)
@@ -755,7 +1042,18 @@ def add_job_spec(writer, mf, *, structure_ref: str = "structure",
         kwargs["dispersion"] = disp.strip().lower()
     if getattr(mf, "with_x2c", None) is not None:
         kwargs["relativistic"] = "x2c"
-    if _is_cell(mol):
+    if _is_kscf(mf):
+        options = _periodic_options(mf)
+        frac = fractional_kpoints(mol, mf.kpts)
+        mesh, shift = kpoint_mesh(frac)
+        if mesh is None:
+            options["kpoints_fractional"] = frac.tolist()
+        else:
+            kwargs["kpoints"] = mesh
+            if shift is not None:
+                options["kpoint_shift"] = shift
+        kwargs.update(job_type="periodic", options=options)
+    elif _is_cell(mol):
         kwargs.update(job_type="periodic", kpoints=[1, 1, 1], options=_periodic_options(mf))
     return writer.add_job_spec(**kwargs)
 
@@ -801,7 +1099,9 @@ def set_scf_provenance(writer, mf) -> None:
     dispersion correction, when PySCF reports one) as components. For a
     cell, ``nuclear_repulsion`` is PySCF's Ewald energy of the point nuclei
     (effective charges ``Z`` minus the pseudopotential core) per cell, and
-    ``total`` includes any exchange-divergence (Madelung) correction.
+    ``total`` includes any exchange-divergence (Madelung) correction. A
+    k-point sampled result states the energies, the electron count and the
+    multiplicity of one cell.
     """
     _check_scf(mf)
     mol = mf.mol
@@ -809,7 +1109,7 @@ def set_scf_provenance(writer, mf) -> None:
     e_tot = float(mf.e_tot)
     fields: dict[str, Any] = {
         "method": method, "charge": int(mol.charge),
-        "multiplicity": int(mol.spin) + 1, "n_electrons": int(mol.nelectron),
+        "multiplicity": _multiplicity(mf), "n_electrons": int(mol.nelectron),
         "scf_converged": bool(mf.converged), "scf_energy_eh": e_tot,
         "run_status": "converged" if mf.converged else "failed",
         "software": _software(mf)}
@@ -838,8 +1138,9 @@ def set_scf_provenance(writer, mf) -> None:
 
 def add_scf(writer, mf, *, structure_id: str = "structure", wavefunction_id: str = "wf",
             properties_id: str = "atom_properties", job_id: str = "job_spec",
-            populations: bool = True, job_spec: bool = True, density: bool = True,
-            provenance: bool = True, ecp_projectors: bool = True) -> dict[str, str]:
+            populations: bool | None = None, job_spec: bool = True,
+            density: bool | None = None, provenance: bool = True,
+            ecp_projectors: bool = True) -> dict[str, str]:
     """Add everything the adapter writes for ``mf`` to an open QVF writer.
 
     ``writer`` is a ``qvf.Writer`` (or the compatibility ``QvfWriter``).
@@ -848,7 +1149,30 @@ def add_scf(writer, mf, *, structure_id: str = "structure", wavefunction_id: str
     blocks (``provenance``). ``ecp_projectors`` is that of
     ``add_wavefunction``. Returns the ids of the sections added, keyed
     ``structure``, ``wavefunction``, ``atom_properties`` and ``job_spec``.
+
+    ``populations`` and ``density`` default to true. A k-point sampled
+    result (``KRHF``, ``KUHF``, ``KRKS``, ``KUKS``) writes the structure with
+    the multiplicity of one cell, a ``wavefunction.bloch``
+    (``add_bloch_wavefunction``), the job and the provenance, and refuses
+    ``populations=True`` and ``density=True``.
     """
+    if _is_kscf(mf):
+        _refuse_kpoint_option("density", density)
+        _refuse_kpoint_option("populations", populations)
+        pb = _PreparedBloch(mf)
+        ids = {"structure": _add_structure(writer, pb.mol, section_id=structure_id,
+                                           label=None, multiplicity=_multiplicity(mf))}
+        ids["wavefunction"] = _add_bloch_wavefunction(
+            writer, pb, structure_ref=ids["structure"], section_id=wavefunction_id,
+            label=None, ecp_projectors=ecp_projectors)
+        if job_spec:
+            ids["job_spec"] = add_job_spec(writer, mf, structure_ref=ids["structure"],
+                                           section_id=job_id)
+        if provenance:
+            set_scf_provenance(writer, mf)
+        return ids
+    populations = populations is not False
+    density = density is not False
     p = _Prepared(mf)
     ids = {"structure": add_structure(writer, p.mol, section_id=structure_id)}
     ids["wavefunction"] = _add_wavefunction(
@@ -885,6 +1209,9 @@ def write_scf(mf, target, *, calculation: str | None = None, **options) -> dict[
     pyscf = _pyscf()
     from ..writer import Writer
     _check_scf(mf)
+    if _is_kscf(mf):  # before the target is opened
+        _refuse_kpoint_option("density", options.get("density"))
+        _refuse_kpoint_option("populations", options.get("populations"))
     if calculation is None:
         parts = [method_name(mf), _functional(mf) if _is_ks(mf) else None,
                  basis_name(mf.mol)]
@@ -895,7 +1222,7 @@ def write_scf(mf, target, *, calculation: str | None = None, **options) -> dict[
     return ids
 
 
-# -- molecular closed-shell excited states ------------------------------------
+# -- molecular excited states (RHF/RKS and UHF/UKS references) -----------------
 
 def _td_real(value, name, shape=None):
     np = _np()
@@ -958,16 +1285,14 @@ class _PreparedTD:
         self.singlet = bool(td.singlet)
         # CasidaTDDFT inherits both TDHF and TDA; it is a full-response method.
         self.tda = isinstance(td, rhf.TDA) and not isinstance(td, rhf.TDHF)
-        eligible_ntos = self.singlet
         if ntos is not None and not isinstance(ntos, bool):
             raise TypeError("ntos must be True, False or None")
-        if ntos is True and not eligible_ntos:
-            raise NotImplementedError("paired NTO export currently supports singlet RHF/RKS response only")
-        self.with_ntos = eligible_ntos if ntos is None else ntos
+        self.with_ntos = True if ntos is None else ntos
         self.method = "tddft" if _is_ks(mf) else ("cis" if self.tda else "tdhf")
         self.mf = mf
         self.states = []
         self.ntos = []
+        self.tdms = []
         shape = (len(occupied), len(virtual))
         for k, (energy, xy) in enumerate(zip(energies, td.xy), 1):
             if not isinstance(xy, (tuple, list)) or len(xy) != 2:
@@ -995,6 +1320,14 @@ class _PreparedTD:
                     for u, i in enumerate(occupied) for v, a in enumerate(virtual)],
             }
             self.states.append(state)
+            # Spin-summed AO transition density matrix: 2(X+Y) in the MO
+            # basis for a singlet (PySCF's transition dipole is 2 sum (X+Y) mu).
+            # A triplet's spin-summed transition density vanishes.
+            if self.singlet:
+                d = coeff[:, occupied] @ (2.0 * (x + y)) @ coeff[:, virtual].T
+                self.tdms.append(0.5 * (d + d.T))
+            else:
+                self.tdms.append(None)
             if self.with_ntos:
                 # Martin, JCP 118, 4775 (2003), eqs. 4-10; Herbert (2023),
                 # doi:10.1016/B978-0-323-91738-4.00005-1, eq. 3.51.
@@ -1004,9 +1337,19 @@ class _PreparedTD:
                 # Keep the accepted TDA convention; neither path mutates X/Y.
                 transition = (x / math.sqrt(norm) if self.tda
                               else math.sqrt(2) * (x + y))
+                if not self.singlet:
+                    # The M_S = 0 triplet has spin-orbital amplitudes X(+Y)
+                    # for alpha and -X(-Y) for beta (PySCF's UHF response of
+                    # the same reference). Each spin channel carries T/sqrt(2);
+                    # _add_td writes the beta particles with the opposite sign.
+                    transition = transition / math.sqrt(2)
                 u, singular, vh = np.linalg.svd(transition, full_matrices=False)
-                self.ntos.append((coeff[:, occupied] @ u, coeff[:, virtual] @ vh.T,
-                                  (singular * singular).tolist()))
+                hole, particle = coeff[:, occupied] @ u, coeff[:, virtual] @ vh.T
+                weights = (singular * singular).tolist()
+                if self.singlet:
+                    self.ntos.append((hole, particle, weights))
+                else:
+                    self.ntos.append(((hole, hole), (particle, -particle), (weights, weights)))
         dipoles = _td_real(td.transition_dipole(), "transition dipoles", (n, 3))
         strengths = _td_real(td.oscillator_strength(gauge="length"), "oscillator strengths", (n,))
         if (strengths < 0).any():
@@ -1017,17 +1360,216 @@ class _PreparedTD:
         self.reference = _Prepared(mf)
 
 
-def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
+class _PreparedUTD:
+    """Check an unrestricted (UHF/UKS) response result before writing."""
+
+    def __init__(self, td, ntos):
+        _pyscf()
+        from pyscf.tdscf import uhf, uks
+        from ..units import HARTREE_IN_EV
+        np = _np()
+        if not isinstance(td, (uhf.TDA, uhf.TDHF)) or isinstance(td, (uks.dRPA, uks.dTDA)):
+            raise NotImplementedError("the TD adapter supports molecular UHF/UKS TDA and TDHF/TDDFT")
+        if getattr(td, "with_solvent", None) is not None:
+            raise NotImplementedError("solvent response is not mapped by the TD adapter")
+        mf = td._scf
+        _check_scf(mf)
+        if _spin_kind(mf) != "unrestricted":
+            raise NotImplementedError("unrestricted response needs a UHF/UKS reference; "
+                                      "restricted-open (ROHF/ROKS) response is not mapped")
+        if not mf.converged:
+            raise ValueError("the SCF reference must be converged")
+        if td.mol is not mf.mol:
+            raise ValueError("TD and SCF results must refer to the same molecule")
+        nmo = len(np.asarray(mf.mo_energy[0]))
+        occ = _td_real(mf.mo_occ, "MO occupations", (2, nmo))
+        if not np.isin(occ, [0, 1]).all():
+            raise NotImplementedError("fractional occupations are not supported")
+        coeff = _td_real(mf.mo_coeff, "MO coefficients", (2, mf.mol.nao_nr(), nmo))
+        _td_real(mf.mo_energy, "MO energies", (2, nmo))
+        reference_energy = float(_td_real(mf.e_tot, "SCF energy", ()))
+        masks = [np.asarray(m) for m in td.get_frozen_mask()]
+        if len(masks) != 2 or any(m.dtype.kind != "b" or m.shape != (nmo,) for m in masks):
+            raise ValueError("the frozen-orbital masks must match the reference MO rows")
+        if masks[0].sum() != masks[1].sum():
+            # PySCF sizes both spin blocks from the alpha mask.
+            raise NotImplementedError("different alpha and beta frozen-orbital counts are not supported")
+        spaces = [(np.flatnonzero(m & (o == 1)), np.flatnonzero(m & (o == 0)))
+                  for m, o in zip(masks, occ)]
+        if not any(len(i) and len(a) for i, a in spaces):
+            raise ValueError("the TD result needs active occupied and virtual orbitals")
+        energies = _td_real(td.e, "excitation energies")
+        if energies.ndim != 1 or not len(energies) or (energies <= 0).any():
+            raise ValueError("the TD result needs a non-empty array of positive excitation energies")
+        n = len(energies)
+        if not isinstance(td.xy, (list, tuple)) or len(td.xy) != n:
+            raise ValueError("X/Y amplitudes must have one pair per excited state")
+        converged = np.asarray(td.converged)
+        if converged.dtype.kind != "b" or converged.shape != (n,) or not converged.all():
+            raise ValueError("every exported TD root must be converged")
+        # CasidaTDDFT inherits both TDHF and TDA; it is a full-response method.
+        self.tda = isinstance(td, uhf.TDA) and not isinstance(td, uhf.TDHF)
+        if ntos is not None and not isinstance(ntos, bool):
+            raise TypeError("ntos must be True, False or None")
+        self.with_ntos = True if ntos is None else ntos
+        self.method = "tddft" if _is_ks(mf) else ("cis" if self.tda else "tdhf")
+        self.mf = mf
+        self.states, self.ntos, self.tdms = [], [], []
+        shapes = [(len(i), len(a)) for i, a in spaces]
+        for k, (energy, xy) in enumerate(zip(energies, td.xy), 1):
+            if (not isinstance(xy, (tuple, list)) or len(xy) != 2
+                    or any(not isinstance(v, (tuple, list)) or len(v) != 2 for v in xy)):
+                raise ValueError(f"state {k}: expected ((Xa, Xb), (Ya, Yb)) amplitudes")
+            xs, ys = [], []
+            for c, label in enumerate(("alpha", "beta")):
+                x = _td_real(xy[0][c], f"state {k} {label} X amplitudes", shapes[c])
+                y = _td_real(xy[1][c], f"state {k} {label} Y amplitudes")
+                if y.shape == () and y == 0:
+                    y = np.zeros(shapes[c])
+                elif y.shape != shapes[c]:
+                    raise ValueError(f"state {k}: {label} Y amplitudes must match X or be scalar zero")
+                if self.tda and np.any(y != 0):
+                    raise ValueError(f"state {k}: TDA must have zero Y amplitudes")
+                xs.append(x)
+                ys.append(y)
+            weights = [x * x - y * y for x, y in zip(xs, ys)]
+            norm = float(sum(w.sum() for w in weights))
+            if not math.isclose(norm, 1.0, rel_tol=1e-6, abs_tol=1e-8):
+                raise ValueError(f"state {k}: X/Y amplitudes must retain PySCF normalization "
+                                 "sum(X^2-Y^2)=1 over both spins; do not renormalize them")
+            # Unrestricted states are not spin eigenfunctions: no multiplicity.
+            state = {
+                "index": k,
+                "excitation_energy": {"value": float(energy * HARTREE_IN_EV), "units": "ev"},
+                "total_energy": {"value": reference_energy + float(energy), "units": "hartree"},
+                "contributions": [
+                    {"from_mo": int(i), "to_mo": int(a), "spin": label,
+                     "weight": float(w[u, v] / norm)}
+                    for label, (occupied, virtual), w in zip(("alpha", "beta"), spaces, weights)
+                    for u, i in enumerate(occupied) for v, a in enumerate(virtual)],
+            }
+            self.states.append(state)
+            # Spin-summed AO transition density matrix: sum over s of X_s + Y_s.
+            d = sum(coeff[c][:, i] @ (xs[c] + ys[c]) @ coeff[c][:, a].T
+                    for c, (i, a) in enumerate(spaces))
+            self.tdms.append(0.5 * (d + d.T))
+            if self.with_ntos:
+                # Per spin channel, the spin-orbital transition: X / sqrt(norm)
+                # for TDA (both spins sum to one) and X + Y unscaled for full
+                # response, the same convention as the restricted triplet channels.
+                holes, particles, pair_weights = [], [], []
+                for c, (occupied, virtual) in enumerate(spaces):
+                    t = xs[c] / math.sqrt(norm) if self.tda else xs[c] + ys[c]
+                    if min(t.shape) == 0:
+                        holes.append(np.zeros((coeff.shape[1], 0)))
+                        particles.append(np.zeros((coeff.shape[1], 0)))
+                        pair_weights.append([])
+                        continue
+                    u, singular, vh = np.linalg.svd(t, full_matrices=False)
+                    holes.append(coeff[c][:, occupied] @ u)
+                    particles.append(coeff[c][:, virtual] @ vh.T)
+                    pair_weights.append((singular * singular).tolist())
+                self.ntos.append((tuple(holes), tuple(particles), tuple(pair_weights)))
+        dipoles = _td_real(td.transition_dipole(), "transition dipoles", (n, 3))
+        strengths = _td_real(td.oscillator_strength(gauge="length"), "oscillator strengths", (n,))
+        if (strengths < 0).any():
+            raise ValueError("oscillator strengths must be nonnegative")
+        for state, dipole, strength in zip(self.states, dipoles, strengths):
+            state["transition_dipole"] = dipole.tolist()
+            state["oscillator_strength"] = float(strength)
+        self.reference = _Prepared(mf)
+
+
+def _prepare_td(td, ntos):
+    """Check a restricted or unrestricted response result before writing."""
+    _pyscf()
+    from pyscf.tdscf import uhf
+    if _is_cell(getattr(getattr(td, "_scf", None), "mol", None)):
+        raise NotImplementedError("periodic response is not mapped by the TD adapter")
+    if isinstance(td, uhf.TDBase):
+        return _PreparedUTD(td, ntos)
+    return _PreparedTD(td, ntos)
+
+
+_DENSITY_OPTIONS = ("grid", "spacing", "shape", "margin", "dtype", "chunk", "prefix")
+
+
+def _density_options(p, transition_densities):
+    """Normalize ``transition_densities`` and refuse it before anything is written."""
+    if transition_densities is None or transition_densities is False:
+        return None
+    if transition_densities is True:
+        options = {}
+    elif isinstance(transition_densities, dict):
+        unknown = set(transition_densities) - set(_DENSITY_OPTIONS)
+        if unknown:
+            raise TypeError(f"unknown transition_densities options: {sorted(unknown)}")
+        options = dict(transition_densities)
+    else:
+        raise TypeError("transition_densities must be True, False or a dict of grid options")
+    if any(t is None for t in p.tdms):
+        raise ValueError("the spin-summed transition density of a triplet M_S = 0 state "
+                         "vanishes; write its NTOs instead")
+    options.setdefault("spacing", DEFAULT_GRID_SPACING_BOHR)
+    options.setdefault("margin", DEFAULT_GRID_MARGIN_BOHR)
+    options.setdefault("dtype", "float32")
+    options.setdefault("prefix", "tdens")
+    origin, vectors, dims = _grid_spec(p.mf.mol, options.get("grid"), options["spacing"],
+                                       options.get("shape"), options["margin"])
+    options["spec"] = (origin, vectors, dims)
+    return options
+
+
+def _add_transition_densities(writer, p, options, *, states_id, ids):
+    from pyscf.dft import numint
+    mol = p.mf.mol
+    origin, vectors, dims = options["spec"]
+
+    def fields(ao):  # PySCF AOs with PySCF-basis matrices
+
+        return [numint.eval_rho(mol, ao, d, xctype="LDA", hermi=1) for d in p.tdms]
+
+    values = _on_grid(mol, origin, vectors, dims, fields, len(p.tdms), options.get("chunk"))
+    out = []
+    for state, slab in zip(p.states, values):
+        sid = writer.add_volume(
+            "volume.transition_density", slab, origin.tolist(), vectors.tolist(),
+            label=f"Transition density, state {state['index']}", dtype=options["dtype"],
+            section_id=f"{options['prefix']}_{state['index']}",
+            structure_ref=ids["structure"], excited_states_ref=states_id,
+            state_index=state["index"])
+        writer.annotate_section(sid, structure_ref=ids["structure"], group=ids["wavefunction"])
+        state["density_ref"] = sid
+        out.append(sid)
+    return out
+
+
+def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options,
+            densities=None):
     ids = add_scf(writer, p.mf, **scf_options)
     ref = p.reference
+    ids["transition_densities"] = (
+        _add_transition_densities(writer, p, densities, states_id=states_id, ids=ids)
+        if densities is not None else [])
     ecp = _ecp_entries(ref.mol, scf_options.get("ecp_projectors", True))
     holes, particles = [], []
     for state, (hole, particle, weights) in zip(p.states, p.ntos):
         for role, coefficients, output in (("hole", hole, holes),
                                             ("particle", particle, particles)):
+            if isinstance(coefficients, tuple):  # alpha and beta spin-orbital channels
+                (ca, cb), (wa, wb) = coefficients, weights
+                orbitals = dict(
+                    mo_coefficients_alpha=ref.map.coefficients(ca),
+                    mo_coefficients_beta=ref.map.coefficients(cb),
+                    occupations_alpha=wa, occupations_beta=wb,
+                    energies_alpha=[0.0] * len(wa), energies_beta=[0.0] * len(wb),
+                    spin="unrestricted")
+            else:
+                orbitals = dict(mo_coefficients=ref.map.coefficients(coefficients),
+                                occupations=weights, energies=[0.0] * len(weights),
+                                spin="restricted")
             sid = writer.add_wavefunction_gto(
-                ref.map.shells, mo_coefficients=ref.map.coefficients(coefficients),
-                occupations=weights, energies=[0.0] * len(weights), spin="restricted",
+                ref.map.shells, **orbitals,
                 pure=ref.map.pure, structure_ref=ids["structure"],
                 orbital_kind="nto", state_ref=states_id, state_index=state["index"],
                 nto_role=role, overlap=ref.overlap, ecp=ecp,
@@ -1052,8 +1594,9 @@ def _add_td(writer, p, *, states_id, spectrum_id, nto_prefix, scf_options):
 
 
 def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = "uvvis",
-           nto_prefix: str = "nto", ntos: bool | None = None, **scf_options) -> dict[str, Any]:
-    """Add a closed-shell molecular PySCF TDA/TDHF/TDDFT result.
+           nto_prefix: str = "nto", ntos: bool | None = None,
+           transition_densities: bool | dict = False, **scf_options) -> dict[str, Any]:
+    """Add a molecular PySCF TDA/TDHF/TDDFT result of an RHF/RKS or UHF/UKS reference.
 
     Adds the SCF reference through ``add_scf`` (``scf_options`` are its
     arguments), an ``excited_states`` table, and length-gauge UV-visible
@@ -1062,12 +1605,11 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     to rows of the full reference wavefunction. Contributions are the
     normalized X²−Y² weights, including negative terms when present.
 
-    ``ntos=None`` writes paired NTOs for singlet TDA and full response;
-    ``False`` omits them, and ``True`` requires a supported NTO result.
-    Triplet NTOs, unrestricted/open-shell references, complex amplitudes,
-    solvent and direct-RPA variants are not mapped. Source arrays are not
-    changed and no SCF or response iterations are run. NTO energies are
-    zero and their occupations are squared singular-value transition weights.
+    ``ntos=None`` and ``True`` write paired NTOs for every supported result;
+    ``False`` omits them. Restricted-open (ROHF/ROKS) references, spin-flip,
+    complex amplitudes, solvent and direct-RPA variants are not mapped. Source arrays are not changed and no SCF or response iterations
+    are run. NTO energies are zero and their occupations are squared
+    singular-value transition weights.
 
     TDA uses the normalized X matrix, with weights summing to one. Full
     response uses ``sqrt(2) * (X + Y)`` in PySCF's restricted convention,
@@ -1077,6 +1619,24 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     recovers the source length-gauge transition dipole. They do not encode
     the separate X/Y blocks needed for anti-Hermitian operators.
 
+    Triplet states are the ``M_S = 0`` component. Their charge transition
+    vanishes, so their NTOs use the unrestricted NTO layout of spec § 5.3:
+    each spin channel holds the spin-orbital transition ``T / sqrt(2)``,
+    with ``T`` the singlet-path matrix above, and the beta particles have
+    the opposite sign (alpha ``+``, beta ``-``). The two channels have
+    identical weights and orbitals up to that sign, and their sum over both
+    spins equals the singlet-path sum. The alpha minus beta pair contraction
+    is the spin (``S_z``) transition. The reference stays restricted.
+
+    For a UHF/UKS reference, contributions carry ``spin`` and index the
+    alpha or beta coefficient rows, normalized over both spins. States have
+    no ``multiplicity``: unrestricted response states are not spin
+    eigenfunctions. Each NTO spin channel holds that spin's transition,
+    ``X_s`` (TDA, with PySCF's unit two-spin norm) or ``X_s + Y_s`` (full
+    response, unscaled), in the unrestricted NTO layout of spec § 5.3. An
+    empty occupied or virtual space gives an empty channel. The alpha plus
+    beta pair contraction reproduces PySCF's transition dipole.
+
     Root provenance/energies and the optional ``job.spec`` describe the
     **SCF reference**, not the excitation calculation. The excitation
     method and TDA flag are in the states' metadata; state totals are the
@@ -1084,25 +1644,43 @@ def add_td(writer, td, *, states_id: str = "excited_states", spectrum_id: str = 
     not a complete request for repeating TD response. Pass ``job_spec=False``
     to omit the reference request.
 
-    Returns the ``add_scf`` IDs plus ``excited_states``, ``spectrum`` and
-    ordered lists ``nto_holes`` / ``nto_particles`` (empty when omitted).
+    ``transition_densities=True`` (or a dict of grid options: ``grid``,
+    ``spacing``, ``shape``, ``margin``, ``dtype``, ``chunk`` as for
+    ``add_density_grid``, and the section-id ``prefix``, default
+    ``"tdens"``) also writes each state's spin-summed transition density
+    ρ₀ₙ(r) as a ``volume.transition_density`` on one shared grid, in
+    e/bohr³, linked by ``excited_states_ref``/``state_index`` and named by
+    the state's ``density_ref``. Its AO matrix is ``2 (X + Y)`` in the MO
+    basis for a restricted singlet and ``Σ_s (X_s + Y_s)`` for UHF/UKS, in
+    PySCF's normalization, so its first moment is PySCF's transition
+    dipole. A triplet's spin-summed transition density vanishes, so the
+    option is refused for triplet results. The default is ``False``,
+    because grids are large.
+
+    Returns the ``add_scf`` IDs plus ``excited_states``, ``spectrum``, the
+    ordered lists ``nto_holes`` / ``nto_particles`` (empty when omitted) and
+    ``transition_densities`` (empty unless requested).
     """
-    return _add_td(writer, _PreparedTD(td, ntos), states_id=states_id,
-                   spectrum_id=spectrum_id, nto_prefix=nto_prefix, scf_options=scf_options)
+    p = _prepare_td(td, ntos)
+    densities = _density_options(p, transition_densities)
+    return _add_td(writer, p, states_id=states_id, spectrum_id=spectrum_id,
+                   nto_prefix=nto_prefix, scf_options=scf_options, densities=densities)
 
 
 def write_td(td, target, *, calculation: str | None = None,
              states_id: str = "excited_states", spectrum_id: str = "uvvis",
              nto_prefix: str = "nto", ntos: bool | None = None,
+             transition_densities: bool | dict = False,
              **scf_options) -> dict[str, Any]:
     """Write a complete archive for a PySCF TD result, with ``add_td`` options.
 
-    Source-result checks finish before the target is opened. The source
-    program/version is PySCF's; the default calculation label includes the
-    excitation method, reference method, functional and basis. The target
-    is a path or binary sink, as for ``write_scf``.
+    Source-result and option checks finish before the target is opened. The
+    source program/version is PySCF's; the default calculation label
+    includes the excitation method, reference method, functional and basis.
+    The target is a path or binary sink, as for ``write_scf``.
     """
-    p = _PreparedTD(td, ntos)
+    p = _prepare_td(td, ntos)
+    densities = _density_options(p, transition_densities)
     from ..writer import Writer
     if calculation is None:
         method = p.method + ("-tda" if p.tda and p.method != "cis" else "")
@@ -1112,7 +1690,7 @@ def write_td(td, target, *, calculation: str | None = None,
     with Writer(target, program="PySCF", version=str(_pyscf().__version__),
                 calculation=calculation) as writer:
         return _add_td(writer, p, states_id=states_id, spectrum_id=spectrum_id,
-                       nto_prefix=nto_prefix, scf_options=scf_options)
+                       nto_prefix=nto_prefix, scf_options=scf_options, densities=densities)
 
 
 # -- densities and orbitals on a regular grid ----------------------------------

@@ -3603,9 +3603,9 @@ The JSON payload named by a `properties.dielectric` section's `properties` membe
 | `static` |  | array[3] of array[3] of number | The static dielectric tensor, dimensionless: the sum of electronic and ionic, to which it must agree within 1e-6 when all three are present. |
 | `born_charges` |  | array[1..] of array[3] of array[3] of number | The Born effective charge tensor of each atom, in elementary charges, one 3 x 3 matrix per atom in atom order. Entry (i, j) is the polarization along i per unit displacement of the atom along j. |
 | `piezoelectric` |  | array[3] of array[6] of number | The piezoelectric stress tensor e_ia in C/m^2: the row is the polarization component x, y, z, the column the Voigt strain index in the order xx, yy, zz, yz, xz, xy. |
-| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): the three dielectric tensors are dimensionless and `born_charges` is e. v1 fixes them, so a declaration only restates them. The piezoelectric tensor, in C/m^2, has no unit name and is fixed by QVF spec § 5.13 (Property kinds). |
+| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): the three dielectric tensors are dimensionless, `born_charges` is e and `piezoelectric` is c_per_m2. v1 fixes them, so a declaration only restates them; see QVF spec § 5.13 (Property kinds). |
 
-Fixed units: `electronic` = `dimensionless`, `ionic` = `dimensionless`, `static` = `dimensionless`, `born_charges` = `e`.
+Fixed units: `electronic` = `dimensionless`, `ionic` = `dimensionless`, `static` = `dimensionless`, `born_charges` = `e`, `piezoelectric` = `c_per_m2`.
 
 <a id="def-dosmetapayload"></a>
 
@@ -3646,9 +3646,9 @@ The JSON payload named by a `properties.elastic` section's `properties` member: 
 | `youngs_modulus_gpa` |  | number | Young's modulus in GPa, by the scheme `average` names. |
 | `poisson_ratio` |  | number | Poisson's ratio, dimensionless, by the scheme `average` names. |
 | `average` |  | one of `"voigt"` \| `"reuss"` \| `"hill"` | The averaging scheme of the four isotropic moduli: 'voigt' (uniform strain), 'reuss' (uniform stress) or 'hill' (their arithmetic mean). Absent means the scheme is not stated. |
-| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `stiffness` and the three moduli are gpa, `poisson_ratio` is dimensionless. v1 fixes them, so a declaration only restates them. The compliance, in 1/GPa, has no unit name and is fixed by QVF spec § 5.13 (Property kinds). |
+| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `stiffness` and the three moduli are gpa, `poisson_ratio` is dimensionless and `compliance` is gpa-1. v1 fixes them, so a declaration only restates them; see QVF spec § 5.13 (Property kinds). |
 
-Fixed units: `stiffness` = `gpa`, `bulk_modulus_gpa` = `gpa`, `shear_modulus_gpa` = `gpa`, `youngs_modulus_gpa` = `gpa`, `poisson_ratio` = `dimensionless`.
+Fixed units: `stiffness` = `gpa`, `compliance` = `gpa-1`, `bulk_modulus_gpa` = `gpa`, `shear_modulus_gpa` = `gpa`, `youngs_modulus_gpa` = `gpa`, `poisson_ratio` = `dimensionless`.
 
 <a id="def-electricpropertiespayload"></a>
 
@@ -3666,9 +3666,9 @@ The JSON payload named by a `properties.electric` section's `properties` member:
 | `octupole` |  | object | The electric octupole moment, in debye-angstrom^2, in the Cartesian axes of the structure; see QVF spec § 5.13 (Property kinds). |
 | `polarizability` |  | object | The electric dipole polarizability at one frequency, in atomic units; see QVF spec § 5.13 (Property kinds). |
 | `hyperpolarizability` |  | object | The first electric dipole hyperpolarizability at one pair of frequencies, in atomic units; see QVF spec § 5.13 (Property kinds). |
-| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `dipole` is debye and `origin`, when it is a vector, bohr. v1 fixes both, so a declaration only restates them. The other fields have units that the vocabulary does not name; they are fixed by QVF spec § 5.13 (Property kinds). |
+| `units` |  | object | Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `dipole` is debye, `origin`, when it is a vector, bohr, `quadrupole` debye_angstrom, `octupole` debye_angstrom2, `polarizability` e2_bohr2_per_hartree and `hyperpolarizability` e3_bohr3_per_hartree2. v1 fixes them all, so a declaration only restates them; see QVF spec § 5.13 (Property kinds). |
 
-Fixed units: `dipole` = `debye`, `origin` = `bohr`.
+Fixed units: `dipole` = `debye`, `origin` = `bohr`, `quadrupole` = `debye_angstrom`, `octupole` = `debye_angstrom2`, `polarizability` = `e2_bohr2_per_hartree`, `hyperpolarizability` = `e3_bohr3_per_hartree2`.
 
 <a id="def-eosfitpayload"></a>
 
@@ -3741,9 +3741,9 @@ The JSON payload named by a `fermi_surface` section's `mesh` member: the k-point
 | `band_indices` |  | array of integer | 0-based index, in the producer's full band list, of each band along the last axis of `energies`. |
 | `lattice_vectors` |  | array[3] of array[3] of number | Real-space cell as three row vectors in Å (the structure convention); the reciprocal lattice follows from it. |
 | `reciprocal_lattice` |  | array[3] of array[3] of number | Reciprocal lattice vectors b1, b2, b3 as rows, in 1/Å, including the 2π factor (a_i · b_j = 2π δ_ij). |
-| `units` |  | object | Optional map from a field name of this payload, or the role of a member of the section, to the unit name of its values. The units are fixed by QVF spec § 4.3 (Units and numeric conventions); a declaration restates them and does not change them, so `fermi_energy_ev` and `energies` are `ev` and `lattice_vectors` is `angstrom`. |
+| `units` |  | object | Optional map from a field name of this payload, or the role of a member of the section, to the unit name of its values. The units are fixed by QVF spec § 4.3 (Units and numeric conventions); a declaration restates them and does not change them, so `fermi_energy_ev` and `energies` are `ev`, `lattice_vectors` is `angstrom` and `reciprocal_lattice` is `angstrom-1`. |
 
-Fixed units: `fermi_energy_ev` = `ev`, `energies` = `ev`, `lattice_vectors` = `angstrom`.
+Fixed units: `fermi_energy_ev` = `ev`, `energies` = `ev`, `lattice_vectors` = `angstrom`, `reciprocal_lattice` = `angstrom-1`.
 
 <a id="def-forcesmetapayload"></a>
 
@@ -3971,7 +3971,7 @@ The JSON payload named by a `reaction.path` section's `metadata` member (convent
 | `volume_label` |  | string | Display label of the per-frame volumes, e.g. "density". |
 | `volume_isovalue` |  | number | Suggested isovalue for the per-frame volumes, in the unit of their data. |
 
-Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`, `lattice` = `bohr`.
+Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`, `velocities` = `angstrom_per_fs`, `gradient` = `hartree_per_bohr`, `lattice` = `bohr`.
 
 <a id="def-reactionschemepayload"></a>
 
@@ -4054,8 +4054,8 @@ The JSON payload named by the `spectrum` member of a one-dimensional spectrum se
 | `frequencies` | yes | array of number | The x value of every point or line. Unit: the kind's unit from QVF spec § 4.3 (Units and numeric conventions), or `x_units` when present. |
 | `intensities` | yes | array of number | The y value of each entry of `frequencies`, in the same order. Unit: the kind's unit from QVF spec § 4.3 (Units and numeric conventions), or `y_units` when present. |
 | `x` |  | array of number | Optional alias of `frequencies` under a quantity-neutral name: the same values in the same order. `frequencies` stays REQUIRED; a consumer may read either. |
-| `x_units` |  | one of 25 values | Unit name of `frequencies` and `x`. Absent means the kind's unit from QVF spec § 4.3 (Units and numeric conventions). |
-| `y_units` |  | one of 25 values | Unit name of `intensities`. Absent means the kind's unit from QVF spec § 4.3 (Units and numeric conventions). |
+| `x_units` |  | one of 45 values | Unit name of `frequencies` and `x`. Absent means the kind's unit from QVF spec § 4.3 (Units and numeric conventions). |
+| `y_units` |  | one of 45 values | Unit name of `intensities`. Absent means the kind's unit from QVF spec § 4.3 (Units and numeric conventions). |
 | `peaks` |  | array of [`SpectrumPeak`](#def-spectrumpeak) | Annotated peaks, in the units of `frequencies` and `intensities`. |
 | `broadening` |  | object | The line shape the producer applied to turn discrete lines into an envelope, or recommends a consumer to apply. |
 | `temperature_k` |  | number | Temperature the spectrum refers to, in kelvin. |
@@ -4122,7 +4122,7 @@ The JSON payload named by a `trajectory` section's `metadata` member (convention
 | `precision` |  | one of `"float64"` \| `"float32"` | Floating-point precision of the `coords` member; absent means float64. It MUST agree with that member's dtype: float32 coords require "float32" here. |
 | `units` |  | object | The `units` declaration of TrajectoryMetadataCommon, which also fixes the trajectory-only members: `lattice` is `angstrom` (rows, the structure convention), `cell_volumes` is `a3` and `temperatures` is `kelvin`; see QVF spec § 4.3 (Units and numeric conventions). |
 
-Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`, `lattice` = `angstrom`, `cell_volumes` = `a3`, `temperatures` = `kelvin`.
+Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`, `velocities` = `angstrom_per_fs`, `gradient` = `hartree_per_bohr`, `lattice` = `angstrom`, `cell_volumes` = `a3`, `temperatures` = `kelvin`.
 
 <a id="def-vibrationsmetadatapayload"></a>
 
@@ -4177,7 +4177,7 @@ The JSON payload named by the `axis` member of a `volume.series` section (conven
 |---|---|---|---|
 | `kind` | yes | one of `"time"` \| `"frame"` \| `"state"` \| `"custom"` | What indexes the slabs: `time` (the values are times), `frame` (0-based frame indices of the trajectory or reaction path named by `trajectory_ref`), `state` (electronic states, the values being state indices or energies) or `custom` (anything else, which `labels` describe). |
 | `values` | yes | array of number | The axis value of each slab, in slab order. It has n entries, n being the leading extent of `data`, which validators check. |
-| `units` |  | one of 25 values | Unit of `values`, a unit name. Absent means the values are pure numbers (`dimensionless`), as frame and state indices are; a time axis should declare its unit (`fs` or `ps`). |
+| `units` |  | one of 45 values | Unit of `values`, a unit name. Absent means the values are pure numbers (`dimensionless`), as frame and state indices are; a time axis should declare its unit (`fs` or `ps`). |
 | `labels` |  | array of string | Display label of each slab, n entries, e.g. "S1" for an excited state. |
 | `trajectory_ref` |  | string | Id of the `trajectory` or `reaction.path` section whose frames the slabs belong to; the frame indices of a `frame` axis index its `coords`. It must name a section of one of those two kinds. |
 
@@ -4356,9 +4356,9 @@ Description of the calculation an `ExcitedStatesPayload` comes from. Strict: any
 | `n_states` |  | integer | Number of states; equals the length of `states`. |
 | `tda` |  | boolean | True when the Tamm-Dancoff approximation was used. |
 | `spin_flip` |  | boolean | True when the states come from a spin-flip calculation. |
-| `units` |  | object | Optional declaration of units, keyed by a field of the state objects, each value a unit name. `excitation_energy` and `total_energy` carry their unit in their own {value, units} objects, and a declaration restates it for every state; `oscillator_strength` is dimensionless. The transition dipoles and `rotatory_strength_cgs` have fixed units that no unit name names, so they are not declared; see QVF spec § 4.3 (Units and numeric conventions). |
+| `units` |  | object | Optional declaration of units, keyed by a field of the state objects, each value a unit name. `excitation_energy` and `total_energy` carry their unit in their own {value, units} objects, and a declaration restates it for every state; `oscillator_strength` is dimensionless and `transition_dipole` is `e_bohr`. `transition_magnetic_dipole` and `rotatory_strength_cgs` have fixed units that no unit name names, so they are not declared; see QVF spec § 4.3 (Units and numeric conventions). |
 
-Fixed units: `oscillator_strength` = `dimensionless`.
+Fixed units: `oscillator_strength` = `dimensionless`, `transition_dipole` = `e_bohr`.
 
 <a id="def-jobspecgeometry"></a>
 
@@ -4662,9 +4662,9 @@ The keys that the metadata payloads of a `trajectory` (TrajectoryMetadataPayload
 | `ensemble` |  | one of `"nve"` \| `"nvt"` \| `"npt"` \| `"nph"` \| `"custom"` | Thermodynamic ensemble of a molecular-dynamics run: constant N, V, E; N, V, T; N, p, T; N, p, H; or another. |
 | `timestep_fs` |  | number | Time between consecutive frames, in fs. When the section has no `times` member, frame k is at k * timestep_fs. |
 | `precision` |  | one of `"float64"` \| `"float32"` | Floating-point precision of the `coords` member; absent means float64. It MUST agree with that member's dtype: float32 coords require "float32" here. |
-| `units` |  | object | Optional declaration of units: each key names a field of this payload or the role of a member of the section, each value a unit name. The units are fixed, and a declaration restates them: `energies` is `hartree`, `coords` is `angstrom`, and `times` and `timestep_fs` are `fs`; the `velocities` (Angstrom/fs) and `gradient` (hartree/bohr) members have no unit name and are not declared. See QVF spec § 4.3 (Units and numeric conventions). |
+| `units` |  | object | Optional declaration of units: each key names a field of this payload or the role of a member of the section, each value a unit name. The units are fixed, and a declaration restates them: `energies` is `hartree`, `coords` is `angstrom`, and `times` and `timestep_fs` are `fs`, the `velocities` member is `angstrom_per_fs` and the `gradient` member is `hartree_per_bohr`. See QVF spec § 4.3 (Units and numeric conventions). |
 
-Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`.
+Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `timestep_fs` = `fs`, `velocities` = `angstrom_per_fs`, `gradient` = `hartree_per_bohr`.
 
 <a id="def-valuewithunits"></a>
 
@@ -4673,4 +4673,4 @@ Fixed units: `energies` = `hartree`, `coords` = `angstrom`, `times` = `fs`, `tim
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `value` | yes | number |  |
-| `units` | yes | one of 25 values or one of `"Eh"` \| `"eV"` \| `"Hartree"` | Unit of `value`: a unit name, or one of the legacy spellings that archives written before the vocabulary carry. Producers write the unit name; see QVF spec § 4.3 (Units and numeric conventions). |
+| `units` | yes | one of 45 values or one of `"Eh"` \| `"eV"` \| `"Hartree"` | Unit of `value`: a unit name, or one of the legacy spellings that archives written before the vocabulary carry. Producers write the unit name; see QVF spec § 4.3 (Units and numeric conventions). |

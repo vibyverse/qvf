@@ -1,4 +1,5 @@
-"""Explicit, standard-library-only XYZ/extXYZ, PDB, CIF, mmCIF, POSCAR, CHGCAR, XSF, cube and Molden conversions.
+"""Explicit, standard-library-only XYZ/extXYZ, PDB, CIF, mmCIF, POSCAR, CHGCAR, Quantum ESPRESSO,
+FHI-aims, XSF, cube and Molden conversions.
 
 Conversions create a new file and return a report. They do not execute a job
 or infer a grid's physical quantity, periodicity, charge or multiplicity.
@@ -23,7 +24,9 @@ from .validate import run
 __all__ = ["import_xyz", "export_xyz", "import_cube", "export_cube", "import_xsf", "export_xsf",
            "import_pdb", "export_pdb", "import_molden", "export_molden", "import_cif",
            "export_cif", "import_poscar", "export_poscar", "import_chgcar", "export_chgcar",
-           "import_mmcif", "export_mmcif"]
+           "import_mmcif", "export_mmcif", "import_espresso_in", "export_espresso_in",
+           "import_espresso_xml", "import_espresso_cube", "import_espresso_filplot",
+           "import_aims", "export_aims"]
 _MAX_TEXT = 64 * 1024 * 1024
 _MAX_VALUES = 5_000_000
 _SCALAR_KINDS = {"volume." + name for name in (
@@ -31,14 +34,16 @@ _SCALAR_KINDS = {"volume." + name for name in (
     "generic", "laplacian", "transition_density")}
 
 
-def import_molden(source, destination, *, spin):
-    """Import normalized molecular real s/p/d orbitals with an explicit spin.
+def import_molden(source, destination, *, spin, dialect="standard"):
+    """Import molecular real s to g orbitals with an explicit spin and dialect.
 
     ``spin`` is restricted, restricted_open or unrestricted; it cannot be
-    inferred from an Alpha-only Molden file. See docs/converters.md.
+    inferred from an Alpha-only Molden file. ``dialect`` names the producer
+    convention (standard, renormalize, orca, turbomole, cfour, psi4-1.3 or
+    xtb); it is never guessed. See docs/converters.md.
     """
     from ._molden import import_molden as convert
-    return convert(source, destination, spin=spin)
+    return convert(source, destination, spin=spin, dialect=dialect)
 
 
 def export_molden(source, destination, *, section=None):
@@ -118,6 +123,72 @@ def import_chgcar(source, destination, *, species=None):
 def export_chgcar(source, destination, *, section=None):
     """Export one periodic ``volume.density`` (and a magnetization on its grid) as CHGCAR."""
     from ._chgcar import export_chgcar as convert
+    return convert(source, destination, section=section)
+
+
+def import_espresso_in(source, destination):
+    """Import the structure of a Quantum ESPRESSO pw.x input.
+
+    Any ibrav of INPUT_PW with celldm or A, B, C, cosAB, cosAC, cosBC, or
+    ibrav = 0 with CELL_PARAMETERS in alat, bohr or angstrom; ATOMIC_POSITIONS
+    in alat, bohr, angstrom or crystal. A ``space_group`` input with
+    ``crystal_sg`` sites is expanded to its conventional cell. Elements come
+    from the species labels;
+    atoms with all three if_pos flags 0 become ``constraints.frozen_atoms``.
+    See docs/converters.md.
+    """
+    from ._espresso import import_espresso_in as convert
+    return convert(source, destination)
+
+
+def export_espresso_in(source, destination, *, section=None):
+    """Export one structure periodic on all three axes as a pw.x input with ibrav = 0."""
+    from ._espresso import export_espresso_in as convert
+    return convert(source, destination, section=section)
+
+
+def import_espresso_xml(source, destination):
+    """Import the final structure, total energy, forces and stress of a pw.x XML data file.
+
+    Lengths are bohr and energies hartree in the file; the stress sign is
+    flipped to the QVF convention. Results of an SCF that did not converge
+    are omitted. See docs/converters.md.
+    """
+    from ._espresso import import_espresso_xml as convert
+    return convert(source, destination)
+
+
+def import_espresso_cube(source, destination, *, kind="volume.density"):
+    """Import a pp.x cube file as a periodic grid without the endpoint plane."""
+    from ._espresso import import_espresso_cube as convert
+    return convert(source, destination, kind=kind)
+
+
+def import_espresso_filplot(source, destination):
+    """Import a pp.x filplot file as a structure and a periodic grid without the endpoint.
+
+    The kind and unit follow from plot_num: densities stay in e/bohr^3 and
+    potentials in Ry become hartree (electrostatic potentials with the sign
+    flipped). See docs/converters.md.
+    """
+    from ._espresso import import_espresso_filplot as convert
+    return convert(source, destination)
+
+
+def import_aims(source, destination):
+    """Import an FHI-aims geometry.in as one periodic structure or a molecule.
+
+    ``lattice_vector``, ``atom`` and ``atom_frac`` are read in angstrom; atoms
+    with ``constrain_relaxation .true.`` (or x, y and z) become
+    ``constraints.frozen_atoms``. See docs/converters.md.
+    """
+    from ._aims import import_aims as convert
+    return convert(source, destination)
+
+
+def export_aims(source, destination, *, section=None):
+    """Export one periodic structure or molecule as an FHI-aims geometry.in."""
+    from ._aims import export_aims as convert
     return convert(source, destination, section=section)
 
 

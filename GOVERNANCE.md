@@ -92,14 +92,15 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
-### 2026-11-04: Volumes name their wavefunction and orbital (proposed)
+### 2026-11-04: Volumes name their wavefunction and orbital
 
-**Status.** Proposed for maintainer acceptance under "Change process"
-(extend a canonical kind with optional fields). It is a public-contract
-change and is not accepted until the maintainer merges it. Until then the
-names and rules below are open to revision.
+**Status.** Accepted by the maintainer on 2026-11-05 under "Change
+process" (extend a canonical kind with optional fields, vibyverse/qvf#17),
+with the names and rules below settled as proposed. It is a public
+contract change. Producers may write the new fields once a toolkit release
+carries them.
 
-**Decision (proposed).** Spec § 5.2 gains the subsection *Volumes of a
+**Decision.** Spec § 5.2 gains the subsection *Volumes of a
 wavefunction*. (1) `volume.density`, `volume.spin` and `volume.orbital`
 may carry the optional section field `wavefunction_ref`, the `id` of the
 `wavefunction.gto` section (§ 5.3) the field was computed from. (2)
@@ -205,6 +206,213 @@ PySCF exporter. Writers gain optional parameters and one C++ method, and
 the generated typed C++ kinds gain `VolumeDensityFields`,
 `VolumeSpinFields` and `VolumeOrbitalFields`. The `registry.json` kind
 list does not change, because no kind is added or promoted.
+
+### 2026-11-04: The data unit of a volume grid checked per kind
+
+**Status.** Proposed. The maintainer chose the finding code
+(`E_UNIT_CONTRADICTED`, a new error) and the scope (five kinds) on
+2026-11-04. The record awaits acceptance under "Change process"; the
+readings at the end are open until then.
+
+**Decision.** Reading (b) of the compound unit names record left one fixed
+unit unchecked: the grid payload (`$defs/VolumeGridPayload`) serves every
+`volume.*` kind, so the schema cannot fix `grid.units.data` per kind. A
+semantic check now does. Where spec § 4.3 and § 5.2 fix the unit of `data`
+and the vocabulary names it, a grid `units.data` that is another unit name
+contradicts the table and is the new error **`E_UNIT_CONTRADICTED`**
+(Appendix B):
+
+| Kind | Fixed `units.data` |
+|---|---|
+| `volume.density` | `e_per_bohr3` |
+| `volume.transition_density` | `e_per_bohr3` |
+| `volume.potential` | `hartree_per_e` |
+| `volume.rdg` | `dimensionless` |
+| `volume.laplacian` | `e_per_bohr5` |
+
+The Python, C++, JavaScript and Rust validators run it as a semantic check,
+with or without the JSON Schema check. `volume.orbital` (an amplitude in
+bohr^(−3/2), which has no unit name), `volume.difference` (the unit of its
+operands) and the kinds § 5.2 leaves open (`volume.spin`, `volume.elf`,
+`volume.generic`, `volume.vector`, `volume.complex`, `volume.series`) are
+not checked. Spec § 4.3 ("Declared units"), § 6 and Appendix B state the
+rule. The negative corpus gains `unit_grid_data_contradicts_kind.qvf` (a
+`volume.density` grid that declares `hartree_per_e`). **No `qvf_version`
+bump**, no schema or registry change, and no package version change.
+
+**Why a new code.** Appendix B gives a new check a new code; codes are added,
+never renamed. `E_PAYLOAD_SCHEMA` reports a payload against its `$defs`
+definition, and the definition is not what this archive violates, so a
+validator without a schema engine would otherwise emit a schema code while
+it reports `W_SCHEMA_SKIPPED`. `W_UNIT_UNKNOWN` is about strings outside the
+vocabulary. A warning was rejected because § 4.3 already calls the
+contradiction an error, and a later upgrade would need a second code.
+
+**Rationale for no bump.** The check encodes a rule § 4.3 stated before
+("another name there contradicts the table"), as the `const` entries of the
+2026-10-08 and 2026-11-04 records did for keys the schema can reach. An
+archive it rejects already contradicted § 4.3. Every corpus, negative and
+legacy archive keeps its verdict (`conformance/run_conformance.py` and the
+C++, JavaScript and Rust runners), and the positive corpus archives that
+declare a grid `data` unit declare the fixed one.
+
+**Compatibility.** Producers: an archive that declares the fixed unit, or
+none, is unchanged. An archive that declares another unit name for one of
+the five kinds validated before and is now rejected. Its values were never
+in that unit by the table, so a consumer that honoured the declaration read
+them wrong; the fix is to drop or correct the declaration. Consumers: no
+change. Validator authors: `E_UNIT_CONTRADICTED` is a new code, appended
+after `E_NORMALIZATION` so that the generated code order is unchanged for the
+earlier codes. Writers: the Python `add_volume` and the C++ writer check
+declared units against the schema's fixed units, which do not include
+`units.data`, so they still write such a grid. Teaching them the table
+of kinds is a separate writer change.
+
+**Registry.** No entry changes. The change enters `CHANGELOG.md` through its
+`changelog.d` fragment.
+
+**Readings to confirm.** (a) Only a unit name contradicts. A string outside
+the vocabulary is `W_UNIT_UNKNOWN` (and `E_PAYLOAD_SCHEMA` with a schema
+engine) and not also `E_UNIT_CONTRADICTED`, so one defect gives one semantic
+finding; `unit_compound_unknown.qvf` keeps its expectations. (b)
+`volume.transition_density` and `volume.rdg` are included because § 4.3
+fixes their units as well, beyond the three kinds the earlier bullet named.
+(c) The table of kinds lives in each validator beside the volume shape
+table; it is not generated, because the schema does not hold it. (d) The
+finding points at the grid member spec, like the other grid findings.
+
+### 2026-11-04: Compound unit names in the unit vocabulary
+
+**Status.** Accepted by the maintainer on 2026-11-04 under "Change
+process" (vibyverse/qvf#11), with the readings at the end of this record
+settled as proposed. It is a public contract change. Producers may write the
+new names once a toolkit release carries them.
+
+**Decision.** The unit vocabulary of spec § 4.3 and
+`$defs/UnitName` gains twenty **compound unit names**, appended after
+`dimensionless` so that the 25 names of the 2026-10-08 record keep their
+order, their C++ enumerators and their meaning:
+
+| Unit name | Quantity | Fields that are fixed in it or commonly take it |
+|---|---|---|
+| `angstrom-1` | reciprocal length | `fermi_surface.mesh.reciprocal_lattice` |
+| `gpa-1` | compliance | `properties.elastic` `compliance` |
+| `angstrom_per_fs` | velocity | `trajectory` / `reaction.path` `velocities` |
+| `hartree_per_bohr` | force, energy gradient | `trajectory` / `reaction.path` `gradient`, `atom_properties` `force_eh_bohr`, `job.spec` `convergence` |
+| `hartree_per_bohr2` | force constant | `hessian.matrix` |
+| `hartree_per_bohr3` | stress, energy density | `forces.stress`, QTAIM energy densities |
+| `ev_per_angstrom` | force, energy gradient | custom `atom_properties` roles of producers that work in eV and Å |
+| `hartree_per_e` | electric potential | `volume.potential` |
+| `hartree_per_e_bohr` | electric field | `volume.vector` electric fields |
+| `e_per_bohr3` | charge density | `volume.density`, `volume.transition_density`, QTAIM `rho` |
+| `e_per_bohr4` | density gradient | `volume.vector` density gradients |
+| `e_per_bohr5` | density Laplacian | `volume.laplacian`, QTAIM `laplacian` |
+| `e_bohr` | dipole moment, atomic units | `excited_states` `transition_dipole`, atomic dipoles |
+| `e_bohr2` | quadrupole moment, atomic units | atomic quadrupoles |
+| `debye_angstrom` | quadrupole moment | `properties.electric` `quadrupole` |
+| `debye_angstrom2` | octupole moment | `properties.electric` `octupole` |
+| `e2_bohr2_per_hartree` | polarizability, atomic units | `properties.electric` `polarizability` |
+| `e3_bohr3_per_hartree2` | first hyperpolarizability, atomic units | `properties.electric` `hyperpolarizability` |
+| `c_per_m2` | piezoelectric stress coefficient | `properties.dielectric` `piezoelectric` |
+| `states_per_ev` | density of states | `dos.total` `dos`, `dos.projected` `projections` |
+
+Spec § 4.3 gives each its SI value from the constants the table already uses
+(CODATA 2018 for a₀, E_h and amu, and the exact SI values of e, c and h), for
+example E_h / a₀ = 8.2387234983 × 10⁻⁸ N and e a₀ = 8.4783536255 × 10⁻³⁰ C m.
+The payload definitions fix the new names where § 4.3 or § 5 already fixes
+the unit, as `const` entries of their `units` objects: trajectory and
+reaction path `velocities` and `gradient`, Fermi `reciprocal_lattice`,
+`excited_states` `transition_dipole`, the four electric multipole and
+response fields, the elastic `compliance` and the dielectric `piezoelectric`.
+Spec § 5.2, § 5.5, § 5.6, § 5.7, § 5.12, § 5.13 and § 9 item 7 now name
+these units instead of saying the vocabulary cannot. The corpus gains
+`units_compound_molecular.qvf` and `units_compound_periodic.qvf`, the
+negative corpus `unit_compound_unknown.qvf` (`e_per_angstrom3`, a spelling
+the rule allows but the list does not hold) and
+`unit_compound_contradicts_fixed.qvf` (a compliance declared `gpa`).
+**No `qvf_version` bump**, and no package version change.
+
+**Inventory.** Every field of § 4.3 and of the payload tables whose unit had
+no name was listed. A field is named when its unit is fixed and a payload
+`units` object can restate it, or when a payload leaves the unit open (QTAIM
+point fields, a grid's `data`, a `volume.series` axis, custom
+`atom_properties` roles) and the unit is the one producers write. Left
+without a name, and still fixed by their tables: the atomic unit of a
+magnetic dipole (e ħ / mₑ), the 10⁻⁴⁰ cgs rotatory strength (its unit is in
+its field name), the Bohr magneton, an orbital amplitude (bohr^(−3/2)), the
+mass weighted Hessian, Gaussian exponents (bohr⁻²) and ECP coefficients,
+which no `units` object declares, and an atomic unit of velocity
+(bohr per atomic time unit), which no field is stored in. The derivative
+units of `forces` and `hessian` are declared through `units.energy` and
+`units.length` (`$defs/DerivativeUnits`) and stay as they are, so force constants
+in eV and Å such as `ev_per_angstrom2` are not added.
+
+**Why a closed list and not a unit grammar.** The inventory needs twenty
+names, all products and quotients of units QVF already names, and all
+three validators compare strings against one generated table. A grammar
+would make every consumer parse, normalise and compare expressions
+(`hartree/bohr`, `Eh/a0`, `hartree bohr^-1`), would admit units no field
+holds, and would give two spellings to one unit, the D12 problem the
+vocabulary was created to solve. The names therefore follow a **spelling
+rule** that § 4.3 states (unit names joined with `_`, the denominator after
+one `_per_`, a power as a trailing digit, a lone reciprocal as `-1`, which
+are the patterns of `kcal_per_mol`, `bohr3` and `cm-1`), but the rule is not
+a grammar: a consumer must not parse a name, and a string the rule could produce but
+the list does not hold is not a unit name. A later revision can add names
+the same way. A grammar remains possible if an inventory ever needs open
+composition, and would be a separate decision.
+
+**Rationale for no bump.** Appending names to an enum is the additive case of
+"Change process": no member, kind or default unit changes, nothing becomes
+required, and every archive the reference writers emitted before and every
+frozen corpus, negative and legacy archive validates with the verdict it had
+(`conformance/run_conformance.py`, the C++ and JavaScript runners). The new `const`
+entries constrain keys that could previously hold any unit name, but no
+earlier unit name equals the unit the table fixes for them, so any earlier
+declaration of those keys already contradicted § 4.3 ("a declared unit that
+contradicts it is an error"). They encode an existing rule, as the
+2026-10-08 record did for `origin` and `coords`.
+
+**Compatibility.** Archives that use none of the new names are unchanged for
+every reader. Format version 1 identifies the archive format, not a toolkit
+release (`docs/cli.md`, "Choose and record the validator"), and does not promise that an older
+toolkit accepts a later optional addition. An archive that writes a new
+name is read by an older toolkit as follows: a validator that runs the JSON
+Schema (the Python reference with `jsonschema`, and the C++ and JavaScript
+references by default) reports `E_PAYLOAD_SCHEMA` and `W_UNIT_UNKNOWN` and
+rejects the archive. The Python reference validator on main before this change rejects
+`units_compound_molecular.qvf` with 12 errors and 10 warnings and
+`units_compound_periodic.qvf` with 2 and 2. A validator without a schema
+engine accepts it with `W_UNIT_UNKNOWN`, and the values themselves are in
+the units § 4.3 always fixed, so a reader that ignores declarations reads
+them correctly. Producers: write the new names only once the consumers you
+target pin a qvf release that has them (see "QVF in the vibe-qc family").
+Writers: the Python and C++ writers accept the names through the generated
+tables and still refuse an unknown name or a contradicted fixed unit.
+Library authors: the C++ `Unit` enum gains twenty enumerators after
+`Unit::Dimensionless` and `kUnitCount` becomes 45, and the generated typed
+`units` records of the trajectory, reaction path, Fermi mesh, excited states
+and the three property payloads gain optional fields, so code that
+initialises those aggregates by position must be updated. `convert()` in
+Python, C++ and JavaScript still handles only lengths and energies.
+
+**Registry.** `registry.json` registers kinds and namespaces, not units, so
+the change touches no registry entry and promotes nothing there. It enters
+`CHANGELOG.md` through its `changelog.d` fragment.
+
+**Readings settled at acceptance.** (a) The `const` entries above stay. They
+narrow keys that the schema used to accept with any unit name, but only
+where every earlier name already contradicted § 4.3. (b) A grid `units.data`
+is not fixed per kind, because one grid payload serves every `volume.*`
+kind. A `volume.density` grid that declares `hartree_per_e` contradicts
+§ 4.3, and no v1 validator detects it yet. A semantic check per kind can be
+added later as an additive validator rule. (c) The spellings stay:
+`states_per_ev` (not `per_ev`, so the name says what is counted),
+`c_per_m2` (the SI symbol in lower case, as in `gpa` and `hz`) and
+`angstrom` in compounds, while the volume keeps its earlier name `a3`.
+(d) `ev_per_angstrom` stays. Custom `atom_properties` roles have no fixed
+unit, and producers that work in eV and Å should not have to convert to
+declare them. Fields with a fixed unit still take `hartree_per_bohr`.
 
 ### 2026-11-04: The overlap of Γ-point `wavefunction.gto` orbitals
 

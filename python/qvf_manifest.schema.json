@@ -166,9 +166,14 @@
         "angstrom", "bohr", "hartree", "ev", "kcal_per_mol", "kj_per_mol",
         "cm-1", "nm", "debye", "mhz", "hz", "ppm", "km_per_mol", "a3", "bohr3",
         "gpa", "fs", "ps", "kelvin", "atm", "e", "amu", "radian", "degree",
-        "dimensionless"
+        "dimensionless", "angstrom-1", "gpa-1", "angstrom_per_fs",
+        "hartree_per_bohr", "hartree_per_bohr2", "hartree_per_bohr3",
+        "ev_per_angstrom", "hartree_per_e", "hartree_per_e_bohr",
+        "e_per_bohr3", "e_per_bohr4", "e_per_bohr5", "e_bohr", "e_bohr2",
+        "debye_angstrom", "debye_angstrom2", "e2_bohr2_per_hartree",
+        "e3_bohr3_per_hartree2", "c_per_m2", "states_per_ev"
       ],
-      "description": "A unit name of the QVF unit vocabulary, the controlled list of unit strings in QVF spec § 4.3 (Units and numeric conventions), which lists the same names in the same order with the quantity and definition of each. Names are case-sensitive. Every `units` object, `x_units`, `y_units` and `broadening.units` of a member payload, and the `units` of a {value, units} object, names its unit with one of these."
+      "description": "A unit name of the QVF unit vocabulary, the controlled list of unit strings in QVF spec § 4.3 (Units and numeric conventions), which lists the same names in the same order with the quantity and definition of each. Names are case-sensitive. The compound names after `dimensionless` follow the spelling rule of QVF spec § 4.3 (Units and numeric conventions): they join unit names with `_`, put the denominator after one `_per_`, write a power as a trailing digit and a lone reciprocal as `-1`; each is one closed name, not an expression to parse. Every `units` object, `x_units`, `y_units` and `broadening.units` of a member payload, and the `units` of a {value, units} object, names its unit with one of these."
     },
     "LegacyUnitName": {
       "enum": ["Eh", "eV", "Hartree"],
@@ -1284,12 +1289,14 @@
         "units": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/UnitName" },
-          "description": "Optional declaration of units: each key names a field of this payload or the role of a member of the section, each value a unit name. The units are fixed, and a declaration restates them: `energies` is `hartree`, `coords` is `angstrom`, and `times` and `timestep_fs` are `fs`; the `velocities` (Angstrom/fs) and `gradient` (hartree/bohr) members have no unit name and are not declared. See QVF spec § 4.3 (Units and numeric conventions).",
+          "description": "Optional declaration of units: each key names a field of this payload or the role of a member of the section, each value a unit name. The units are fixed, and a declaration restates them: `energies` is `hartree`, `coords` is `angstrom`, and `times` and `timestep_fs` are `fs`, the `velocities` member is `angstrom_per_fs` and the `gradient` member is `hartree_per_bohr`. See QVF spec § 4.3 (Units and numeric conventions).",
           "properties": {
             "energies": { "const": "hartree" },
             "coords": { "const": "angstrom" },
             "times": { "const": "fs" },
-            "timestep_fs": { "const": "fs" }
+            "timestep_fs": { "const": "fs" },
+            "velocities": { "const": "angstrom_per_fs" },
+            "gradient": { "const": "hartree_per_bohr" }
           }
         }
       }
@@ -3888,11 +3895,12 @@
         "units": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/UnitName" },
-          "description": "Optional map from a field name of this payload, or the role of a member of the section, to the unit name of its values. The units are fixed by QVF spec § 4.3 (Units and numeric conventions); a declaration restates them and does not change them, so `fermi_energy_ev` and `energies` are `ev` and `lattice_vectors` is `angstrom`.",
+          "description": "Optional map from a field name of this payload, or the role of a member of the section, to the unit name of its values. The units are fixed by QVF spec § 4.3 (Units and numeric conventions); a declaration restates them and does not change them, so `fermi_energy_ev` and `energies` are `ev`, `lattice_vectors` is `angstrom` and `reciprocal_lattice` is `angstrom-1`.",
           "properties": {
             "fermi_energy_ev": { "const": "ev" },
             "energies": { "const": "ev" },
-            "lattice_vectors": { "const": "angstrom" }
+            "lattice_vectors": { "const": "angstrom" },
+            "reciprocal_lattice": { "const": "angstrom-1" }
           }
         }
       }
@@ -4418,11 +4426,12 @@
         "units": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/UnitName" },
-          "description": "Optional declaration of units, keyed by a field of the state objects, each value a unit name. `excitation_energy` and `total_energy` carry their unit in their own {value, units} objects, and a declaration restates it for every state; `oscillator_strength` is dimensionless. The transition dipoles and `rotatory_strength_cgs` have fixed units that no unit name names, so they are not declared; see QVF spec § 4.3 (Units and numeric conventions).",
+          "description": "Optional declaration of units, keyed by a field of the state objects, each value a unit name. `excitation_energy` and `total_energy` carry their unit in their own {value, units} objects, and a declaration restates it for every state; `oscillator_strength` is dimensionless and `transition_dipole` is `e_bohr`. `transition_magnetic_dipole` and `rotatory_strength_cgs` have fixed units that no unit name names, so they are not declared; see QVF spec § 4.3 (Units and numeric conventions).",
           "properties": {
             "excitation_energy": { "$ref": "#/$defs/UnitName", "description": "Unit of the `excitation_energy` of every state." },
             "total_energy": { "$ref": "#/$defs/UnitName", "description": "Unit of the `total_energy` of every state." },
-            "oscillator_strength": { "const": "dimensionless", "description": "Oscillator strengths are dimensionless." }
+            "oscillator_strength": { "const": "dimensionless", "description": "Oscillator strengths are dimensionless." },
+            "transition_dipole": { "const": "e_bohr", "description": "Unit of the electric transition dipole: e_bohr, the atomic unit." }
           }
         }
       }
@@ -4632,10 +4641,14 @@
           "type": "object",
           "additionalProperties": false,
           "patternProperties": { "^x_": {} },
-          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `dipole` is debye and `origin`, when it is a vector, bohr. v1 fixes both, so a declaration only restates them. The other fields have units that the vocabulary does not name; they are fixed by QVF spec § 5.13 (Property kinds).",
+          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `dipole` is debye, `origin`, when it is a vector, bohr, `quadrupole` debye_angstrom, `octupole` debye_angstrom2, `polarizability` e2_bohr2_per_hartree and `hyperpolarizability` e3_bohr3_per_hartree2. v1 fixes them all, so a declaration only restates them; see QVF spec § 5.13 (Property kinds).",
           "properties": {
             "dipole": { "const": "debye", "description": "Unit of the dipole: debye." },
-            "origin": { "const": "bohr", "description": "Unit of an explicit origin vector: bohr." }
+            "origin": { "const": "bohr", "description": "Unit of an explicit origin vector: bohr." },
+            "quadrupole": { "const": "debye_angstrom", "description": "Unit of the quadrupole: debye_angstrom." },
+            "octupole": { "const": "debye_angstrom2", "description": "Unit of the octupole: debye_angstrom2." },
+            "polarizability": { "const": "e2_bohr2_per_hartree", "description": "Unit of the polarizability: e2_bohr2_per_hartree, the atomic unit." },
+            "hyperpolarizability": { "const": "e3_bohr3_per_hartree2", "description": "Unit of the first hyperpolarizability: e3_bohr3_per_hartree2, the atomic unit." }
           }
         }
       }
@@ -4679,9 +4692,10 @@
           "type": "object",
           "additionalProperties": false,
           "patternProperties": { "^x_": {} },
-          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `stiffness` and the three moduli are gpa, `poisson_ratio` is dimensionless. v1 fixes them, so a declaration only restates them. The compliance, in 1/GPa, has no unit name and is fixed by QVF spec § 5.13 (Property kinds).",
+          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): `stiffness` and the three moduli are gpa, `poisson_ratio` is dimensionless and `compliance` is gpa-1. v1 fixes them, so a declaration only restates them; see QVF spec § 5.13 (Property kinds).",
           "properties": {
             "stiffness": { "const": "gpa", "description": "Unit of the stiffness matrix: gpa." },
+            "compliance": { "const": "gpa-1", "description": "Unit of the compliance matrix: gpa-1, 1/GPa." },
             "bulk_modulus_gpa": { "const": "gpa", "description": "Unit of the bulk modulus: gpa." },
             "shear_modulus_gpa": { "const": "gpa", "description": "Unit of the shear modulus: gpa." },
             "youngs_modulus_gpa": { "const": "gpa", "description": "Unit of Young's modulus: gpa." },
@@ -4723,12 +4737,13 @@
           "type": "object",
           "additionalProperties": false,
           "patternProperties": { "^x_": {} },
-          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): the three dielectric tensors are dimensionless and `born_charges` is e. v1 fixes them, so a declaration only restates them. The piezoelectric tensor, in C/m^2, has no unit name and is fixed by QVF spec § 5.13 (Property kinds).",
+          "description": "Declared units, field name to unit name (QVF spec § 4.3 (Units and numeric conventions)): the three dielectric tensors are dimensionless, `born_charges` is e and `piezoelectric` is c_per_m2. v1 fixes them, so a declaration only restates them; see QVF spec § 5.13 (Property kinds).",
           "properties": {
             "electronic": { "const": "dimensionless", "description": "The dielectric tensor has no unit." },
             "ionic": { "const": "dimensionless", "description": "The dielectric tensor has no unit." },
             "static": { "const": "dimensionless", "description": "The dielectric tensor has no unit." },
-            "born_charges": { "const": "e", "description": "Unit of the Born charges: e, the elementary charge." }
+            "born_charges": { "const": "e", "description": "Unit of the Born charges: e, the elementary charge." },
+            "piezoelectric": { "const": "c_per_m2", "description": "Unit of the piezoelectric tensor: c_per_m2, C/m^2." }
           }
         }
       }

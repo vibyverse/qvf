@@ -1,0 +1,10 @@
+{
+  "archive": "unit_grid_data_contradicts_kind.qvf",
+  "description": "A volume.density grid that declares units.data 'hartree_per_e', a unit name that contradicts the e_per_bohr3 spec \u00a7 4.3 fixes for volume.density data. The grid payload is shared by every volume kind, so the schema accepts it, and every validator reports the semantic finding E_UNIT_CONTRADICTED, with or without a JSON Schema engine.",
+  "expect": [
+    {
+      "code": "E_UNIT_CONTRADICTED",
+      "severity": "error"
+    }
+  ]
+}

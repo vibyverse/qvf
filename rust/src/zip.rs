@@ -215,7 +215,9 @@ fn zip64_fields(view: &View, extra_start: usize, extra_length: usize, wanted: [b
     Err(unreadable("a size or offset is saturated but there is no ZIP64 extra field"))
 }
 
-fn read_central_directory(bytes: &[u8], view: &View, dir: &Directory) -> Result<Vec<ZipEntry>, QvfError> {
+type Records = (Vec<ZipEntry>, Vec<(usize, usize)>);
+
+fn read_central_directory(bytes: &[u8], view: &View, dir: &Directory) -> Result<Records, QvfError> {
     let length = bytes.len() as u64;
     if dir.offset > length || dir.size > length - dir.offset {
         return Err(unreadable("central directory out of range"));
@@ -225,6 +227,7 @@ fn read_central_directory(bytes: &[u8], view: &View, dir: &Directory) -> Result<
     }
     let length = bytes.len();
     let mut entries = Vec::with_capacity(to_usize(dir.count, "the entry count")?);
+    let mut ranges = Vec::with_capacity(entries.capacity());
     let mut p = to_usize(dir.offset, "the central directory offset")?;
     for _ in 0..dir.count {
         if p + CENTRAL_HEADER_SIZE > length || view.u32(p)? != SIG_CENTRAL {
@@ -268,9 +271,10 @@ fn read_central_directory(bytes: &[u8], view: &View, dir: &Directory) -> Result<
             local_offset,
             name_bytes,
         });
+        ranges.push((p, next));
         p = next;
     }
-    Ok(entries)
+    Ok((entries, ranges))
 }
 
 /// Inflate `data` into exactly `size` bytes. The output is bounded: a stream
@@ -307,7 +311,14 @@ pub struct ZipArchive {
     index: HashMap<String, usize>,
     duplicates: Vec<String>,
     total_size: u64,
+    /// Byte range of each entry's central-directory record.
+    records: Vec<(usize, usize)>,
+    /// Where the central directory begins.
+    directory_offset: u64,
 }
+
+/// The chunk size of [`ZipArchive::stream`].
+const STREAM_CHUNK: usize = 1 << 20;
 
 impl ZipArchive {
     /// Open an archive. Fails with `E_ZIP_UNREADABLE` when the bytes are not a
@@ -317,7 +328,7 @@ impl ZipArchive {
         let view = View(&bytes);
         let eocd = find_eocd(&view, bytes.len())?;
         let dir = read_directory_location(&view, bytes.len(), eocd)?;
-        let entries = read_central_directory(&bytes, &view, &dir)?;
+        let (entries, records) = read_central_directory(&bytes, &view, &dir)?;
         let mut index = HashMap::new();
         let mut duplicates: Vec<String> = Vec::new();
         let mut total: u64 = 0;
@@ -328,7 +339,23 @@ impl ZipArchive {
             index.insert(e.name.clone(), i);
             total = total.saturating_add(e.size);
         }
-        Ok(ZipArchive { bytes, entries, index, duplicates, total_size: total })
+        Ok(ZipArchive { bytes, entries, index, duplicates, total_size: total, records, directory_offset: dir.offset })
+    }
+
+    /// Offset of the central directory, where an update appends (spec § 2.3).
+    pub fn central_directory_offset(&self) -> u64 {
+        self.directory_offset
+    }
+
+    /// The raw central-directory record of entry `index` (of [`ZipArchive::entries`]).
+    pub fn central_record(&self, index: usize) -> &[u8] {
+        let (a, b) = self.records[index];
+        &self.bytes[a..b]
+    }
+
+    /// The bytes of the archive.
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     /// Every central-directory record, in archive order, duplicates included.
@@ -364,6 +391,77 @@ impl ZipArchive {
     /// the data cannot be read (truncated, encrypted, unsupported method, does
     /// not inflate to exactly the declared size, CRC-32 mismatch).
     pub fn read(&self, entry: &ZipEntry, max_bytes: Option<f64>) -> Result<Vec<u8>, QvfError> {
+        let data = self.entry_data(entry, max_bytes)?;
+        let label = format!("{:?}", entry.name);
+        let out = match entry.method {
+            METHOD_STORE => data.to_vec(),
+            METHOD_DEFLATE => inflate_exact(data, entry.size, &entry.name)?,
+            m => return Err(unreadable(format!("ZIP entry {label}: unsupported compression method {m}"))),
+        };
+        if crc32(&out) != entry.crc32 {
+            return Err(unreadable(format!("ZIP entry {label}: CRC-32 mismatch")));
+        }
+        Ok(out)
+    }
+
+    /// Like [`ZipArchive::read`], but hands the uncompressed bytes to `sink`
+    /// in chunks of at most 1 MiB, so an entry is never held whole. The size
+    /// and CRC-32 are verified after the last chunk: a caller must discard
+    /// what it received when this fails. A sink error ends the stream and is
+    /// returned as is.
+    pub fn stream(
+        &self,
+        entry: &ZipEntry,
+        max_bytes: Option<f64>,
+        mut sink: impl FnMut(&[u8]) -> Result<(), QvfError>,
+    ) -> Result<(), QvfError> {
+        let data = self.entry_data(entry, max_bytes)?;
+        let label = format!("{:?}", entry.name);
+        let mut crc = flate2::Crc::new();
+        match entry.method {
+            METHOD_STORE => {
+                for chunk in data.chunks(STREAM_CHUNK) {
+                    crc.update(chunk);
+                    sink(chunk)?;
+                }
+            }
+            METHOD_DEFLATE => {
+                let mut decoder = flate2::read::DeflateDecoder::new(data).take(entry.size.saturating_add(1));
+                let mut buf = vec![0u8; STREAM_CHUNK];
+                let mut written = 0u64;
+                loop {
+                    let n =
+                        decoder.read(&mut buf).map_err(|e| unreadable(format!("ZIP entry {label} does not inflate ({e})")))?;
+                    if n == 0 {
+                        break;
+                    }
+                    written += n as u64;
+                    if written > entry.size {
+                        return Err(unreadable(format!(
+                            "ZIP entry {label} inflates to more than its declared {} bytes",
+                            entry.size
+                        )));
+                    }
+                    crc.update(&buf[..n]);
+                    sink(&buf[..n])?;
+                }
+                if written != entry.size {
+                    return Err(unreadable(format!(
+                        "ZIP entry {label} inflates to {written} bytes, not its declared {}",
+                        entry.size
+                    )));
+                }
+            }
+            m => return Err(unreadable(format!("ZIP entry {label}: unsupported compression method {m}"))),
+        }
+        if crc.sum() != entry.crc32 {
+            return Err(unreadable(format!("ZIP entry {label}: CRC-32 mismatch")));
+        }
+        Ok(())
+    }
+
+    /// The checked compressed data of an entry.
+    fn entry_data(&self, entry: &ZipEntry, max_bytes: Option<f64>) -> Result<&[u8], QvfError> {
         let label = format!("{:?}", entry.name);
         if let Some(max) = max_bytes {
             if entry.size as f64 > max {
@@ -395,20 +493,25 @@ impl ZipArchive {
         if bytes[name_start..name_start + name_length] != entry.name_bytes[..] {
             return Err(unreadable(format!("ZIP entry {label}: local header name differs from the directory")));
         }
-        let data = &bytes[data_start..data_start + entry.compressed_size as usize];
-        let out = match entry.method {
-            METHOD_STORE => {
-                if entry.compressed_size != entry.size {
-                    return Err(unreadable(format!("ZIP entry {label}: stored size differs from uncompressed size")));
-                }
-                data.to_vec()
-            }
-            METHOD_DEFLATE => inflate_exact(data, entry.size, &entry.name)?,
-            m => return Err(unreadable(format!("ZIP entry {label}: unsupported compression method {m}"))),
-        };
-        if crc32(&out) != entry.crc32 {
-            return Err(unreadable(format!("ZIP entry {label}: CRC-32 mismatch")));
+        if entry.method == METHOD_STORE && entry.compressed_size != entry.size {
+            return Err(unreadable(format!("ZIP entry {label}: stored size differs from uncompressed size")));
         }
-        Ok(out)
+        Ok(&bytes[data_start..data_start + entry.compressed_size as usize])
+    }
+
+    /// The end of an entry's data (local header, name, extra field and
+    /// compressed data; a data descriptor follows it).
+    pub fn data_end(&self, entry: &ZipEntry) -> Option<u64> {
+        let view = View(&self.bytes);
+        let offset = usize::try_from(entry.local_offset).ok()?;
+        let name_length = view.u16(offset + 26).ok()?;
+        let extra_length = view.u16(offset + 28).ok()?;
+        Some(
+            entry.local_offset
+                + (LOCAL_HEADER_SIZE as u64)
+                + u64::from(name_length)
+                + u64::from(extra_length)
+                + entry.compressed_size,
+        )
     }
 }

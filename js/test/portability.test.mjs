@@ -49,3 +49,13 @@ test("the only runtime dependency is fflate", () => {
   assert.equal(pkg.private, true);
   assert.equal(pkg.name, "@qvf/core");
 });
+
+test("a packed tarball ships the build and the repository license files", () => {
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.deepEqual(pkg.files, ["dist", "src", "LICENSE", "NOTICE", "README.md"]);
+  assert.equal(pkg.scripts.prepack, "npm run clean && npm run build");
+  for (const name of ["LICENSE", "NOTICE"]) {
+    assert.equal(readFileSync(new URL(`../${name}`, import.meta.url), "utf8"),
+                 readFileSync(new URL(`../../${name}`, import.meta.url), "utf8"), name);
+  }
+});

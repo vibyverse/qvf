@@ -566,40 +566,64 @@ inline std::string_view payload_def(std::string_view kind, std::string_view role
 // The unit names of QVF spec § 4.3, in vocabulary ($defs/UnitName) order.
 // The comment after each enumerator is its unit name.
 enum class Unit {
-    Angstrom,          // angstrom
-    Bohr,              // bohr
-    Hartree,           // hartree
-    ElectronVolt,      // ev
-    KcalPerMol,        // kcal_per_mol
-    KjPerMol,          // kj_per_mol
-    Wavenumber,        // cm-1
-    Nanometer,         // nm
-    Debye,             // debye
-    Megahertz,         // mhz
-    Hertz,             // hz
-    Ppm,               // ppm
-    KmPerMol,          // km_per_mol
-    Angstrom3,         // a3
-    Bohr3,             // bohr3
-    Gigapascal,        // gpa
-    Femtosecond,       // fs
-    Picosecond,        // ps
-    Kelvin,            // kelvin
-    Atmosphere,        // atm
-    ElementaryCharge,  // e
-    Amu,               // amu
-    Radian,            // radian
-    Degree,            // degree
-    Dimensionless,     // dimensionless
+    Angstrom,                           // angstrom
+    Bohr,                               // bohr
+    Hartree,                            // hartree
+    ElectronVolt,                       // ev
+    KcalPerMol,                         // kcal_per_mol
+    KjPerMol,                           // kj_per_mol
+    Wavenumber,                         // cm-1
+    Nanometer,                          // nm
+    Debye,                              // debye
+    Megahertz,                          // mhz
+    Hertz,                              // hz
+    Ppm,                                // ppm
+    KmPerMol,                           // km_per_mol
+    Angstrom3,                          // a3
+    Bohr3,                              // bohr3
+    Gigapascal,                         // gpa
+    Femtosecond,                        // fs
+    Picosecond,                         // ps
+    Kelvin,                             // kelvin
+    Atmosphere,                         // atm
+    ElementaryCharge,                   // e
+    Amu,                                // amu
+    Radian,                             // radian
+    Degree,                             // degree
+    Dimensionless,                      // dimensionless
+    ReciprocalAngstrom,                 // angstrom-1
+    ReciprocalGigapascal,               // gpa-1
+    AngstromPerFemtosecond,             // angstrom_per_fs
+    HartreePerBohr,                     // hartree_per_bohr
+    HartreePerBohr2,                    // hartree_per_bohr2
+    HartreePerBohr3,                    // hartree_per_bohr3
+    ElectronVoltPerAngstrom,            // ev_per_angstrom
+    HartreePerElementaryCharge,         // hartree_per_e
+    HartreePerElementaryChargeBohr,     // hartree_per_e_bohr
+    ElementaryChargePerBohr3,           // e_per_bohr3
+    ElementaryChargePerBohr4,           // e_per_bohr4
+    ElementaryChargePerBohr5,           // e_per_bohr5
+    ElementaryChargeBohr,               // e_bohr
+    ElementaryChargeBohr2,              // e_bohr2
+    DebyeAngstrom,                      // debye_angstrom
+    DebyeAngstrom2,                     // debye_angstrom2
+    ElementaryCharge2Bohr2PerHartree,   // e2_bohr2_per_hartree
+    ElementaryCharge3Bohr3PerHartree2,  // e3_bohr3_per_hartree2
+    CoulombPerMeter2,                   // c_per_m2
+    StatesPerElectronVolt,              // states_per_ev
 };
 
-inline constexpr std::size_t kUnitCount = 25;
+inline constexpr std::size_t kUnitCount = 45;
 
 // Unit names, indexed by Unit.
 inline constexpr std::string_view kUnitNames[kUnitCount] = {
     "angstrom", "bohr", "hartree", "ev", "kcal_per_mol", "kj_per_mol", "cm-1", "nm", "debye",
     "mhz", "hz", "ppm", "km_per_mol", "a3", "bohr3", "gpa", "fs", "ps", "kelvin", "atm", "e",
-    "amu", "radian", "degree", "dimensionless",
+    "amu", "radian", "degree", "dimensionless", "angstrom-1", "gpa-1", "angstrom_per_fs",
+    "hartree_per_bohr", "hartree_per_bohr2", "hartree_per_bohr3", "ev_per_angstrom",
+    "hartree_per_e", "hartree_per_e_bohr", "e_per_bohr3", "e_per_bohr4", "e_per_bohr5",
+    "e_bohr", "e_bohr2", "debye_angstrom", "debye_angstrom2", "e2_bohr2_per_hartree",
+    "e3_bohr3_per_hartree2", "c_per_m2", "states_per_ev",
 };
 
 // The deprecated spellings a {value, units} object still accepts
@@ -672,6 +696,7 @@ inline constexpr FindingCode kFindingCodes[] = {
     {"W_UNIT_UNKNOWN", false},
     {"E_ROOT_INCONSISTENT", true},
     {"E_NORMALIZATION", true},
+    {"E_UNIT_CONTRADICTED", true},
 };
 
 // The entry of a finding code, or nullptr.
