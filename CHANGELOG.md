@@ -9,13 +9,42 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-05
+
+This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).
+It includes the accepted contract changes recorded in `GOVERNANCE.md`:
+canonical reaction-step energies and typed biomolecular atom-site identity
+(historical issues 16 and 18), compound unit names (vibyverse/qvf#11),
+volume links to their wavefunction and orbital (vibyverse/qvf#17), the
+`spectra.xas`, `spectra.xes` and `spectra.mossbauer` kinds
+(vibyverse/qvf#19), and the new error `E_UNIT_CONTRADICTED`
+(vibyverse/qvf#20). Each adds optional names or checks a field whose meaning
+was already fixed. Archives written by earlier toolkits keep their meaning,
+and each record states how earlier toolkits treat archives that use the new
+names. Libraries gain a Rust crate (reader,
+validator, writer, editor and CLI) and a JavaScript writer. Frozen family
+consumers stay on their v0.6.0 pins until they adopt this release.
+
+**Release qualification.** GitHub Actions did not start the release-candidate
+workflow for this release (the runs stayed queued with no jobs), so the
+maintainer accepted local qualification of the candidate commit on Linux
+x86_64 instead. It covered the Python suite on Python 3.9, 3.13 and 3.14
+(with PySCF 2.14.0 on 3.13), the JavaScript suite on Node 20, 22 and 24, the
+Rust crate, the C++ build with gcc and clang under `-Wall -Wextra -Werror`
+with CTest and the conformance runner, AddressSanitizer and
+UndefinedBehaviorSanitizer (clang) over CTest and every corpus archive, both
+libFuzzer targets for 180 s each without a finding, the s390x big-endian
+CTest under QEMU with the cross-host round trip, the generated-file checks,
+source archives that contain exactly the committed files, and installed
+Python, C/C++, npm and Rust package checks. The candidate workflow's macOS
+(clang) and Windows (MSVC) C++ jobs were not run for this release.
+
 ### Changed
 
-- Prepare Python distribution `qvf-writer` 0.7.0rc1 for its first PyPI
+- Prepare the Python distribution `qvf-writer` for its first PyPI
   publication, with SPDX license metadata, a runnable PySCF tutorial and
-  an opt-in Trusted Publishing workflow. This Python-only candidate does
-  not retag toolkit v0.6.0 or change frozen consumer pins.
-
+  an opt-in Trusted Publishing workflow. All language packages now share
+  the toolkit version 0.7.0.
 
 - Improve the documentation entry points with a getting-started guide,
   tagged-source installation, executable create/read/validate/job examples
@@ -277,6 +306,391 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
   The Python writer checks the same rules; the C++ writer passes the object
   through. Additive under v1. New corpus archive `reaction_scheme_energies`
   and six negatives.
+
+- Added a local big-endian check of the C++ library (WP-50, no CI job): a
+  CMake toolchain file for s390x under QEMU user-mode emulation, the
+  `qvf_endian_probe` CTest test that writes all ten dtypes through every
+  write path and compares them with little-endian bytes, and
+  `scripts/check_endian_roundtrip.py`, which validates archives written on
+  one host with the Python validator and compares their tensors bit for bit
+  with those of the other host. Under emulated s390x all 13 CTest tests
+  pass, including the conformance runner (78 positive, 118 negative, 1
+  legacy archive). No endianness defect was found, so the C++ sources are
+  unchanged.
+
+- Add four jobs to the release-candidate CI workflow, with the existing
+  `release-candidate/**` push and manual dispatch triggers only: `rust` (the
+  WP-61 crate on stable and on its MSRV 1.74, with fmt and clippy on
+  stable), `parity` (the schema-checker parity test with Python, Node and
+  the C++ tool in one job, failing on any skip), `fuzz` (both C++ libFuzzer
+  targets for 180 s each under ASan + UBSan, crashers uploaded as an
+  artifact) and `s390x` (cross-build, CTest under QEMU and the cross-host
+  round trip, WP-50). Development pushes do not run them. Each job's shell
+  steps ran locally (the fuzz targets for 30 s each) and passed. The Rust
+  tests also pass on 1.74, so the declared MSRV is now checked. The Python
+  and JavaScript fuzz harnesses were not on main and are not included.
+
+- Accepted by the maintainer (GOVERNANCE.md, 2026-11-04 record, #11): twenty
+  compound unit names appended to the spec § 4.3 vocabulary and
+  `$defs/UnitName`, from `angstrom-1` and `hartree_per_bohr` to
+  `e2_bohr2_per_hartree` and `states_per_ev`, each with its SI factor from
+  the CODATA 2018 constants the spec already uses. Fields whose fixed unit
+  had no name can now restate it (trajectory `velocities` and `gradient`,
+  Fermi `reciprocal_lattice`, the electric multipoles and polarizabilities,
+  the elastic compliance, the piezoelectric tensor and the electric
+  transition dipole), and open fields such as QTAIM `rho` and `laplacian` or
+  a volume grid's `data` can declare it. The 25 earlier names and every
+  existing archive keep their meaning. New corpus archives
+  `units_compound_molecular.qvf` and `units_compound_periodic.qvf`, negative
+  archives `unit_compound_unknown.qvf` and
+  `unit_compound_contradicts_fixed.qvf`. No `qvf_version` or package version
+  change.
+
+- Prepare the documentation site for publication (WP-64). `mkdocs build
+  --strict` with Doxygen is clean: the Doxyfile no longer depends on
+  Graphviz (`HAVE_DOT = NO`), a `tensor_view.hpp` comment no longer names a
+  zero-argument `Writer::add()` that does not exist, and strict mode now
+  also checks heading anchors. A dispatch-only GitHub Pages workflow
+  (`docs-pages.yml`, pinned actions) builds and deploys the site.
+  CONTRIBUTING.md lists the one-time Pages settings. Publication stays a
+  maintainer action and has not happened.
+
+- Add Quantum ESPRESSO and FHI-aims converters to `qvf.convert` and `qvf
+  convert` (WP-48). `espresso-in` imports pw.x input structures for every
+  INPUT_PW `ibrav` (celldm or A, B, C) and `ibrav = 0` with
+  `CELL_PARAMETERS` in alat, bohr or angstrom, with `ATOMIC_POSITIONS` in
+  alat, bohr, angstrom or crystal, and exports `ibrav = 0` inputs.
+  `espresso-xml` imports the final structure, total energy, forces and
+  stress of `data-file-schema.xml`, and `espresso-cube` imports pp.x cube
+  output as a periodic grid without the endpoint plane. `aims` imports and
+  exports FHI-aims `geometry.in` with `lattice_vector`, `atom` and
+  `atom_frac`. Fully fixed atoms map to `constraints.frozen_atoms`.
+  Everything else is reported. The tests compare against ASE's readers and
+  writers when ASE is installed. No format, schema or validator change.
+
+- Close the two open items of the Quantum ESPRESSO converters (WP-48).
+  `espresso-filplot` imports the pp.x `filplot` intermediate file as a
+  structure and one grid periodic without the endpoint plane, with the kind
+  and unit from `plot_num`: densities in e/bohr³ as written, electrostatic
+  potentials (plot_num 11, 12) as −V/2 in hartree/e and the other potentials
+  (plot_num 1, 2) as V/2 in hartree. `espresso-in` now expands `space_group`
+  input with `ATOMIC_POSITIONS crystal_sg` sites (`uniqueb`,
+  `origin_choice`, `rhombohedral`) to the conventional unit cell through the
+  Hall symbols of all 230 space groups. Wyckoff labels in `crystal_sg` lines
+  remain open and are refused. The tests compare with the CIF import,
+  `ase.spacegroup.crystal`, spglib and the espresso-cube import of the same
+  data. No format, schema or validator change.
+
+- Add a Gaussian formatted checkpoint (fchk) converter: `import_fchk` and
+  `export_fchk` in `qvf.convert`, and `qvf convert --from fchk` / `--to
+  fchk`. Import reads the geometry, charge and multiplicity, the basis (s to
+  l = 7, pure and Cartesian, SP shells split), restricted, restricted open
+  and unrestricted orbitals with occupations derived from the electron
+  counts (checked against the SCF density), the SCF densities, the total
+  energy and Mulliken charges, maps Gaussian's AO order and per component
+  Cartesian normalization onto Appendix A, and writes the AO overlap
+  computed from the basis so the validator checks it. Export writes these
+  fields back with a loss report. Synthetic fixtures with their generation
+  script, cclib and IOData readings of PySCF calculations, and PySCF orbital
+  values check the conventions (WP-48, partial).
+
+- Accepted by the maintainer on 2026-11-05 (#20, GOVERNANCE.md record of
+  2026-11-04 on the data unit of a volume grid): a new error
+  `E_UNIT_CONTRADICTED` in spec Appendix B. The Python, C++, JavaScript and
+  Rust validators report a grid `units.data` that is a unit name other than
+  the one spec § 4.3 fixes for the section's kind: `e_per_bohr3` for
+  `volume.density` and `volume.transition_density`, `hartree_per_e` for
+  `volume.potential`, `dimensionless` for `volume.rdg` and `e_per_bohr5` for
+  `volume.laplacian`. The check is semantic, so it runs with or without the
+  JSON Schema check. New negative archive
+  `unit_grid_data_contradicts_kind.qvf`. No `qvf_version`, schema or package
+  version change.
+
+- Add a writer to the JavaScript package `@qvf/core` (in development).
+  `Writer` runs in Node and browsers with no Node-only API: it builds the
+  manifest, writes JSON members and little-endian binary tensors with dtype
+  and shape, computes `sha256` through WebCrypto and `size` for every
+  member, deflates through `fflate`, writes `manifest.json` last and stored,
+  and switches to ZIP64 when a size, an offset or the entry count needs it.
+  Output is a `Uint8Array`, a `Blob`, or a stream of chunks to a sink. Typed
+  builders follow the Python writer: `addStructure`, `addTrajectory`,
+  `addWavefunctionGto` (restricted and unrestricted), `addVolume` with
+  `addDensity` and `addOrbital` (every `volume.*` kind), `addExcitedStates`,
+  `addSpectrum` (every `spectra.*` kind) and `addReactionScheme`. Payloads
+  are checked against the JSON Schema before they are written, the manifest
+  before `finish()` writes it. A fixed `timestamp` and `uuid` give
+  byte-identical output. Tests round-trip every builder through the JS
+  reader and validator, and the Python validator accepts the archives (a
+  Node test that is skipped without Python). Slab-wise input of a single
+  large member is not available yet, because WebCrypto has no incremental
+  SHA-256.
+
+- Add a second C++ libFuzzer target, `manifest_fuzzer` (`-DQVF_FUZZ=ON`). It
+  builds a consistent ZIP from a manifest.json and member payloads, with
+  optionally corrected member sha256 values, so mutations reach the JSON
+  parser, the typed manifest model, the reader and every validation stage.
+  `scripts/fuzz_manifest_seeds.py` turns .qvf archives into its seeds.
+  CONTRIBUTING.md documents both fuzz targets.
+
+- Add explicit Molden producer dialects to `import_molden` (`dialect=`) and
+  `qvf convert --molden-dialect`: `standard`, `renormalize`, `orca`,
+  `turbomole`, `cfour`, `psi4-1.3` and `xtb`. ORCA contraction scaling and
+  f/g phases, Turbomole Cartesian contraction scaling, and CFOUR and old
+  Psi4 Cartesian MO scaling map to QVF Appendix A as documented by IOData
+  1.0.1. Import also accepts Molpro-style atom labels such as `O1`,
+  integral-float nuclear charges and `[MO]` keys in any order. Negative or
+  excess occupations, ECP effective charges and `[core]`/`[Pseudo]` sections
+  are refused with a reason. PySCF-written files and hand-built dialect
+  variants give PySCF's orbital values after import (WP-48, partial).
+
+- WP-62: `qvf.adapters.pyscf.add_density_grid` and `add_orbital_grid` write
+  the SCF electron density (`volume.density`), the spin density of
+  open-shell references (`volume.spin`) and selected orbitals
+  (`volume.orbital`) on a regular grid. Values are evaluated with PySCF's
+  `numint` in blocks of at most 64 MiB of AO values. `molecular_grid` builds
+  the default box (4 bohr margin, 0.2 bohr steps) or, for a given shape, the
+  `tools.cubegen` grid. Volumes name their structure at section and grid
+  level and carry the wavefunction id as `group`. Tests compare with the
+  Appendix A evaluator, `cubegen` and the electron count, with measured
+  tolerances that depend on the grid, as given in the PySCF adapter guide.
+  Status: on main. Remaining in WP-62 are triplet NTOs, unrestricted
+  response and periodic Γ-point calculations. Existing kinds only. No
+  schema, registry or validator change.
+
+- The PySCF adapter writes periodic Γ-point `pbc.scf.RHF`/`UHF` and
+  `pbc.dft.RKS`/`UKS` results of a `pbc.gto.Cell` (WP-62): a periodic
+  `structure` with `pbc` and `lattice_vectors` in Å, and a
+  `wavefunction.gto` with `k_point` `[0, 0, 0]`, the Appendix A AO map, the
+  spec's AO `overlap` (without images) and the densities. Populations use
+  the lattice-summed Γ overlap. GTH pseudopotentials are recorded by name
+  and core count only, and the Ewald nuclear energy is
+  `energies.components.nuclear_repulsion`. k-point sampling, a nonzero
+  `kpt`, complex orbitals, periodic response and grids of a cell are
+  refused. Molecular output is unchanged.
+
+- The PySCF adapter writes k-point sampled periodic `pbc.scf.KRHF`/`KUHF`
+  and `pbc.dft.KRKS`/`KUKS` results (WP-62) as a periodic `structure` and a
+  `wavefunction.bloch` section: the k-points in fractional
+  reciprocal-lattice coordinates with their weights, `mesh` and `shift` for
+  a uniform or shifted mesh, the complex orbitals per k through the Appendix
+  A AO map, and their energies and occupations. PySCF's Bloch phase
+  convention was checked to be the spec's: S(k) built from the archive with
+  `e^{+ik·T}` equals `pbc_intor('int1e_ovlp', kpts=...)` to 1e-9. KROHF,
+  KGHF, k-symmetry-adapted objects, a non-integer spin per cell, k-points
+  along a non-periodic axis and k-point densities and populations are
+  refused. `add_wavefunction_bloch` gains optional `ecp` and `n_electrons`.
+  The Γ-point and molecular output is unchanged.
+
+- WP-62: `qvf.adapters.pyscf.add_td` / `write_td` take
+  `transition_densities=True` (or a dict of grid options) to write each
+  excited state's spin-summed transition density as a
+  `volume.transition_density` on a shared grid, linked through
+  `excited_states_ref`, `state_index` and the state's `density_ref`. Its
+  first moment is PySCF's transition dipole exactly. Restricted singlets and
+  UHF/UKS results are supported. Triplets are refused because their
+  spin-summed transition density vanishes. Uses existing kinds; no schema,
+  registry or validator change.
+
+- WP-62: `qvf.adapters.pyscf.add_td` / `write_td` now write paired NTOs for
+  closed-shell triplet TDA, TDHF and TDDFT results. The `M_S = 0`
+  spin-orbital transitions use the existing unrestricted NTO layout (two
+  sections per state, α channel `T/sqrt(2)`, β channel with reversed
+  particle sign) beside the restricted reference; weight sums equal the
+  singlet-path convention. Checked against PySCF's independent UHF response
+  amplitudes. Uses the existing NTO contract; no schema, registry or
+  validator change.
+
+- WP-62: `qvf.adapters.pyscf.add_td` / `write_td` now export UHF/UKS TDA,
+  TDHF/TDDFT and Casida response of molecular references. Contributions
+  carry `spin` and index the alpha or beta reference rows, normalized over
+  both spins. States omit `multiplicity` because unrestricted response
+  states are not spin eigenfunctions. NTOs use the existing unrestricted
+  layout, one transition per spin channel (`X_s` for TDA, `X_s + Y_s`
+  unscaled for full response), and the pairs reproduce PySCF's transition
+  dipoles. Restricted-open and spin-flip response remain refused. Uses the
+  existing contract; no schema, registry or validator change.
+
+- Add `rust/`, an independent Rust reader and validator (WP-61, in
+  development). It reads manifests, raw members and little-endian tensors,
+  and validates with the stable finding codes of Appendix B, including the
+  JSON Schema through a table that `scripts/gen_kinds.py` now also writes to
+  `rust/src/generated.rs`. Its conformance test passes the positive (78),
+  negative (118) and legacy (1) corpora with no skips. The crate is not in
+  CI yet.
+
+- Complete the WP-61 scope of the `rust/` crate (fourth tranche). The writer
+  gains builders for `trajectory` (including periodic MD with a fixed or
+  per-frame cell, velocities, gradients, times, energies, cell volumes and
+  temperatures, and float32 coordinates), `bands`, `dos.total`,
+  `dos.projected`, `dos.coop`, `dos.cohp` and the six one-dimensional
+  `spectra.*` kinds, plus `add_spectrum_payload` for any spectra kind. Each
+  JSON payload is checked against its schema definition before it is
+  written. `qvf::Editor` updates an archive in place or atomically per spec
+  § 2.3 (append, replace members under fresh paths, remove sections or
+  members, set the run status, roll back on abort) and `Editor::repack`
+  streams the referenced members into a new archive without orphans. The
+  `qvf` binary adds `diff`, `repack`, `scrub` (with `--path-pattern` and
+  `--user-pattern` through `qvf::regex`, a Python `re` subset),
+  `conformance` and `schema`. `rust/tests/cli.rs` matches the Python CLI on
+  all 201 corpus archives for these commands (1810 commands), and the editor
+  tests check orphan, size and repack rules against the Python validator and
+  editor. `cargo +1.74 test` passes. Remaining Python CLI commands not
+  ported: `convert`, `prepare-job`, `export-xtb` and `run-xtb`.
+
+- Add typed section models and a `qvf` command-line tool to the `rust/`
+  crate (WP-61, third tranche). `scripts/gen_kinds.py` now also writes
+  `rust/src/kinds.rs` (rendered by `scripts/gen_typed_kinds.py` with the
+  mapping of the C++ typed records): serde models of the schema `$defs`
+  payloads and one struct per canonical kind, read with
+  `Reader::get::<K>(id)` and written back with `TypedKind::to_writer`, plus
+  `Reader::get_volume` for any `volume.*` kind. Every section of the
+  positive and legacy corpora round-trips through the models
+  (`rust/tests/typed.rs`). The `qvf` binary has `validate` (human and
+  `--json`, every `--level`), `info`, `cat` and `extract`, with the report
+  layout and exit codes of the Python CLI. `rust/tests/cli.rs` runs both
+  CLIs on all 201 corpus archives and requires the same exit codes, finding
+  codes and findings. New dependency: `serde` with `derive`. An editor and
+  the other Python CLI commands remain. The crate is not in CI yet.
+
+- Add a writer to the `rust/` crate (WP-61, second tranche). `qvf::Writer`
+  streams members into a ZIP that needs no seekable sink (data descriptors,
+  ZIP64 fields and end records when needed or forced) and writes
+  `manifest.json` STORED and last. Members are JSON, little-endian tensors
+  of every manifest dtype with `dtype`, `shape`, `sha256` and `size` (also
+  streamed in slabs), and opaque bytes. Section builders cover `structure`,
+  `wavefunction.gto` (restricted, restricted open-shell and unrestricted,
+  with `overlap`, density matrices and NTO links), every `volume.*` kind and
+  `excited_states`. `rust/tests/writer.rs` checks that the written archives
+  have no findings from the Rust validator and the Python reference
+  validator and read back unchanged. No new dependency. Trajectory, bands
+  and spectra builders and an editor remain.
+
+- Accepted by the maintainer (GOVERNANCE.md, 2026-11-05 record, #19): three
+  canonical kinds for format review P13. `spectra.xas` and `spectra.xes` are
+  one-dimensional spectra on the shared `SpectrumPayload` (x in eV), which
+  gains a strict optional `xray` block (`edge`, `element`, `atom_indices`,
+  `core_orbital`, `line`, `intensity`, `energy_shift_ev`) and the peak
+  `assignment.atom_index`. `spectra.mossbauer` carries per-site isomer
+  shift, quadrupole splitting, asymmetry parameter, EFG tensor, contact
+  density, hyperfine field, linewidth and population in a strict payload,
+  57Fe by default. The Python writer gains `add_xray_spectrum` and
+  `add_mossbauer`, the C++ library the generated typed kinds `SpectraXAS`,
+  `SpectraXES` and `SpectraMossbauer`. The corpus gains three positive and
+  nine negative archives. No `qvf_version` or package version change.
+
+- Format change accepted by the maintainer on 2026-11-05 (#17, GOVERNANCE.md
+  record of 2026-11-04): `volume.density`, `volume.spin` and
+  `volume.orbital` sections may name the `wavefunction.gto` section they
+  were computed from (`wavefunction_ref`), and a `volume.orbital` its
+  0-based coefficient row (`mo_index`) and, for an unrestricted
+  wavefunction, its channel (`spin`), spec § 5.2, *Volumes of a
+  wavefunction*. The Python, C++, JavaScript and Rust validators check the
+  reference, the row and the presence of `spin` and report violations as
+  `E_REF_UNRESOLVED`. Python `add_volume` gains `wavefunction_ref=`,
+  `mo_index=` and `spin=`, C++ gains `QvfWriter::link_volume_wavefunction`,
+  and the PySCF grid exporter writes the fields beside `group`. Corpus:
+  `volume_wavefunction_ref.qvf` and five negative archives. Optional fields
+  only, no `qvf_version` bump. Status: accepted.
+
+- Add a vcpkg overlay port in `packaging/vcpkg` (WP-49). It builds the C/C++
+  library from the `v0.6.0` tag archive (SHA512 pinned) or from a local QVF
+  source tree selected with `QVF_VCPKG_SOURCE_DIR`, for static and shared
+  triplets, and installs the CMake package, `qvf.pc`, the single header and
+  the license notices. Nothing is published to a registry. The `@qvf/core`
+  tarball from `npm pack` now contains the compiled `dist/` build, LICENSE
+  and NOTICE, and no tests or scripts (`files` and `prepack`). The Python
+  sdist no longer ships `python/tests`, which only run from the repository
+  checkout, and the wheel lists its supported Python versions.
+  `docs/python-release.md` adds a trusted-publisher checklist for
+  maintainers.
+
+- Add the standalone molecular GFN0/1/2-xTB exporter (`qvf export-xtb` and
+  `qvf.adapters.xtb.write_xtb`). It packages explicitly selected JSON,
+  geometry, trajectory, Wiberg bond orders, Molden orbitals, xTB normal
+  modes and scalar cubes as a validated QVF using existing format contracts.
+  It checks companion geometry/units/identity, reports missing or unmapped
+  data, preserves originals and leaves convergence unstated by default. The
+  exporter works without NumPy or xTB installed; root scalar energy writing
+  no longer unnecessarily imports NumPy.
+
+### Fixed
+
+- The Fortran wrappers now return an optional `message` with exactly the
+  copied error text on gfortran 11 and 12, which previously returned empty
+  or garbage-padded text. `qvf_gto` refuses NaN exponents without raising an
+  IEEE invalid exception, so callers with floating-point trapping enabled
+  get a refusal instead of a signal. Focused development checks now cover
+  gfortran 11, 12, 13 and 14 and LLVM flang 18, 19 and 20 on Ubuntu 24.04
+  x86_64. The C ABI and the archive format are unchanged.
+
+- Fuzzed the Python and JavaScript readers and validators with
+  structure-aware harnesses (`python/tests/fuzz/`: Hypothesis and atheris,
+  `js/test/fuzz/`: a seeded Node runner, both opt-in, see CONTRIBUTING.md)
+  and fixed what they found. Python no longer inflates a DEFLATE entry past
+  its declared size (`zipfile.read` used to inflate a lying stream in full
+  before truncating it), refuses an entry that inflates to fewer or more
+  bytes than declared, reads only STORE and DEFLATE members (it used to
+  accept bzip2 and LZMA), refuses an end of central directory record that
+  names another disk or counts a different number of entries than the
+  central directory holds, and parses JSON as RFC 8259 UTF-8 JSON (it used
+  to accept `NaN`, `Infinity`, UTF-16 and UTF-32). Damaged, encrypted or
+  unsupported entries are now a `ValueError` with `E_ZIP_UNREADABLE` from
+  `Reader`, `QvfReader` and the streaming API instead of `zlib.error`,
+  `RuntimeError`, `NotImplementedError` or `EOFError`. The error is also a
+  `zipfile.BadZipFile`. `Tensor.tolist()` refuses a zero-extent shape that
+  would need more than 2^20 nested empty lists. JavaScript refuses an entry
+  whose declared size exceeds what DEFLATE can expand its stored bytes to
+  before allocating the output buffer (a tiny archive could make it allocate
+  8 GiB). Seven negative archives pin the container and JSON rules:
+  `entry_inflates_past_size`, `entry_size_overstated`,
+  `entry_size_impossible`, `compression_method_unsupported`,
+  `zip_multi_volume` (`E_ZIP_UNREADABLE`), `manifest_json_nan` and
+  `manifest_json_utf16` (`E_MANIFEST_JSON`). Python, JavaScript, C++ and
+  Rust agree on all seven.
+
+- Fix two undefined-behaviour defects in the C++ library found by a
+  coverage-guided fuzzing campaign (WP-50). `ZipReader::local_header` passed
+  a null pointer to `memcmp` for an entry with an empty name. `Json::as_int`
+  converted a double outside the int64 range unchecked (a manifest shape
+  integer beyond int64 reached it through `QvfReader::read_binary_member`);
+  it now throws. Both have regression tests.
+
+- Clarify spec § 5.3 for the Γ-point orbitals of a periodic structure.
+  `overlap` stays the AO overlap without lattice images and is checked
+  against Appendix A.1 unchanged. The orthonormality of the orbitals, the
+  electron count `tr(P S)` and AO populations refer to the lattice-summed
+  overlap `S_Γ`, the S(k) of `wavefunction.bloch` at k = 0, which consumers
+  build from `basis` and the lattice. No validator, schema or archive
+  changes.
+
+- `prepare-job` now refuses unsupported critical vendor sections and
+  critical extension declarations even when the archive passes structural
+  validation. Optional opaque drawing data remains preserved. Added a
+  format-v1 reaction workflow profile and a read-only additive interchange
+  audit example that reports artifact identities without asserting
+  scientific acceptance.
+
+- The Rust validator stages `Level` as the Python and C++ reference
+  validators do: `Container` now reports a missing `manifest.json`, and
+  `Semantics` runs the cross-section checks (atom counts, orbital rows,
+  volume spans) and leaves out only `E_REF_UNRESOLVED`. It previously
+  followed the JavaScript staging, which runs them only from `References`.
+  Results at the default level `All` are unchanged.
+
+- Python validation reports and both validation CLIs now identify the
+  archive format, reader/toolkit and bundled schema digest, distinguish
+  skipped schema checks, and explain unsupported archive format versions.
+  Validation rules remain unchanged; null optional job basis/functional
+  metadata is covered by a focused regression using the existing job
+  fixture.
+
+- Add a serial `qvf run-xtb` producer runner with isolated output
+  directories, termination/optimisation checks, required-output checks and
+  frozen-coordinate acceptance. Correct xTB Molden primitive normalization
+  and odd-angular-momentum phases, accept lowercase xTB XYZ symbols and
+  allow an explicit canonical orbital assertion. Real xTB 6.7.1 jobs through
+  vq exercised geometry, energies, charges, orbitals, density, trajectories
+  and normal modes.
 
 ## [0.6.0] - 2026-10-22
 

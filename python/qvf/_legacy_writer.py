@@ -54,7 +54,7 @@ __all__ = ["QvfWriter", "Lattice", "BOHR_PER_ANGSTROM", "primitive_norm",
            "QVF_VERSION", "TOOLKIT_VERSION"]
 
 QVF_VERSION = 1
-TOOLKIT_VERSION = "0.7.0rc1"
+TOOLKIT_VERSION = "0.7.0"
 
 # Bohr per Ångström: the reciprocal of CODATA 2018's bohr radius,
 # 1 bohr = 0.529177210903 Å (1 / 0.529177210903 = 1.88972612462577...), rounded

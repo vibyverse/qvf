@@ -47,7 +47,7 @@ the input and symlinks. They stage a sibling temporary file and publish it
 without replacing a concurrently created destination. No command edits an
 input archive in place.
 
-## Export xTB results (development source)
+## Export xTB results (toolkit 0.7.0)
 
 The `export-xtb` command packages molecular GFN0/1/2-xTB output as a new QVF:
 
@@ -250,7 +250,7 @@ share one runner and the same expected findings; neither needs NumPy.
 trajectory. Scalar cube import/export supports explicit kind and periodic
 endpoint choices. Toolkit 0.6.0 also supports static XSF geometry
 and scalar grids, plus single-model PDB geometry with explicit element
-columns and no alternate locations. The development checkout adds bounded
+columns and no alternate locations. Toolkit 0.7.0 adds bounded
 molecular Molden conversion, where imports require an explicit `--spin`
 interpretation, and PDB atom-site identity, alternate locations and model
 ensembles.

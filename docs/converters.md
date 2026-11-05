@@ -1,8 +1,8 @@
 # Convert common files through QVF
 
 The `qvf.convert` Python API and `qvf convert` command started in
-toolkit **0.5.0**; XSF and PDB geometry joined in **0.6.0**. The development
-checkout also supports the Molden, core-CIF, mmCIF, POSCAR, CHGCAR, Quantum
+toolkit **0.5.0**; XSF and PDB geometry joined in **0.6.0**. Toolkit **0.7.0**
+adds the Molden, core-CIF, mmCIF, POSCAR, CHGCAR, Quantum
 ESPRESSO and FHI-aims subsets below. They use the standard library;
 NumPy is optional. Install the `validate` extra for JSON Schema checks as well
 as the always-on reference checks.
@@ -38,7 +38,7 @@ and optional `pbc` has three booleans. With a cell and no `pbc`, all axes are
 periodic; with neither, all are nonperiodic. This follows the [extXYZ
 conventions](https://github.com/libAtoms/extxyz#reading-aseatomsatoms-from-this-format).
 
-The usual calculator results are kept (Unreleased, #39), converted from the
+The usual calculator results are kept (toolkit 0.7.0, #39), converted from the
 ASE units extXYZ uses to atomic units:
 
 * the header `energy` (eV) becomes, for one frame, the root
@@ -155,7 +155,7 @@ structure with a cell cannot be exported by this molecular subset. As with
 other converters, a file containing both a structure and a grid requires
 `--section` on export. No charge, multiplicity or job is inferred.
 
-## PDB structures (toolkit 0.6.0; atom-site identity Unreleased)
+## PDB structures (toolkit 0.6.0, atom-site identity 0.7.0)
 
 ```sh
 qvf convert molecule.pdb --from pdb --to qvf -o structure.qvf
@@ -174,7 +174,7 @@ symbols are required; isotope labels such as `D`, hybrid-36 serials or
 residue numbers, and missing elements are refused.
 
 Toolkit 0.6.0 kept only elements and coordinates and refused alternate
-locations and ensembles. The development checkout also keeps each atom's
+locations and ensembles. Toolkit 0.7.0 also keeps each atom's
 atom-site identity in the typed fields of spec § 5.1 (*Biomolecular atom
 identity*):
 
@@ -387,7 +387,7 @@ round to 0.001 angstrom, and the report gives the maximum rounding error and
 whether atom-site identity was written. Neither output is a deposition-ready
 PDB.
 
-## Crystal CIF structures (Unreleased)
+## Crystal CIF structures (toolkit 0.7.0)
 
 ```bash
 qvf convert crystal.cif --from cif --to qvf -o crystal.qvf
@@ -445,7 +445,7 @@ rotated; the report gives the largest coordinate rounding error. A
 structure without full periodicity is refused. gemmi reads the export back,
 and importing it again reproduces the positions.
 
-## mmCIF (PDBx) structures (Unreleased)
+## mmCIF (PDBx) structures (toolkit 0.7.0)
 
 ```bash
 qvf convert 1abc.cif --from mmcif --to qvf -o 1abc.qvf
@@ -487,7 +487,7 @@ chain-id length or atom count, so an assembly with copied chains such as
 `A-2` can be exported. Bonds and secondary structure are not written. gemmi
 reads the export back, and importing it again reproduces the structure.
 
-## VASP POSCAR/CONTCAR structures (Unreleased)
+## VASP POSCAR/CONTCAR structures (toolkit 0.7.0)
 
 ```bash
 qvf convert POSCAR --from poscar --to qvf -o cell.qvf
@@ -533,7 +533,7 @@ species runs and the largest coordinate rounding error. ASE reads the export
 back with the same cell, positions and fixed atoms, and ASE-written POSCAR
 files import to the same structure.
 
-## VASP CHGCAR charge densities (Unreleased)
+## VASP CHGCAR charge densities (toolkit 0.7.0)
 
 ```bash
 qvf convert CHGCAR --from chgcar --to qvf -o density.qvf
@@ -571,7 +571,7 @@ analysis and visualization tools, not a VASP restart. ASE's
 `VaspChargeDensity` reads the export back with the same densities, and
 ASE-written CHGCAR files import to the same grid.
 
-## Quantum ESPRESSO pw.x structures and results (Unreleased)
+## Quantum ESPRESSO pw.x structures and results (toolkit 0.7.0)
 
 ```bash
 qvf convert si.pwi --from espresso-in --to qvf -o si.qvf
@@ -761,7 +761,7 @@ the filplot import matches the espresso-cube import of that cube in cell,
 atoms, grid and values (times the factor of the table, to the cube's five
 significant digits).
 
-## FHI-aims geometry.in structures (Unreleased)
+## FHI-aims geometry.in structures (toolkit 0.7.0)
 
 ```bash
 qvf convert geometry.in --from aims --to qvf -o cell.qvf
@@ -791,7 +791,9 @@ ASE's FHI-aims reader reads the same inputs and the export to the same cell,
 positions and fixed atoms (to 10⁻¹⁰ relative), and files ASE writes, with
 Cartesian or fractional atoms, import to the same structure.
 
-## Molecular Molden orbitals (Unreleased)
+<a id="molecular-molden-orbitals-unreleased"></a>
+
+## Molecular Molden orbitals (toolkit 0.7.0)
 
 ```sh
 qvf convert orbitals.molden --from molden --to qvf --spin restricted -o orbitals.qvf
@@ -803,7 +805,7 @@ for molecular geometry, atom-centered Gaussian contractions and real orbitals.
 It supports `s`, `p`, combined `sp`, `d`, `f` and `g` shells, each spherical
 or Cartesian. The default is Cartesian; `[5D]` and `[5D7F]` make d and f
 spherical, `[5D10F]` makes d spherical and keeps f Cartesian, `[7F]` makes f
-spherical, and `[9G]` / `[15G]` make g spherical or Cartesian (Unreleased,
+spherical, and `[9G]` / `[15G]` make g spherical or Cartesian (toolkit 0.7.0,
 #41 for f and g). Conflicting flags are refused. Spherical components in
 Molden order (m = 0, +1, −1, …, +l, −l) map to QVF's m = −l … +l without sign
 changes. Cartesian components in Molden's `10F`/`15G` orders map to QVF's
@@ -841,7 +843,7 @@ convention each for d, f and g, and writes the matching flags. PySCF-written
 f and g files give the same orbital values at off-axis points after import
 and after export. More than one wavefunction requires `--section`.
 
-### Molden dialects (Unreleased)
+### Molden dialects (toolkit 0.7.0)
 
 Programs that write Molden files deviate from the format description in
 documented ways. Import never guesses the producer from orbital norms or the
@@ -899,7 +901,7 @@ energies, occupations and labels; QVF identities, bonds, method metadata,
 jobs and overlap/density matrices are not retained. Supply the reported spin
 on reimport and keep the original archive.
 
-## Gaussian formatted checkpoint files (Unreleased)
+## Gaussian formatted checkpoint files (toolkit 0.7.0)
 
 ```sh
 qvf convert water.fchk --from fchk --to qvf -o water.qvf
@@ -1030,7 +1032,7 @@ findings. Remaining: ECPs, natural orbitals and post SCF densities.
 from qvf.convert import import_xyz, export_xyz, import_cube, export_cube
 # Since toolkit 0.6.0:
 from qvf.convert import import_xsf, export_xsf, import_pdb, export_pdb
-# In the development checkout (Unreleased):
+# Since toolkit 0.7.0:
 from qvf.convert import import_molden, export_molden, import_cif, export_cif
 from qvf.convert import import_poscar, export_poscar, import_chgcar, export_chgcar
 from qvf.convert import import_mmcif, export_mmcif

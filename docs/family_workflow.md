@@ -200,7 +200,7 @@ unreviewed campaign remains ineligible for an accepted reaction-energy report.
 
 The frozen Sketch campaign export keeps its report in each reaction step's
 `x_vibesketch.energies` extension. That layout is allowed by v0.6.0; the
-canonical step `energies` field on later toolkit main is outside this pin.
+canonical step `energies` field in toolkit 0.7.0 is outside this pin.
 
 Keep source identity at each layer: the executed runtime's Git revision,
 campaign/source-directory digest, artifact manifest and result-file digest,

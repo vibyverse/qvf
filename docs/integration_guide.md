@@ -411,8 +411,8 @@ conversation worth having too.
 
 ### A note for PySCF-style Python codes
 
-The development branch includes `qvf.adapters.pyscf` (Unreleased; not in
-toolkit v0.6.0). From a checkout containing it, install
+Toolkit 0.7.0 includes `qvf.adapters.pyscf` (toolkit v0.6.0 does not). From
+a checkout at the v0.7.0 tag or later, install
 `python -m pip install 'python/[pyscf,validate]'`. It writes a molecular SCF or
 DFT result, orbitals, overlap, densities and populations included, with one call to
 `write_scf(mf, "result.qvf")`. See the [PySCF adapter guide](adapters/pyscf.md).

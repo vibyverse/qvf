@@ -15,7 +15,7 @@ authors:
   - family-names: Peintinger
     given-names: Michael F.
     website: "https://vibe-qc.com/"
-version: 0.6.0
+version: 0.7.0
 url: "https://vibe-qc.com/docs/qvf/"
 repository-code: "https://github.com/vibyverse/qvf"
 license: Apache-2.0

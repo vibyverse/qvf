@@ -8,7 +8,7 @@ The package and its raw-buffer writer, reader and editor use only the standard
 library. Install optional dependencies for numeric convenience writers and
 full JSON Schema validation. Python 3.9+ is supported by the base package.
 
-The development source also includes `qvf export-xtb` and
+Toolkit 0.7.0 also includes `qvf export-xtb` and
 `qvf.adapters.xtb.write_xtb`: package molecular GFN0/1/2-xTB JSON, geometry
 and explicitly selected trajectory, bond-order, Molden, normal-mode and
 cube outputs as one validated QVF. See the
@@ -17,25 +17,31 @@ This adapter needs neither xTB nor NumPy at export time.
 
 ## Python release candidate
 
-`0.7.0rc1` is the first PyPI release candidate, including the PySCF adapter.
-It is prepared for publication; the following index command works **after the
-candidate is uploaded**:
+`0.7.0` is the first PyPI release candidate, the same version as toolkit
+0.7.0, and includes the PySCF adapter. It has not been uploaded yet. Until
+then, install the tagged source:
 
 ```sh
-python -m pip install "qvf-writer[pyscf,validate]==0.7.0rc1"
+python -m pip install "qvf-writer[pyscf,validate] @ git+https://github.com/vibyverse/qvf.git@v0.7.0#subdirectory=python"
+```
+
+The following index command works **after the package is uploaded**:
+
+```sh
+python -m pip install "qvf-writer[pyscf,validate]==0.7.0"
 ```
 
 For the PySCF tutorial use Python 3.11–3.13 on a platform with a PySCF wheel
 (Linux or macOS). The QVF base package does not require PySCF or NumPy.
-To test the candidate before publication, install its downloaded wheel:
+To test a built wheel before publication, install it directly:
 
 ```sh
-python -m pip install "./qvf_writer-0.7.0rc1-py3-none-any.whl[pyscf,validate]"
+python -m pip install "./qvf_writer-0.7.0-py3-none-any.whl[pyscf,validate]"
 ```
 
-The Python candidate version does not change the archive format version or
-move consumers pinned to toolkit v0.6.0. That older tag has no PySCF adapter.
-For the existing stable toolkit, install the tagged source:
+Toolkit 0.7.0 does not change the archive format version or move consumers
+pinned to toolkit v0.6.0. That older tag has no PySCF adapter. To match
+their pin, install its tagged source:
 
 ```sh
 python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyverse/qvf.git@v0.6.0#subdirectory=python"

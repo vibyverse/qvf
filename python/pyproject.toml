@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qvf-writer"
-version = "0.7.0rc1"
+version = "0.7.0"
 description = "Standalone reference writer/reader for the QVF (Quantum Visualization Format) quantum-chemistry container"
 readme = "README.md"
 requires-python = ">=3.9"

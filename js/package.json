@@ -1,6 +1,6 @@
 {
   "name": "@qvf/core",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Reader, validator and writer for QVF (Quantum Visualization Format) archives, in pure TypeScript for Node and browsers.",
   "private": true,
   "type": "module",
