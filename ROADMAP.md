@@ -159,7 +159,8 @@ Each item is spec + schema + registry + both writers + validator + corpus + docs
 - ✅ **Unreleased, #11:** twenty compound unit names (for example `hartree_per_bohr`) in the § 4.3 vocabulary, accepted 2026-11-04.
 - ✅ **Unreleased, #17:** volume sections name the `wavefunction.gto` and orbital row they were computed from (`wavefunction_ref`, `mo_index`, `spin`), accepted 2026-11-05.
 - ✅ **Unreleased, #20:** a grid `units.data` that contradicts the unit § 4.3 fixes for its kind is the new error `E_UNIT_CONTRADICTED`, accepted 2026-11-05.
-- ⬜ Demand-driven, not scheduled: `wavefunction.nao` / `.sto` (P16), `spectra.xas` / `.mossbauer` (P13)
+- ✅ **Unreleased, #19:** typed `spectra.xas`, `spectra.xes` and `spectra.mossbauer` kinds (P13), accepted 2026-11-05.
+- ⬜ Demand-driven, not scheduled: `wavefunction.nao` / `.sto` (P16)
 
 ## Phase 3 — libqvf (core and C++/C/Python facades landed)
 
