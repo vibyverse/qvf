@@ -353,6 +353,14 @@ pub struct VolumeDifferenceFields {
     pub operand_b: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eda_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eda_role: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pair_index: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pair_spin: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -3187,6 +3195,183 @@ pub struct MossbauerSpectrumPayload {
     pub extra: BTreeMap<String, Value>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaFields {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structure_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wavefunction_ref: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaMethod {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub functional: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub basis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispersion: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaFragment {
+    pub label: String,
+    pub atoms: Vec<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub charge: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multiplicity: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spin_flip: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub basis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energy: Option<ValueWithUnits>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaPayloadEnergies {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system: Option<ValueWithUnits>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaTerm {
+    pub name: String,
+    pub energy: ValueWithUnits,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fragments: Option<Vec<i64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub directed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaSumRule {
+    pub total: i64,
+    pub parts: Vec<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tolerance: Option<ValueWithUnits>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaOrbitalPair {
+    pub index: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spin: Option<String>,
+    pub eigenvalue: f64,
+    pub energy: ValueWithUnits,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub donor: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acceptor: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kpoint_eigenvalues: Option<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kpoint_energies: Option<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub density_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaOrbitalPairs {
+    #[serde(rename = "type")]
+    pub type_: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eigenvalue_convention: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<ValueWithUnits>,
+    pub pairs: Vec<EdaOrbitalPair>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaPeriodic {
+    pub kpoints: BlochKpointsPayload,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mesh: Option<[i64; 3]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orbital_pairs_gamma_only: Option<bool>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EdaPayload {
+    pub scheme: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method: Option<EdaMethod>,
+    pub fragments: Vec<EdaFragment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub energies: Option<EdaPayloadEnergies>,
+    pub terms: Vec<EdaTerm>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sum_rules: Option<Vec<EdaSumRule>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orbital_pairs: Option<EdaOrbitalPairs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub periodic: Option<EdaPeriodic>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
 /// A `structure` section with typed members (`SectionStructure`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Structure {
@@ -5266,6 +5451,34 @@ impl TypedKind for SpectraMossbauer {
     }
 }
 
+/// A `eda` section with typed members (`SectionEda`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Eda {
+    /// The section fields other than `kind` and `members`.
+    pub fields: EdaFields,
+    pub decomposition: EdaPayload,
+}
+
+impl TypedKind for Eda {
+    const KIND: &'static str = "eda";
+
+    fn from_section(reader: &Reader, section: Section<'_>) -> Result<Self, QvfError> {
+        check_kind(section, Self::KIND)?;
+        let decomposition = json_member(reader, section, "decomposition")?;
+        Ok(Self { fields: section_fields(section)?, decomposition, })
+    }
+
+    fn to_writer<W: Write>(&self, writer: &mut Writer<W>) -> Result<String, WriteError> {
+        let id = add_section(writer, Self::KIND, &self.fields)?;
+        put_json(writer, &id, "decomposition", &self.decomposition)?;
+        Ok(id)
+    }
+
+    fn id(&self) -> &str {
+        &self.fields.id
+    }
+}
+
 /// A section of any canonical kind, decoded with its typed model.
 #[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::large_enum_variant)]
@@ -5329,6 +5542,7 @@ pub enum AnyKind {
     SpectraXAS(SpectraXAS),
     SpectraXES(SpectraXES),
     SpectraMossbauer(SpectraMossbauer),
+    Eda(Eda),
 }
 
 impl AnyKind {
@@ -5394,6 +5608,7 @@ impl AnyKind {
             SpectraXAS::KIND => AnyKind::SpectraXAS(SpectraXAS::from_section(reader, section)?),
             SpectraXES::KIND => AnyKind::SpectraXES(SpectraXES::from_section(reader, section)?),
             SpectraMossbauer::KIND => AnyKind::SpectraMossbauer(SpectraMossbauer::from_section(reader, section)?),
+            Eda::KIND => AnyKind::Eda(Eda::from_section(reader, section)?),
             _ => return Ok(None),
         }))
     }
@@ -5460,6 +5675,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(_) => SpectraXAS::KIND,
             AnyKind::SpectraXES(_) => SpectraXES::KIND,
             AnyKind::SpectraMossbauer(_) => SpectraMossbauer::KIND,
+            AnyKind::Eda(_) => Eda::KIND,
         }
     }
 
@@ -5525,6 +5741,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(v) => v.id(),
             AnyKind::SpectraXES(v) => v.id(),
             AnyKind::SpectraMossbauer(v) => v.id(),
+            AnyKind::Eda(v) => v.id(),
         }
     }
 
@@ -5590,6 +5807,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(v) => v.to_writer(writer),
             AnyKind::SpectraXES(v) => v.to_writer(writer),
             AnyKind::SpectraMossbauer(v) => v.to_writer(writer),
+            AnyKind::Eda(v) => v.to_writer(writer),
         }
     }
 }

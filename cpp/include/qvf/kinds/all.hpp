@@ -470,6 +470,10 @@ struct VolumeDifferenceFields {
     std::optional<std::string> operand_a{};
     std::optional<std::string> operand_b{};
     std::optional<std::string> description{};
+    std::optional<std::string> eda_ref{};
+    std::optional<std::string> eda_role{};
+    std::optional<int64_t> pair_index{};
+    std::optional<std::string> pair_spin{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -479,6 +483,14 @@ struct VolumeDifferenceFields {
         if (operand_b) codec::put(out, "operand_b", *operand_b);
         if (out.has("description")) throw std::invalid_argument("use the typed field, not extra: description");
         if (description) codec::put(out, "description", *description);
+        if (out.has("eda_ref")) throw std::invalid_argument("use the typed field, not extra: eda_ref");
+        if (eda_ref) codec::put(out, "eda_ref", *eda_ref);
+        if (out.has("eda_role")) throw std::invalid_argument("use the typed field, not extra: eda_role");
+        if (eda_role) codec::put(out, "eda_role", *eda_role);
+        if (out.has("pair_index")) throw std::invalid_argument("use the typed field, not extra: pair_index");
+        if (pair_index) codec::put(out, "pair_index", *pair_index);
+        if (out.has("pair_spin")) throw std::invalid_argument("use the typed field, not extra: pair_spin");
+        if (pair_spin) codec::put(out, "pair_spin", *pair_spin);
         return out;
     }
     static VolumeDifferenceFields from_json(const Json& j) {
@@ -487,7 +499,11 @@ struct VolumeDifferenceFields {
         if (j.has("operand_a")) out.operand_a.emplace(codec::get<std::string>(j, "operand_a"));
         if (j.has("operand_b")) out.operand_b.emplace(codec::get<std::string>(j, "operand_b"));
         if (j.has("description")) out.description.emplace(codec::get<std::string>(j, "description"));
-        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description") out.extra[kv.first] = kv.second;
+        if (j.has("eda_ref")) out.eda_ref.emplace(codec::get<std::string>(j, "eda_ref"));
+        if (j.has("eda_role")) out.eda_role.emplace(codec::get<std::string>(j, "eda_role"));
+        if (j.has("pair_index")) out.pair_index.emplace(codec::get<int64_t>(j, "pair_index"));
+        if (j.has("pair_spin")) out.pair_spin.emplace(codec::get<std::string>(j, "pair_spin"));
+        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -4386,6 +4402,362 @@ struct MossbauerSpectrumPayload {
     }
 };
 
+struct EdaFields {
+    std::optional<std::string> wavefunction_ref{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("wavefunction_ref")) throw std::invalid_argument("use the typed field, not extra: wavefunction_ref");
+        if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
+        return out;
+    }
+    static EdaFields from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaFields out;
+        if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
+        for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaMethod {
+    std::optional<std::string> method{};
+    std::optional<std::string> functional{};
+    std::optional<std::string> basis{};
+    std::optional<std::string> dispersion{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("method")) throw std::invalid_argument("use the typed field, not extra: method");
+        if (method) codec::put(out, "method", *method);
+        if (out.has("functional")) throw std::invalid_argument("use the typed field, not extra: functional");
+        if (functional) codec::put(out, "functional", *functional);
+        if (out.has("basis")) throw std::invalid_argument("use the typed field, not extra: basis");
+        if (basis) codec::put(out, "basis", *basis);
+        if (out.has("dispersion")) throw std::invalid_argument("use the typed field, not extra: dispersion");
+        if (dispersion) codec::put(out, "dispersion", *dispersion);
+        return out;
+    }
+    static EdaMethod from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaMethod out;
+        if (j.has("method")) out.method.emplace(codec::get<std::string>(j, "method"));
+        if (j.has("functional")) out.functional.emplace(codec::get<std::string>(j, "functional"));
+        if (j.has("basis")) out.basis.emplace(codec::get<std::string>(j, "basis"));
+        if (j.has("dispersion")) out.dispersion.emplace(codec::get<std::string>(j, "dispersion"));
+        for (const auto& kv : j.items()) if (kv.first != "method" && kv.first != "functional" && kv.first != "basis" && kv.first != "dispersion") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaFragment {
+    std::string label{};
+    std::vector<int64_t> atoms{};
+    std::optional<int64_t> parent{};
+    std::optional<int64_t> charge{};
+    std::optional<int64_t> multiplicity{};
+    std::optional<bool> spin_flip{};
+    std::optional<std::string> basis{};
+    std::optional<std::string> state{};
+    std::optional<ValueWithUnits> energy{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        codec::put(out, "label", label);
+        if (out.has("atoms")) throw std::invalid_argument("use the typed field, not extra: atoms");
+        codec::put(out, "atoms", atoms);
+        if (out.has("parent")) throw std::invalid_argument("use the typed field, not extra: parent");
+        if (parent) codec::put(out, "parent", *parent);
+        if (out.has("charge")) throw std::invalid_argument("use the typed field, not extra: charge");
+        if (charge) codec::put(out, "charge", *charge);
+        if (out.has("multiplicity")) throw std::invalid_argument("use the typed field, not extra: multiplicity");
+        if (multiplicity) codec::put(out, "multiplicity", *multiplicity);
+        if (out.has("spin_flip")) throw std::invalid_argument("use the typed field, not extra: spin_flip");
+        if (spin_flip) codec::put(out, "spin_flip", *spin_flip);
+        if (out.has("basis")) throw std::invalid_argument("use the typed field, not extra: basis");
+        if (basis) codec::put(out, "basis", *basis);
+        if (out.has("state")) throw std::invalid_argument("use the typed field, not extra: state");
+        if (state) codec::put(out, "state", *state);
+        if (out.has("energy")) throw std::invalid_argument("use the typed field, not extra: energy");
+        if (energy) codec::put(out, "energy", *energy);
+        return out;
+    }
+    static EdaFragment from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaFragment out;
+        out.label = codec::get<std::string>(j, "label");
+        out.atoms = codec::get<std::vector<int64_t>>(j, "atoms");
+        if (j.has("parent")) out.parent.emplace(codec::get<int64_t>(j, "parent"));
+        if (j.has("charge")) out.charge.emplace(codec::get<int64_t>(j, "charge"));
+        if (j.has("multiplicity")) out.multiplicity.emplace(codec::get<int64_t>(j, "multiplicity"));
+        if (j.has("spin_flip")) out.spin_flip.emplace(codec::get<bool>(j, "spin_flip"));
+        if (j.has("basis")) out.basis.emplace(codec::get<std::string>(j, "basis"));
+        if (j.has("state")) out.state.emplace(codec::get<std::string>(j, "state"));
+        if (j.has("energy")) out.energy.emplace(codec::get<ValueWithUnits>(j, "energy"));
+        for (const auto& kv : j.items()) if (kv.first != "label" && kv.first != "atoms" && kv.first != "parent" && kv.first != "charge" && kv.first != "multiplicity" && kv.first != "spin_flip" && kv.first != "basis" && kv.first != "state" && kv.first != "energy") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaPayloadEnergies {
+    std::optional<ValueWithUnits> system{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("system")) throw std::invalid_argument("use the typed field, not extra: system");
+        if (system) codec::put(out, "system", *system);
+        return out;
+    }
+    static EdaPayloadEnergies from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaPayloadEnergies out;
+        if (j.has("system")) out.system.emplace(codec::get<ValueWithUnits>(j, "system"));
+        for (const auto& kv : j.items()) if (kv.first != "system") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaTerm {
+    std::string name{};
+    ValueWithUnits energy{};
+    std::optional<std::vector<int64_t>> fragments{};
+    std::optional<bool> directed{};
+    std::optional<std::string> spin{};
+    std::optional<int64_t> parent{};
+    std::optional<std::string> order{};
+    std::optional<std::string> label{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("name")) throw std::invalid_argument("use the typed field, not extra: name");
+        codec::put(out, "name", name);
+        if (out.has("energy")) throw std::invalid_argument("use the typed field, not extra: energy");
+        codec::put(out, "energy", energy);
+        if (out.has("fragments")) throw std::invalid_argument("use the typed field, not extra: fragments");
+        if (fragments) codec::put(out, "fragments", *fragments);
+        if (out.has("directed")) throw std::invalid_argument("use the typed field, not extra: directed");
+        if (directed) codec::put(out, "directed", *directed);
+        if (out.has("spin")) throw std::invalid_argument("use the typed field, not extra: spin");
+        if (spin) codec::put(out, "spin", *spin);
+        if (out.has("parent")) throw std::invalid_argument("use the typed field, not extra: parent");
+        if (parent) codec::put(out, "parent", *parent);
+        if (out.has("order")) throw std::invalid_argument("use the typed field, not extra: order");
+        if (order) codec::put(out, "order", *order);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        return out;
+    }
+    static EdaTerm from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaTerm out;
+        out.name = codec::get<std::string>(j, "name");
+        out.energy = codec::get<ValueWithUnits>(j, "energy");
+        if (j.has("fragments")) out.fragments.emplace(codec::get<std::vector<int64_t>>(j, "fragments"));
+        if (j.has("directed")) out.directed.emplace(codec::get<bool>(j, "directed"));
+        if (j.has("spin")) out.spin.emplace(codec::get<std::string>(j, "spin"));
+        if (j.has("parent")) out.parent.emplace(codec::get<int64_t>(j, "parent"));
+        if (j.has("order")) out.order.emplace(codec::get<std::string>(j, "order"));
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        for (const auto& kv : j.items()) if (kv.first != "name" && kv.first != "energy" && kv.first != "fragments" && kv.first != "directed" && kv.first != "spin" && kv.first != "parent" && kv.first != "order" && kv.first != "label") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaSumRule {
+    int64_t total{};
+    std::vector<int64_t> parts{};
+    std::optional<ValueWithUnits> tolerance{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("total")) throw std::invalid_argument("use the typed field, not extra: total");
+        codec::put(out, "total", total);
+        if (out.has("parts")) throw std::invalid_argument("use the typed field, not extra: parts");
+        codec::put(out, "parts", parts);
+        if (out.has("tolerance")) throw std::invalid_argument("use the typed field, not extra: tolerance");
+        if (tolerance) codec::put(out, "tolerance", *tolerance);
+        return out;
+    }
+    static EdaSumRule from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaSumRule out;
+        out.total = codec::get<int64_t>(j, "total");
+        out.parts = codec::get<std::vector<int64_t>>(j, "parts");
+        if (j.has("tolerance")) out.tolerance.emplace(codec::get<ValueWithUnits>(j, "tolerance"));
+        for (const auto& kv : j.items()) if (kv.first != "total" && kv.first != "parts" && kv.first != "tolerance") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaOrbitalPair {
+    int64_t index{};
+    std::optional<std::string> spin{};
+    double eigenvalue{};
+    ValueWithUnits energy{};
+    std::optional<int64_t> donor{};
+    std::optional<int64_t> acceptor{};
+    std::optional<std::vector<double>> kpoint_eigenvalues{};
+    std::optional<std::vector<double>> kpoint_energies{};
+    std::optional<std::string> density_ref{};
+    std::optional<std::string> label{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("index")) throw std::invalid_argument("use the typed field, not extra: index");
+        codec::put(out, "index", index);
+        if (out.has("spin")) throw std::invalid_argument("use the typed field, not extra: spin");
+        if (spin) codec::put(out, "spin", *spin);
+        if (out.has("eigenvalue")) throw std::invalid_argument("use the typed field, not extra: eigenvalue");
+        codec::put(out, "eigenvalue", eigenvalue);
+        if (out.has("energy")) throw std::invalid_argument("use the typed field, not extra: energy");
+        codec::put(out, "energy", energy);
+        if (out.has("donor")) throw std::invalid_argument("use the typed field, not extra: donor");
+        if (donor) codec::put(out, "donor", *donor);
+        if (out.has("acceptor")) throw std::invalid_argument("use the typed field, not extra: acceptor");
+        if (acceptor) codec::put(out, "acceptor", *acceptor);
+        if (out.has("kpoint_eigenvalues")) throw std::invalid_argument("use the typed field, not extra: kpoint_eigenvalues");
+        if (kpoint_eigenvalues) codec::put(out, "kpoint_eigenvalues", *kpoint_eigenvalues);
+        if (out.has("kpoint_energies")) throw std::invalid_argument("use the typed field, not extra: kpoint_energies");
+        if (kpoint_energies) codec::put(out, "kpoint_energies", *kpoint_energies);
+        if (out.has("density_ref")) throw std::invalid_argument("use the typed field, not extra: density_ref");
+        if (density_ref) codec::put(out, "density_ref", *density_ref);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        return out;
+    }
+    static EdaOrbitalPair from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaOrbitalPair out;
+        out.index = codec::get<int64_t>(j, "index");
+        if (j.has("spin")) out.spin.emplace(codec::get<std::string>(j, "spin"));
+        out.eigenvalue = codec::get<double>(j, "eigenvalue");
+        out.energy = codec::get<ValueWithUnits>(j, "energy");
+        if (j.has("donor")) out.donor.emplace(codec::get<int64_t>(j, "donor"));
+        if (j.has("acceptor")) out.acceptor.emplace(codec::get<int64_t>(j, "acceptor"));
+        if (j.has("kpoint_eigenvalues")) out.kpoint_eigenvalues.emplace(codec::get<std::vector<double>>(j, "kpoint_eigenvalues"));
+        if (j.has("kpoint_energies")) out.kpoint_energies.emplace(codec::get<std::vector<double>>(j, "kpoint_energies"));
+        if (j.has("density_ref")) out.density_ref.emplace(codec::get<std::string>(j, "density_ref"));
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        for (const auto& kv : j.items()) if (kv.first != "index" && kv.first != "spin" && kv.first != "eigenvalue" && kv.first != "energy" && kv.first != "donor" && kv.first != "acceptor" && kv.first != "kpoint_eigenvalues" && kv.first != "kpoint_energies" && kv.first != "density_ref" && kv.first != "label") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaOrbitalPairs {
+    std::string type{};
+    std::optional<std::string> eigenvalue_convention{};
+    std::optional<double> threshold{};
+    std::optional<ValueWithUnits> total{};
+    std::vector<EdaOrbitalPair> pairs{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("type")) throw std::invalid_argument("use the typed field, not extra: type");
+        codec::put(out, "type", type);
+        if (out.has("eigenvalue_convention")) throw std::invalid_argument("use the typed field, not extra: eigenvalue_convention");
+        if (eigenvalue_convention) codec::put(out, "eigenvalue_convention", *eigenvalue_convention);
+        if (out.has("threshold")) throw std::invalid_argument("use the typed field, not extra: threshold");
+        if (threshold) codec::put(out, "threshold", *threshold);
+        if (out.has("total")) throw std::invalid_argument("use the typed field, not extra: total");
+        if (total) codec::put(out, "total", *total);
+        if (out.has("pairs")) throw std::invalid_argument("use the typed field, not extra: pairs");
+        codec::put(out, "pairs", pairs);
+        return out;
+    }
+    static EdaOrbitalPairs from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaOrbitalPairs out;
+        out.type = codec::get<std::string>(j, "type");
+        if (j.has("eigenvalue_convention")) out.eigenvalue_convention.emplace(codec::get<std::string>(j, "eigenvalue_convention"));
+        if (j.has("threshold")) out.threshold.emplace(codec::get<double>(j, "threshold"));
+        if (j.has("total")) out.total.emplace(codec::get<ValueWithUnits>(j, "total"));
+        out.pairs = codec::get<std::vector<EdaOrbitalPair>>(j, "pairs");
+        for (const auto& kv : j.items()) if (kv.first != "type" && kv.first != "eigenvalue_convention" && kv.first != "threshold" && kv.first != "total" && kv.first != "pairs") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaPeriodic {
+    BlochKpointsPayload kpoints{};
+    std::optional<std::array<int64_t, 3>> mesh{};
+    std::optional<bool> orbital_pairs_gamma_only{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("kpoints")) throw std::invalid_argument("use the typed field, not extra: kpoints");
+        codec::put(out, "kpoints", kpoints);
+        if (out.has("mesh")) throw std::invalid_argument("use the typed field, not extra: mesh");
+        if (mesh) codec::put(out, "mesh", *mesh);
+        if (out.has("orbital_pairs_gamma_only")) throw std::invalid_argument("use the typed field, not extra: orbital_pairs_gamma_only");
+        if (orbital_pairs_gamma_only) codec::put(out, "orbital_pairs_gamma_only", *orbital_pairs_gamma_only);
+        return out;
+    }
+    static EdaPeriodic from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaPeriodic out;
+        out.kpoints = codec::get<BlochKpointsPayload>(j, "kpoints");
+        if (j.has("mesh")) out.mesh.emplace(codec::get<std::array<int64_t, 3>>(j, "mesh"));
+        if (j.has("orbital_pairs_gamma_only")) out.orbital_pairs_gamma_only.emplace(codec::get<bool>(j, "orbital_pairs_gamma_only"));
+        for (const auto& kv : j.items()) if (kv.first != "kpoints" && kv.first != "mesh" && kv.first != "orbital_pairs_gamma_only") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct EdaPayload {
+    std::string scheme{};
+    std::optional<std::string> variant{};
+    std::optional<EdaMethod> method{};
+    std::vector<EdaFragment> fragments{};
+    std::optional<EdaPayloadEnergies> energies{};
+    std::vector<EdaTerm> terms{};
+    std::optional<std::vector<EdaSumRule>> sum_rules{};
+    std::optional<EdaOrbitalPairs> orbital_pairs{};
+    std::optional<EdaPeriodic> periodic{};
+    std::optional<std::string> notes{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("scheme")) throw std::invalid_argument("use the typed field, not extra: scheme");
+        codec::put(out, "scheme", scheme);
+        if (out.has("variant")) throw std::invalid_argument("use the typed field, not extra: variant");
+        if (variant) codec::put(out, "variant", *variant);
+        if (out.has("method")) throw std::invalid_argument("use the typed field, not extra: method");
+        if (method) codec::put(out, "method", *method);
+        if (out.has("fragments")) throw std::invalid_argument("use the typed field, not extra: fragments");
+        codec::put(out, "fragments", fragments);
+        if (out.has("energies")) throw std::invalid_argument("use the typed field, not extra: energies");
+        if (energies) codec::put(out, "energies", *energies);
+        if (out.has("terms")) throw std::invalid_argument("use the typed field, not extra: terms");
+        codec::put(out, "terms", terms);
+        if (out.has("sum_rules")) throw std::invalid_argument("use the typed field, not extra: sum_rules");
+        if (sum_rules) codec::put(out, "sum_rules", *sum_rules);
+        if (out.has("orbital_pairs")) throw std::invalid_argument("use the typed field, not extra: orbital_pairs");
+        if (orbital_pairs) codec::put(out, "orbital_pairs", *orbital_pairs);
+        if (out.has("periodic")) throw std::invalid_argument("use the typed field, not extra: periodic");
+        if (periodic) codec::put(out, "periodic", *periodic);
+        if (out.has("notes")) throw std::invalid_argument("use the typed field, not extra: notes");
+        if (notes) codec::put(out, "notes", *notes);
+        return out;
+    }
+    static EdaPayload from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        EdaPayload out;
+        out.scheme = codec::get<std::string>(j, "scheme");
+        if (j.has("variant")) out.variant.emplace(codec::get<std::string>(j, "variant"));
+        if (j.has("method")) out.method.emplace(codec::get<EdaMethod>(j, "method"));
+        out.fragments = codec::get<std::vector<EdaFragment>>(j, "fragments");
+        if (j.has("energies")) out.energies.emplace(codec::get<EdaPayloadEnergies>(j, "energies"));
+        out.terms = codec::get<std::vector<EdaTerm>>(j, "terms");
+        if (j.has("sum_rules")) out.sum_rules.emplace(codec::get<std::vector<EdaSumRule>>(j, "sum_rules"));
+        if (j.has("orbital_pairs")) out.orbital_pairs.emplace(codec::get<EdaOrbitalPairs>(j, "orbital_pairs"));
+        if (j.has("periodic")) out.periodic.emplace(codec::get<EdaPeriodic>(j, "periodic"));
+        if (j.has("notes")) out.notes.emplace(codec::get<std::string>(j, "notes"));
+        for (const auto& kv : j.items()) if (kv.first != "scheme" && kv.first != "variant" && kv.first != "method" && kv.first != "fragments" && kv.first != "energies" && kv.first != "terms" && kv.first != "sum_rules" && kv.first != "orbital_pairs" && kv.first != "periodic" && kv.first != "notes") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct Structure : SectionFields {
     static constexpr std::string_view kind = "structure";
     Structure() { id = "structure"; }
@@ -4576,7 +4948,7 @@ struct VolumeDifference : SectionFields {
         out.fields = VolumeDifferenceFields::from_json(section.extra);
         out.fields.extra.clear();
         out.extra = Json::object();
-        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description") out.extra.set(kv.first, kv.second);
+        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;
@@ -5842,6 +6214,31 @@ struct SpectraMossbauer : SectionFields {
     }
 };
 
+struct Eda : SectionFields {
+    static constexpr std::string_view kind = "eda";
+    Eda() { id = "eda"; }
+    EdaFields fields;
+    EdaPayload decomposition{};
+    std::string to_section(Writer& writer) const {
+        Section s = descriptor(std::string(kind));
+        const Json peer_fields = fields.to_json();
+        for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
+        std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
+        json.push_back({"decomposition", codec::Value<EdaPayload>::encode(decomposition)});
+        return writer.add_payload(std::move(s), json, binary, opaque);
+    }
+    static Eda from_section(const Reader& reader, const Section& section) {
+        if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
+        Eda out; out.load(section);
+        out.fields = EdaFields::from_json(section.extra);
+        out.fields.extra.clear();
+        out.extra = Json::object();
+        for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref") out.extra.set(kv.first, kv.second);
+        out.decomposition = codec::Value<EdaPayload>::decode(reader.json(section, "decomposition"));
+        return out;
+    }
+};
+
 inline std::string copy_section(const Reader& reader, const Section& section, Writer& writer) {
     if (!section.kind || !section.id) throw std::invalid_argument("section id/kind absent");
     if (*section.kind == "structure") return writer.add(Structure::from_section(reader, section));
@@ -5903,6 +6300,7 @@ inline std::string copy_section(const Reader& reader, const Section& section, Wr
     if (*section.kind == "spectra.xas") return writer.add(SpectraXAS::from_section(reader, section));
     if (*section.kind == "spectra.xes") return writer.add(SpectraXES::from_section(reader, section));
     if (*section.kind == "spectra.mossbauer") return writer.add(SpectraMossbauer::from_section(reader, section));
+    if (*section.kind == "eda") return writer.add(Eda::from_section(reader, section));
     throw std::invalid_argument("copy_section requires a canonical kind");
 }
 } } // qvf::kinds

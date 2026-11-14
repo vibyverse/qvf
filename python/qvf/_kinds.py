@@ -373,6 +373,9 @@ KINDS: Mapping[str, KindInfo] = MappingProxyType({
     "spectra.mossbauer": KindInfo("spectra.mossbauer", (
         RoleInfo("spectrum", True, "json", (), None, None, "MossbauerSpectrumPayload", False),
     ), False),
+    "eda": KindInfo("eda", (
+        RoleInfo("decomposition", True, "json", (), None, None, "EdaPayload", False),
+    ), False),
 })
 
 #: The canonical kind names (registry.json order); vendor kinds x_<...> are
@@ -447,6 +450,7 @@ PAYLOAD_DEFS: Mapping[Tuple[str, str], str] = MappingProxyType({
     ("properties.elastic", "properties"): "ElasticPropertiesPayload",
     ("properties.dielectric", "properties"): "DielectricPropertiesPayload",
     ("excited_states", "states"): "ExcitedStatesPayload",
+    ("eda", "decomposition"): "EdaPayload",
     ("volume.transition_density", "grid"): "VolumeGridPayload",
 })
 
@@ -529,7 +533,9 @@ SCHEMA_DEFS: Tuple[str, ...] = (
     "Matrix3x6", "Matrix6x6", "Tensor3x3x3", "ElectricPropertiesPayload",
     "ElasticPropertiesPayload", "DielectricPropertiesPayload",
     "SectionVolumeTransitionDensity", "SectionPreview", "PreviewThumbnail",
-    "PreviewImage", "SectionVendor", "Metadata", "MetadataAuthor",
+    "PreviewImage", "SectionEda", "EdaPayload", "EdaMethod", "EdaFragment",
+    "EdaTerm", "EdaSumRule", "EdaOrbitalPairs", "EdaOrbitalPair",
+    "EdaPeriodic", "SectionVendor", "Metadata", "MetadataAuthor",
     "ProvenanceSoftware", "Thermochemistry", "DipoleMoment", "Constraints",
     "Energies", "EnergyComponents", "EnergyByMethod", "Extensions",
 )

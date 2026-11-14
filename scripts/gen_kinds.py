@@ -158,6 +158,8 @@ PAYLOAD_DEFS: dict[tuple[str, str], str] = {
     ("properties.elastic", "properties"): "ElasticPropertiesPayload",
     ("properties.dielectric", "properties"): "DielectricPropertiesPayload",
     ("excited_states", "states"): "ExcitedStatesPayload",
+    # Energy decomposition analysis (spec § 5.16)
+    ("eda", "decomposition"): "EdaPayload",
     ("volume.transition_density", "grid"): "VolumeGridPayload",
 }
 
