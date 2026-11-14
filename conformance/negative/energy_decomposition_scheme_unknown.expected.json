@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_scheme_unknown.qvf",
+  "description": "An energy_decomposition payload whose scheme is neither a scheme name of \u00a7 5.16 nor an x_ name (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

@@ -1231,7 +1231,7 @@ def _transition_density_errors(sid: str, section: dict,
 def _eda_errors(sid: str, section: dict, payload: Any,
                 kinds_by_id: dict[str, str], n_atoms_of: dict[str, int],
                 first_structure: Optional[str]) -> list[tuple[str, str, str]]:
-    """Rules of an ``eda`` section that JSON Schema cannot express (spec
+    """Rules of an ``energy_decomposition`` section that JSON Schema cannot express (spec
     § 5.16): the payload rules of :func:`qvf._eda.payload_errors`, the
     section's ``wavefunction_ref`` and every pair's ``density_ref``. Returns
     ``(code, field, message)`` triples; ``field`` is the section field a
@@ -1266,20 +1266,20 @@ def _eda_errors(sid: str, section: dict, payload: Any,
 def _eda_density_errors(sid: str, section: dict, kinds_by_id: dict[str, str],
                         pairs_of: dict[str, Optional[set[tuple[int, str]]]]
                         ) -> list[tuple[str, str]]:
-    """A ``volume.difference`` section's ``eda_ref`` names an ``eda`` section,
-    and for ``eda_role`` ``orbital_pair`` its ``pair_index`` and ``pair_spin``
+    """A ``volume.difference`` section's ``decomposition_ref`` names an ``energy_decomposition`` section,
+    and for ``decomposition_role`` ``orbital_pair`` its ``pair_index`` and ``pair_spin``
     name one of that section's orbital pairs (spec § 5.2, § 5.16). Returns
     ``(field, message)`` pairs."""
     sec = f"section {sid!r}: "
-    if "eda_ref" not in section:
-        return []  # the schema requires eda_ref with the other fields
-    ref = section["eda_ref"]
-    if not isinstance(ref, str) or kinds_by_id.get(ref) != "eda":
-        return [("eda_ref", sec + f"eda_ref {ref!r} does not name an eda section "
+    if "decomposition_ref" not in section:
+        return []  # the schema requires decomposition_ref with the other fields
+    ref = section["decomposition_ref"]
+    if not isinstance(ref, str) or kinds_by_id.get(ref) != "energy_decomposition":
+        return [("decomposition_ref", sec + f"decomposition_ref {ref!r} does not name an energy_decomposition section "
                                   f"(spec § 5.2)")]
     index = section.get("pair_index")
-    if section.get("eda_role") == "orbital_pair" and index is None:
-        return [("eda_role", sec + "eda_role 'orbital_pair' needs pair_index "
+    if section.get("decomposition_role") == "orbital_pair" and index is None:
+        return [("decomposition_role", sec + "decomposition_role 'orbital_pair' needs pair_index "
                                    "(spec § 5.2)")]
     if index is None:
         return []
@@ -1287,7 +1287,7 @@ def _eda_density_errors(sid: str, section: dict, kinds_by_id: dict[str, str],
     keys = pairs_of.get(ref)
     if _is_int(index) and (keys is None or (index, spin) not in keys):
         return [("pair_index", sec + f"pair_index {index} with pair_spin {spin!r} "
-                                     f"names no orbital pair of eda section {ref!r} "
+                                     f"names no orbital pair of energy_decomposition section {ref!r} "
                                      f"(spec § 5.2)")]
     return []
 
@@ -2933,12 +2933,12 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             states_ref_spectra.append((i, sid, docs["spectrum"]))
         if kind == "volume.transition_density":
             transition_densities.append((i, sid, s))
-        if kind == "eda":
+        if kind == "energy_decomposition":
             eda_sections.append((i, sid, s, docs.get("decomposition")))
             if sid not in eda_pairs_of:
                 eda_pairs_of[sid] = _eda.pair_keys(docs.get("decomposition"))
         if kind == "volume.difference" and any(
-                f in s for f in ("eda_ref", "eda_role", "pair_index", "pair_spin")):
+                f in s for f in ("decomposition_ref", "decomposition_role", "pair_index", "pair_spin")):
             eda_densities.append((i, sid, s))
         if kind in _WAVEFUNCTION_VOLUME_KINDS and "wavefunction_ref" in s:
             wavefunction_volumes.append((i, sid, kind, s))

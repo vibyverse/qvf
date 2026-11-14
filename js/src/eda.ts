@@ -1,5 +1,5 @@
 /**
- * Rules of an `eda` payload that JSON Schema cannot express (spec § 5.16),
+ * Rules of an `energy_decomposition` payload that JSON Schema cannot express (spec § 5.16),
  * shared by the validator and the writer. Mirrors `python/qvf/_eda.py`.
  *
  * License: Apache-2.0.
@@ -76,7 +76,7 @@ export function pairKeys(payload: unknown): Set<string> | null {
 }
 
 /**
- * `[code, message]` for every rule of § 5.16 an `eda` payload breaks.
+ * `[code, message]` for every rule of § 5.16 an `energy_decomposition` payload breaks.
  * `nAtoms` is the atom count of the section's structure when it resolves.
  */
 export function edaPayloadErrors(payload: unknown, nAtoms: number | null = null): Array<[EdaCode, string]> {

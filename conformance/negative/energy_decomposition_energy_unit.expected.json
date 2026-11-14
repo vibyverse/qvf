@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_energy_unit.qvf",
+  "description": "An energy_decomposition term energy in angstrom, which is not an energy unit (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_UNIT_CONTRADICTED",
+      "severity": "error"
+    }
+  ]
+}

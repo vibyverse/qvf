@@ -470,8 +470,8 @@ struct VolumeDifferenceFields {
     std::optional<std::string> operand_a{};
     std::optional<std::string> operand_b{};
     std::optional<std::string> description{};
-    std::optional<std::string> eda_ref{};
-    std::optional<std::string> eda_role{};
+    std::optional<std::string> decomposition_ref{};
+    std::optional<std::string> decomposition_role{};
     std::optional<int64_t> pair_index{};
     std::optional<std::string> pair_spin{};
     std::map<std::string, Json> extra;
@@ -483,10 +483,10 @@ struct VolumeDifferenceFields {
         if (operand_b) codec::put(out, "operand_b", *operand_b);
         if (out.has("description")) throw std::invalid_argument("use the typed field, not extra: description");
         if (description) codec::put(out, "description", *description);
-        if (out.has("eda_ref")) throw std::invalid_argument("use the typed field, not extra: eda_ref");
-        if (eda_ref) codec::put(out, "eda_ref", *eda_ref);
-        if (out.has("eda_role")) throw std::invalid_argument("use the typed field, not extra: eda_role");
-        if (eda_role) codec::put(out, "eda_role", *eda_role);
+        if (out.has("decomposition_ref")) throw std::invalid_argument("use the typed field, not extra: decomposition_ref");
+        if (decomposition_ref) codec::put(out, "decomposition_ref", *decomposition_ref);
+        if (out.has("decomposition_role")) throw std::invalid_argument("use the typed field, not extra: decomposition_role");
+        if (decomposition_role) codec::put(out, "decomposition_role", *decomposition_role);
         if (out.has("pair_index")) throw std::invalid_argument("use the typed field, not extra: pair_index");
         if (pair_index) codec::put(out, "pair_index", *pair_index);
         if (out.has("pair_spin")) throw std::invalid_argument("use the typed field, not extra: pair_spin");
@@ -499,11 +499,11 @@ struct VolumeDifferenceFields {
         if (j.has("operand_a")) out.operand_a.emplace(codec::get<std::string>(j, "operand_a"));
         if (j.has("operand_b")) out.operand_b.emplace(codec::get<std::string>(j, "operand_b"));
         if (j.has("description")) out.description.emplace(codec::get<std::string>(j, "description"));
-        if (j.has("eda_ref")) out.eda_ref.emplace(codec::get<std::string>(j, "eda_ref"));
-        if (j.has("eda_role")) out.eda_role.emplace(codec::get<std::string>(j, "eda_role"));
+        if (j.has("decomposition_ref")) out.decomposition_ref.emplace(codec::get<std::string>(j, "decomposition_ref"));
+        if (j.has("decomposition_role")) out.decomposition_role.emplace(codec::get<std::string>(j, "decomposition_role"));
         if (j.has("pair_index")) out.pair_index.emplace(codec::get<int64_t>(j, "pair_index"));
         if (j.has("pair_spin")) out.pair_spin.emplace(codec::get<std::string>(j, "pair_spin"));
-        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "decomposition_ref" && kv.first != "decomposition_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -4402,7 +4402,7 @@ struct MossbauerSpectrumPayload {
     }
 };
 
-struct EdaFields {
+struct EnergyDecompositionFields {
     std::optional<std::string> wavefunction_ref{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -4411,16 +4411,16 @@ struct EdaFields {
         if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
         return out;
     }
-    static EdaFields from_json(const Json& j) {
+    static EnergyDecompositionFields from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaFields out;
+        EnergyDecompositionFields out;
         if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
         for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaMethod {
+struct DecompositionMethod {
     std::optional<std::string> method{};
     std::optional<std::string> functional{};
     std::optional<std::string> basis{};
@@ -4438,9 +4438,9 @@ struct EdaMethod {
         if (dispersion) codec::put(out, "dispersion", *dispersion);
         return out;
     }
-    static EdaMethod from_json(const Json& j) {
+    static DecompositionMethod from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaMethod out;
+        DecompositionMethod out;
         if (j.has("method")) out.method.emplace(codec::get<std::string>(j, "method"));
         if (j.has("functional")) out.functional.emplace(codec::get<std::string>(j, "functional"));
         if (j.has("basis")) out.basis.emplace(codec::get<std::string>(j, "basis"));
@@ -4450,7 +4450,7 @@ struct EdaMethod {
     }
 };
 
-struct EdaFragment {
+struct DecompositionFragment {
     std::string label{};
     std::vector<int64_t> atoms{};
     std::optional<int64_t> parent{};
@@ -4483,9 +4483,9 @@ struct EdaFragment {
         if (energy) codec::put(out, "energy", *energy);
         return out;
     }
-    static EdaFragment from_json(const Json& j) {
+    static DecompositionFragment from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaFragment out;
+        DecompositionFragment out;
         out.label = codec::get<std::string>(j, "label");
         out.atoms = codec::get<std::vector<int64_t>>(j, "atoms");
         if (j.has("parent")) out.parent.emplace(codec::get<int64_t>(j, "parent"));
@@ -4500,7 +4500,7 @@ struct EdaFragment {
     }
 };
 
-struct EdaPayloadEnergies {
+struct EnergyDecompositionPayloadEnergies {
     std::optional<ValueWithUnits> system{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -4509,16 +4509,16 @@ struct EdaPayloadEnergies {
         if (system) codec::put(out, "system", *system);
         return out;
     }
-    static EdaPayloadEnergies from_json(const Json& j) {
+    static EnergyDecompositionPayloadEnergies from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPayloadEnergies out;
+        EnergyDecompositionPayloadEnergies out;
         if (j.has("system")) out.system.emplace(codec::get<ValueWithUnits>(j, "system"));
         for (const auto& kv : j.items()) if (kv.first != "system") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaTerm {
+struct DecompositionTerm {
     std::string name{};
     ValueWithUnits energy{};
     std::optional<std::vector<int64_t>> fragments{};
@@ -4548,9 +4548,9 @@ struct EdaTerm {
         if (label) codec::put(out, "label", *label);
         return out;
     }
-    static EdaTerm from_json(const Json& j) {
+    static DecompositionTerm from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaTerm out;
+        DecompositionTerm out;
         out.name = codec::get<std::string>(j, "name");
         out.energy = codec::get<ValueWithUnits>(j, "energy");
         if (j.has("fragments")) out.fragments.emplace(codec::get<std::vector<int64_t>>(j, "fragments"));
@@ -4564,7 +4564,7 @@ struct EdaTerm {
     }
 };
 
-struct EdaSumRule {
+struct DecompositionSumRule {
     int64_t total{};
     std::vector<int64_t> parts{};
     std::optional<ValueWithUnits> tolerance{};
@@ -4579,9 +4579,9 @@ struct EdaSumRule {
         if (tolerance) codec::put(out, "tolerance", *tolerance);
         return out;
     }
-    static EdaSumRule from_json(const Json& j) {
+    static DecompositionSumRule from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaSumRule out;
+        DecompositionSumRule out;
         out.total = codec::get<int64_t>(j, "total");
         out.parts = codec::get<std::vector<int64_t>>(j, "parts");
         if (j.has("tolerance")) out.tolerance.emplace(codec::get<ValueWithUnits>(j, "tolerance"));
@@ -4590,7 +4590,7 @@ struct EdaSumRule {
     }
 };
 
-struct EdaOrbitalPair {
+struct DecompositionOrbitalPair {
     int64_t index{};
     std::optional<std::string> spin{};
     double eigenvalue{};
@@ -4626,9 +4626,9 @@ struct EdaOrbitalPair {
         if (label) codec::put(out, "label", *label);
         return out;
     }
-    static EdaOrbitalPair from_json(const Json& j) {
+    static DecompositionOrbitalPair from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaOrbitalPair out;
+        DecompositionOrbitalPair out;
         out.index = codec::get<int64_t>(j, "index");
         if (j.has("spin")) out.spin.emplace(codec::get<std::string>(j, "spin"));
         out.eigenvalue = codec::get<double>(j, "eigenvalue");
@@ -4644,12 +4644,12 @@ struct EdaOrbitalPair {
     }
 };
 
-struct EdaOrbitalPairs {
+struct DecompositionOrbitalPairs {
     std::string type{};
     std::optional<std::string> eigenvalue_convention{};
     std::optional<double> threshold{};
     std::optional<ValueWithUnits> total{};
-    std::vector<EdaOrbitalPair> pairs{};
+    std::vector<DecompositionOrbitalPair> pairs{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -4665,20 +4665,20 @@ struct EdaOrbitalPairs {
         codec::put(out, "pairs", pairs);
         return out;
     }
-    static EdaOrbitalPairs from_json(const Json& j) {
+    static DecompositionOrbitalPairs from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaOrbitalPairs out;
+        DecompositionOrbitalPairs out;
         out.type = codec::get<std::string>(j, "type");
         if (j.has("eigenvalue_convention")) out.eigenvalue_convention.emplace(codec::get<std::string>(j, "eigenvalue_convention"));
         if (j.has("threshold")) out.threshold.emplace(codec::get<double>(j, "threshold"));
         if (j.has("total")) out.total.emplace(codec::get<ValueWithUnits>(j, "total"));
-        out.pairs = codec::get<std::vector<EdaOrbitalPair>>(j, "pairs");
+        out.pairs = codec::get<std::vector<DecompositionOrbitalPair>>(j, "pairs");
         for (const auto& kv : j.items()) if (kv.first != "type" && kv.first != "eigenvalue_convention" && kv.first != "threshold" && kv.first != "total" && kv.first != "pairs") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaPeriodic {
+struct DecompositionPeriodic {
     BlochKpointsPayload kpoints{};
     std::optional<std::array<int64_t, 3>> mesh{};
     std::optional<bool> orbital_pairs_gamma_only{};
@@ -4693,9 +4693,9 @@ struct EdaPeriodic {
         if (orbital_pairs_gamma_only) codec::put(out, "orbital_pairs_gamma_only", *orbital_pairs_gamma_only);
         return out;
     }
-    static EdaPeriodic from_json(const Json& j) {
+    static DecompositionPeriodic from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPeriodic out;
+        DecompositionPeriodic out;
         out.kpoints = codec::get<BlochKpointsPayload>(j, "kpoints");
         if (j.has("mesh")) out.mesh.emplace(codec::get<std::array<int64_t, 3>>(j, "mesh"));
         if (j.has("orbital_pairs_gamma_only")) out.orbital_pairs_gamma_only.emplace(codec::get<bool>(j, "orbital_pairs_gamma_only"));
@@ -4704,16 +4704,16 @@ struct EdaPeriodic {
     }
 };
 
-struct EdaPayload {
+struct EnergyDecompositionPayload {
     std::string scheme{};
     std::optional<std::string> variant{};
-    std::optional<EdaMethod> method{};
-    std::vector<EdaFragment> fragments{};
-    std::optional<EdaPayloadEnergies> energies{};
-    std::vector<EdaTerm> terms{};
-    std::optional<std::vector<EdaSumRule>> sum_rules{};
-    std::optional<EdaOrbitalPairs> orbital_pairs{};
-    std::optional<EdaPeriodic> periodic{};
+    std::optional<DecompositionMethod> method{};
+    std::vector<DecompositionFragment> fragments{};
+    std::optional<EnergyDecompositionPayloadEnergies> energies{};
+    std::vector<DecompositionTerm> terms{};
+    std::optional<std::vector<DecompositionSumRule>> sum_rules{};
+    std::optional<DecompositionOrbitalPairs> orbital_pairs{};
+    std::optional<DecompositionPeriodic> periodic{};
     std::optional<std::string> notes{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -4740,18 +4740,18 @@ struct EdaPayload {
         if (notes) codec::put(out, "notes", *notes);
         return out;
     }
-    static EdaPayload from_json(const Json& j) {
+    static EnergyDecompositionPayload from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPayload out;
+        EnergyDecompositionPayload out;
         out.scheme = codec::get<std::string>(j, "scheme");
         if (j.has("variant")) out.variant.emplace(codec::get<std::string>(j, "variant"));
-        if (j.has("method")) out.method.emplace(codec::get<EdaMethod>(j, "method"));
-        out.fragments = codec::get<std::vector<EdaFragment>>(j, "fragments");
-        if (j.has("energies")) out.energies.emplace(codec::get<EdaPayloadEnergies>(j, "energies"));
-        out.terms = codec::get<std::vector<EdaTerm>>(j, "terms");
-        if (j.has("sum_rules")) out.sum_rules.emplace(codec::get<std::vector<EdaSumRule>>(j, "sum_rules"));
-        if (j.has("orbital_pairs")) out.orbital_pairs.emplace(codec::get<EdaOrbitalPairs>(j, "orbital_pairs"));
-        if (j.has("periodic")) out.periodic.emplace(codec::get<EdaPeriodic>(j, "periodic"));
+        if (j.has("method")) out.method.emplace(codec::get<DecompositionMethod>(j, "method"));
+        out.fragments = codec::get<std::vector<DecompositionFragment>>(j, "fragments");
+        if (j.has("energies")) out.energies.emplace(codec::get<EnergyDecompositionPayloadEnergies>(j, "energies"));
+        out.terms = codec::get<std::vector<DecompositionTerm>>(j, "terms");
+        if (j.has("sum_rules")) out.sum_rules.emplace(codec::get<std::vector<DecompositionSumRule>>(j, "sum_rules"));
+        if (j.has("orbital_pairs")) out.orbital_pairs.emplace(codec::get<DecompositionOrbitalPairs>(j, "orbital_pairs"));
+        if (j.has("periodic")) out.periodic.emplace(codec::get<DecompositionPeriodic>(j, "periodic"));
         if (j.has("notes")) out.notes.emplace(codec::get<std::string>(j, "notes"));
         for (const auto& kv : j.items()) if (kv.first != "scheme" && kv.first != "variant" && kv.first != "method" && kv.first != "fragments" && kv.first != "energies" && kv.first != "terms" && kv.first != "sum_rules" && kv.first != "orbital_pairs" && kv.first != "periodic" && kv.first != "notes") out.extra[kv.first] = kv.second;
         return out;
@@ -4948,7 +4948,7 @@ struct VolumeDifference : SectionFields {
         out.fields = VolumeDifferenceFields::from_json(section.extra);
         out.fields.extra.clear();
         out.extra = Json::object();
-        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra.set(kv.first, kv.second);
+        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "decomposition_ref" && kv.first != "decomposition_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;
@@ -6214,27 +6214,27 @@ struct SpectraMossbauer : SectionFields {
     }
 };
 
-struct Eda : SectionFields {
-    static constexpr std::string_view kind = "eda";
-    Eda() { id = "eda"; }
-    EdaFields fields;
-    EdaPayload decomposition{};
+struct EnergyDecomposition : SectionFields {
+    static constexpr std::string_view kind = "energy_decomposition";
+    EnergyDecomposition() { id = "energy_decomposition"; }
+    EnergyDecompositionFields fields;
+    EnergyDecompositionPayload decomposition{};
     std::string to_section(Writer& writer) const {
         Section s = descriptor(std::string(kind));
         const Json peer_fields = fields.to_json();
         for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
         std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
-        json.push_back({"decomposition", codec::Value<EdaPayload>::encode(decomposition)});
+        json.push_back({"decomposition", codec::Value<EnergyDecompositionPayload>::encode(decomposition)});
         return writer.add_payload(std::move(s), json, binary, opaque);
     }
-    static Eda from_section(const Reader& reader, const Section& section) {
+    static EnergyDecomposition from_section(const Reader& reader, const Section& section) {
         if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
-        Eda out; out.load(section);
-        out.fields = EdaFields::from_json(section.extra);
+        EnergyDecomposition out; out.load(section);
+        out.fields = EnergyDecompositionFields::from_json(section.extra);
         out.fields.extra.clear();
         out.extra = Json::object();
         for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref") out.extra.set(kv.first, kv.second);
-        out.decomposition = codec::Value<EdaPayload>::decode(reader.json(section, "decomposition"));
+        out.decomposition = codec::Value<EnergyDecompositionPayload>::decode(reader.json(section, "decomposition"));
         return out;
     }
 };
@@ -6300,7 +6300,7 @@ inline std::string copy_section(const Reader& reader, const Section& section, Wr
     if (*section.kind == "spectra.xas") return writer.add(SpectraXAS::from_section(reader, section));
     if (*section.kind == "spectra.xes") return writer.add(SpectraXES::from_section(reader, section));
     if (*section.kind == "spectra.mossbauer") return writer.add(SpectraMossbauer::from_section(reader, section));
-    if (*section.kind == "eda") return writer.add(Eda::from_section(reader, section));
+    if (*section.kind == "energy_decomposition") return writer.add(EnergyDecomposition::from_section(reader, section));
     throw std::invalid_argument("copy_section requires a canonical kind");
 }
 } } // qvf::kinds

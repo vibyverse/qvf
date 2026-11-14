@@ -120,18 +120,18 @@ export const STRINGS: readonly string[] = [
   "helix_class", "sheet_id", "strand", "structure", "bonds", "chains", "residues",
   "secondary_structure", "b_factors", "smiles", "inchi", "inchikey", "wavefunction_ref",
   "grid", "data", "origin", "voxel_vectors", "periodic", "includes_endpoint", "mo_index",
-  "spin", "operand_a", "operand_b", "eda_ref", "eda_role", "pair_index", "pair_spin", "axis",
-  "values", "labels", "trajectory_ref", "meta", "mulliken_charge", "loewdin_charge",
-  "hirshfeld_charge", "iao_charge", "spin_population", "cm5_charge", "chelpg_charge",
-  "resp_charge", "esp_charge", "nbo_charge", "mbis_charge", "bader_charge", "ddec_charge",
-  "valence", "bonded_valence", "fukui_plus", "fukui_minus", "fukui_zero", "dual_descriptor",
-  "atomic_energy_eh", "atomic_volume_bohr3", "nmr_shielding_iso_ppm", "magnetic_moment",
-  "force_eh_bohr", "coords", "lattice", "velocities", "gradient", "times", "cell_volumes",
-  "temperatures", "symbols", "atomic_numbers", "n_frames", "ensemble", "timestep_fs",
-  "precision", "frame_volumes", "volume_grid", "frame_index", "energy_eh", "waypoints",
-  "reaction_coordinate", "reaction_coordinate_label", "reaction_coordinate_unit", "dim",
-  "dim_per_frame", "volume_frame_index", "volume_label", "volume_isovalue", "axis_a", "axis_b",
-  "geometries", "unit", "axis_a_label", "axis_b_label", "coordinate_a_label",
+  "spin", "operand_a", "operand_b", "decomposition_ref", "decomposition_role", "pair_index",
+  "pair_spin", "axis", "values", "labels", "trajectory_ref", "meta", "mulliken_charge",
+  "loewdin_charge", "hirshfeld_charge", "iao_charge", "spin_population", "cm5_charge",
+  "chelpg_charge", "resp_charge", "esp_charge", "nbo_charge", "mbis_charge", "bader_charge",
+  "ddec_charge", "valence", "bonded_valence", "fukui_plus", "fukui_minus", "fukui_zero",
+  "dual_descriptor", "atomic_energy_eh", "atomic_volume_bohr3", "nmr_shielding_iso_ppm",
+  "magnetic_moment", "force_eh_bohr", "coords", "lattice", "velocities", "gradient", "times",
+  "cell_volumes", "temperatures", "symbols", "atomic_numbers", "n_frames", "ensemble",
+  "timestep_fs", "precision", "frame_volumes", "volume_grid", "frame_index", "energy_eh",
+  "waypoints", "reaction_coordinate", "reaction_coordinate_label", "reaction_coordinate_unit",
+  "dim", "dim_per_frame", "volume_frame_index", "volume_label", "volume_isovalue", "axis_a",
+  "axis_b", "geometries", "unit", "axis_a_label", "axis_b_label", "coordinate_a_label",
   "coordinate_a_unit", "coordinate_b_label", "coordinate_b_unit", "energy_unit", "scheme",
   "steps", "reactants", "products", "reagents", "arrow", "conditions", "yield_percent",
   "yield_text", "coefficient", "deltas", "terms", "enthalpy", "gibbs_free_energy",
@@ -246,8 +246,8 @@ export const VALUES: readonly string[] = [
   "\"forces\"", "\"gradient\"", "\"hessian\"", "\"excited_states\"", "\"properties.electric\"",
   "\"properties.elastic\"", "\"properties.dielectric\"", "\"buckingham\"", "\"voigt\"",
   "\"reuss\"", "\"hill\"", "\"volume.transition_density\"", "\"preview\"", "\"image/png\"",
-  "\"image/jpeg\"", "\"image/svg+xml\"", "\"eda\"", "\"ziegler-rauk\"", "\"lmo-eda\"",
-  "\"gks-eda\"", "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"", "\"led\"",
+  "\"image/jpeg\"", "\"image/svg+xml\"", "\"energy_decomposition\"", "\"ziegler-rauk\"",
+  "\"lmo-eda\"", "\"gks-eda\"", "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"", "\"led\"",
   "\"many-body\"", "\"own\"", "\"supersystem\"", "\"electrostatic\"", "\"pauli\"",
   "\"exchange\"", "\"repulsion\"", "\"orbital\"", "\"induction\"", "\"dispersion\"",
   "\"exchange_induction\"", "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"",
@@ -737,7 +737,7 @@ export const OPS: readonly number[] = [
   10, 322, 3, 0, // n29 properties: kind, wavefunction_ref, members
   10, 332, 2, 0, // n30 properties: kind, members
   10, 340, 2, 0, // n31 properties: kind, members
-  10, 348, 9, 0, // n32 properties: kind, operand_a, operand_b, description, eda_ref, eda_role, ...
+  10, 348, 9, 0, // n32 properties: kind, operand_a, operand_b, description, decomposition_ref, ...
   14, 6, 5, 0, // dependentRequired
   10, 370, 2, 0, // n33 properties: kind, members
   10, 378, 2, 0, // n34 properties: kind, members
@@ -1397,7 +1397,7 @@ export const OPS: readonly number[] = [
   4, 158, 0, 0, // n341 $ref #/$defs/SectionExcitedStates
   4, 173, 0, 0, // n342 $ref #/$defs/SectionVolumeTransitionDensity
   4, 174, 0, 0, // n343 $ref #/$defs/SectionPreview
-  4, 177, 0, 0, // n344 $ref #/$defs/SectionEda
+  4, 177, 0, 0, // n344 $ref #/$defs/SectionEnergyDecomposition
   4, 159, 0, 0, // n345 $ref #/$defs/SectionPropertiesElectric
   4, 164, 0, 0, // n346 $ref #/$defs/SectionPropertiesElastic
   4, 165, 0, 0, // n347 $ref #/$defs/SectionPropertiesDielectric
@@ -3562,7 +3562,7 @@ export const OPS: readonly number[] = [
   4, 8, 0, 0, // n1795 $ref #/$defs/Sha256Hex
   4, 11, 0, 0, // n1796 $ref #/$defs/MemberSize
   3, 818, 3, 0, // n1797 enum
-  2, 223, 0, 0, // n1798 const "eda"
+  2, 223, 0, 0, // n1798 const "energy_decomposition"
   1, 32, 0, 0, // n1799 type
   1, 4, 0, 0, // n1800 type
   12, -1, 0, 0, // additionalProperties
@@ -3574,11 +3574,11 @@ export const OPS: readonly number[] = [
   1, 32, 0, 0, // n1805 type
   32, 11, 0, 0, // pattern ^x_[A-Za-z0-9_.-]+$
   1, 32, 0, 0, // n1806 type
-  4, 179, 0, 0, // n1807 $ref #/$defs/EdaMethod
+  4, 179, 0, 0, // n1807 $ref #/$defs/DecompositionMethod
   1, 8, 0, 0, // n1808 type
   22, 2, 0, 0, // minItems
   20, 1809, 0, 0, // items
-  4, 180, 0, 0, // n1809 $ref #/$defs/EdaFragment
+  4, 180, 0, 0, // n1809 $ref #/$defs/DecompositionFragment
   1, 4, 0, 0, // n1810 type
   12, -1, 0, 0, // additionalProperties
   11, 2336, 1, 0, // patternProperties
@@ -3588,12 +3588,12 @@ export const OPS: readonly number[] = [
   1, 8, 0, 0, // n1813 type
   22, 1, 0, 0, // minItems
   20, 1814, 0, 0, // items
-  4, 181, 0, 0, // n1814 $ref #/$defs/EdaTerm
+  4, 181, 0, 0, // n1814 $ref #/$defs/DecompositionTerm
   1, 8, 0, 0, // n1815 type
   20, 1816, 0, 0, // items
-  4, 182, 0, 0, // n1816 $ref #/$defs/EdaSumRule
-  4, 183, 0, 0, // n1817 $ref #/$defs/EdaOrbitalPairs
-  4, 185, 0, 0, // n1818 $ref #/$defs/EdaPeriodic
+  4, 182, 0, 0, // n1816 $ref #/$defs/DecompositionSumRule
+  4, 183, 0, 0, // n1817 $ref #/$defs/DecompositionOrbitalPairs
+  4, 185, 0, 0, // n1818 $ref #/$defs/DecompositionPeriodic
   1, 32, 0, 0, // n1819 type
   1, 32, 0, 0, // n1821 type
   1, 32, 0, 0, // n1822 type
@@ -3654,7 +3654,7 @@ export const OPS: readonly number[] = [
   4, 1, 0, 0, // n1861 $ref #/$defs/ValueWithUnits
   1, 8, 0, 0, // n1862 type
   20, 1863, 0, 0, // items
-  4, 184, 0, 0, // n1863 $ref #/$defs/EdaOrbitalPair
+  4, 184, 0, 0, // n1863 $ref #/$defs/DecompositionOrbitalPair
   1, 64, 0, 0, // n1865 type
   25, 2, 0, 0, // minimum
   3, 882, 3, 0, // n1866 enum
@@ -3967,15 +3967,15 @@ export const DEFS: Readonly<Record<string, number>> = {
   "SectionPreview": 174,
   "PreviewThumbnail": 175,
   "PreviewImage": 176,
-  "SectionEda": 177,
-  "EdaPayload": 178,
-  "EdaMethod": 179,
-  "EdaFragment": 180,
-  "EdaTerm": 181,
-  "EdaSumRule": 182,
-  "EdaOrbitalPairs": 183,
-  "EdaOrbitalPair": 184,
-  "EdaPeriodic": 185,
+  "SectionEnergyDecomposition": 177,
+  "EnergyDecompositionPayload": 178,
+  "DecompositionMethod": 179,
+  "DecompositionFragment": 180,
+  "DecompositionTerm": 181,
+  "DecompositionSumRule": 182,
+  "DecompositionOrbitalPairs": 183,
+  "DecompositionOrbitalPair": 184,
+  "DecompositionPeriodic": 185,
   "SectionVendor": 186,
   "Metadata": 187,
   "MetadataAuthor": 188,
@@ -4166,6 +4166,6 @@ export const PAYLOAD_DEFS: readonly (readonly [string, string, string])[] = [
   ["properties.elastic", "properties", "ElasticPropertiesPayload"],
   ["properties.dielectric", "properties", "DielectricPropertiesPayload"],
   ["excited_states", "states", "ExcitedStatesPayload"],
-  ["eda", "decomposition", "EdaPayload"],
+  ["energy_decomposition", "decomposition", "EnergyDecompositionPayload"],
   ["volume.transition_density", "grid", "VolumeGridPayload"],
 ];

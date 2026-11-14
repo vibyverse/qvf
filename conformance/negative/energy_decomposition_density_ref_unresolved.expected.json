@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_density_ref_unresolved.qvf",
+  "description": "An energy_decomposition orbital pair whose density_ref names no volume.difference section (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

@@ -402,9 +402,9 @@ inline constexpr RoleInfo kRoles57[] = {
 inline constexpr RoleInfo kRoles58[] = {
     {"spectrum", true, Format::Json, nullptr, 0, -1, -1, "MossbauerSpectrumPayload", false},
 };
-// eda ($defs/SectionEda)
+// energy_decomposition ($defs/SectionEnergyDecomposition)
 inline constexpr RoleInfo kRoles59[] = {
-    {"decomposition", true, Format::Json, nullptr, 0, -1, -1, "EdaPayload", false},
+    {"decomposition", true, Format::Json, nullptr, 0, -1, -1, "EnergyDecompositionPayload", false},
 };
 }  // namespace tables
 
@@ -469,7 +469,7 @@ inline constexpr KindInfo kKindInfos[] = {
     {"spectra.xas", tables::kRoles56, 1, false},
     {"spectra.xes", tables::kRoles57, 1, false},
     {"spectra.mossbauer", tables::kRoles58, 1, false},
-    {"eda", tables::kRoles59, 1, false},
+    {"energy_decomposition", tables::kRoles59, 1, false},
 };
 inline constexpr std::size_t kKindCount = 60;
 
@@ -487,7 +487,7 @@ inline constexpr std::string_view kCanonicalKinds[] = {
     "phonon_bands", "phonon_dos", "topology.qtaim", "run.record", "job.spec", "forces",
     "hessian", "excited_states", "volume.transition_density", "properties.electric",
     "properties.elastic", "properties.dielectric", "reaction.scheme", "preview", "spectra.xas",
-    "spectra.xes", "spectra.mossbauer", "eda",
+    "spectra.xes", "spectra.mossbauer", "energy_decomposition",
 };
 
 // The KindInfo of a canonical kind, or nullptr (unknown or vendor kinds).
@@ -575,7 +575,7 @@ inline constexpr PayloadDef kPayloadDefs[] = {
     {"properties.elastic", "properties", "ElasticPropertiesPayload"},
     {"properties.dielectric", "properties", "DielectricPropertiesPayload"},
     {"excited_states", "states", "ExcitedStatesPayload"},
-    {"eda", "decomposition", "EdaPayload"},
+    {"energy_decomposition", "decomposition", "EnergyDecompositionPayload"},
     {"volume.transition_density", "grid", "VolumeGridPayload"},
 };
 

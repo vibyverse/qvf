@@ -1,7 +1,7 @@
-"""Rules of an ``eda`` payload that JSON Schema cannot express (spec § 5.16).
+"""Rules of an ``energy_decomposition`` payload that JSON Schema cannot express (spec § 5.16).
 
 Shared by the validator (:mod:`qvf.validate`) and the writer
-(:meth:`qvf.QvfWriter.add_eda`), so that a payload the writer accepts is one
+(:meth:`qvf.QvfWriter.add_energy_decomposition`), so that a payload the writer accepts is one
 the validator accepts. Standard library only.
 
 License: Apache-2.0.
@@ -91,7 +91,7 @@ def pair_keys(payload: Any) -> Optional[set[tuple[int, str]]]:
 
 
 def payload_errors(payload: Any, n_atoms: Optional[int] = None) -> list[tuple[str, str]]:
-    """``(code, message)`` for every rule of § 5.16 an ``eda`` payload breaks.
+    """``(code, message)`` for every rule of § 5.16 an ``energy_decomposition`` payload breaks.
 
     ``n_atoms`` is the atom count of the section's structure when it
     resolves; without it the atom indices are not range-checked. Codes:

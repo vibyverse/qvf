@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_fragments_overlap.qvf",
+  "description": "Two interacting fragments of an energy_decomposition payload share atom 0; interacting fragments are disjoint (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "archive": "energy_decomposition_sapt_fsapt.qvf",
+  "description": "SAPT0 of the water dimer in the dimer basis: the four SAPT terms, the second-order corrections as parts of induction and dispersion with three sum rules, and an F-SAPT partition into atoms (sub-fragments) with two atom-pair electrostatic terms (spec \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "terms",
+        6,
+        "parent"
+      ],
+      "equals": 3
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "fragments",
+        5,
+        "parent"
+      ],
+      "equals": 1
+    }
+  ]
+}

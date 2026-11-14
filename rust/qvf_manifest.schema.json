@@ -396,7 +396,7 @@
         { "$ref": "#/$defs/SectionExcitedStates" },
         { "$ref": "#/$defs/SectionVolumeTransitionDensity" },
         { "$ref": "#/$defs/SectionPreview" },
-        { "$ref": "#/$defs/SectionEda" },
+        { "$ref": "#/$defs/SectionEnergyDecomposition" },
         { "$ref": "#/$defs/SectionPropertiesElectric" },
         { "$ref": "#/$defs/SectionPropertiesElastic" },
         { "$ref": "#/$defs/SectionPropertiesDielectric" },
@@ -856,11 +856,11 @@
           "type": "string",
           "description": "Optional human-readable description, e.g. 'ρ(product) - ρ(reactant)'."
         },
-        "eda_ref": {
+        "decomposition_ref": {
           "type": "string",
-          "description": "Id of the `eda` section whose decomposition this difference density belongs to. It must name a section of kind `eda` in this archive; see QVF spec § 5.16 (eda — energy decomposition analysis)."
+          "description": "Id of the `energy_decomposition` section whose decomposition this difference density belongs to. It must name a section of kind `energy_decomposition` in this archive; see QVF spec § 5.16 (energy_decomposition — energy decomposition analysis)."
         },
-        "eda_role": {
+        "decomposition_role": {
           "oneOf": [
             {
               "enum": ["orbital_pair", "orbital_relaxation", "interaction", "polarization", "charge_transfer"]
@@ -870,12 +870,12 @@
               "pattern": "^x_[A-Za-z0-9_.-]+$"
             }
           ],
-          "description": "What the density is within that decomposition: `orbital_pair` (the deformation density of one NOCV or COVP pair, named by `pair_index` and `pair_spin`), `orbital_relaxation` (relaxed minus frozen state), `interaction` (complete system minus the sum of the fragments), `polarization`, `charge_transfer`, or an `x_` name. Requires `eda_ref`."
+          "description": "What the density is within that decomposition: `orbital_pair` (the deformation density of one NOCV or COVP pair, named by `pair_index` and `pair_spin`), `orbital_relaxation` (relaxed minus frozen state), `interaction` (complete system minus the sum of the fragments), `polarization`, `charge_transfer`, or an `x_` name. Requires `decomposition_ref`."
         },
         "pair_index": {
           "type": "integer",
           "minimum": 1,
-          "description": "The `index` of the orbital pair in the `eda` section's `orbital_pairs`. Required when `eda_role` is `orbital_pair` (checked by validators); requires `eda_ref`."
+          "description": "The `index` of the orbital pair in the `energy_decomposition` section's `orbital_pairs`. Required when `decomposition_role` is `orbital_pair` (checked by validators); requires `decomposition_ref`."
         },
         "pair_spin": {
           "enum": ["restricted", "alpha", "beta"],
@@ -894,8 +894,8 @@
       "dependentRequired": {
         "operand_a": ["operand_b"],
         "operand_b": ["operand_a"],
-        "eda_role": ["eda_ref"],
-        "pair_index": ["eda_ref"],
+        "decomposition_role": ["decomposition_ref"],
+        "pair_index": ["decomposition_ref"],
         "pair_spin": ["pair_index"]
       }
     },
@@ -5056,13 +5056,13 @@
         "media_type": { "enum": ["image/svg+xml", "image/png", "image/jpeg"] }
       }
     },
-    "SectionEda": {
-      "description": "An energy decomposition analysis (EDA): the partition of the interaction energy of two or more fragments into named terms, by any scheme (Ziegler-Rauk / ETS, periodic EDA, LMO-EDA, Kitaura-Morokuma, ALMO-EDA, SAPT, local energy decomposition, many-body expansions), with its fragments, optional sum rules and an optional table of NOCV or COVP orbital pairs, in the JSON member `decomposition`, whose payload is `#/$defs/EdaPayload`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+    "SectionEnergyDecomposition": {
+      "description": "An energy decomposition analysis (EDA): the partition of the interaction energy of two or more fragments into named terms, by any scheme (Ziegler-Rauk / ETS, periodic EDA, LMO-EDA, Kitaura-Morokuma, ALMO-EDA, SAPT, local energy decomposition, many-body expansions), with its fragments, optional sum rules and an optional table of NOCV or COVP orbital pairs, in the JSON member `decomposition`, whose payload is `#/$defs/EnergyDecompositionPayload`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
-        "kind": { "const": "eda" },
+        "kind": { "const": "energy_decomposition" },
         "wavefunction_ref": {
           "type": "string",
-          "description": "Id of the `wavefunction.gto` or `wavefunction.bloch` section of the complete system, the relaxed state the decomposition ends in. It must name a section of one of these kinds in this archive. See QVF spec § 5.16 (eda — energy decomposition analysis)."
+          "description": "Id of the `wavefunction.gto` or `wavefunction.bloch` section of the complete system, the relaxed state the decomposition ends in. It must name a section of one of these kinds in this archive. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis)."
         },
         "members": {
           "type": "object",
@@ -5075,14 +5075,14 @@
       },
       "required": ["id", "kind", "members"]
     },
-    "EdaPayload": {
+    "EnergyDecompositionPayload": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["scheme", "fragments", "terms"],
-      "description": "The JSON payload named by an `eda` section's `decomposition` member. It is an archive member, not part of manifest.json; a validator loads the member's bytes and checks them against this definition. Strict: only the fields below and keys beginning with x_ are allowed. Index ranges, disjoint fragments, unique terms, the sum rules and the references to `volume.difference` sections are checked by validators, not by this schema. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "The JSON payload named by an `energy_decomposition` section's `decomposition` member. It is an archive member, not part of manifest.json; a validator loads the member's bytes and checks them against this definition. Strict: only the fields below and keys beginning with x_ are allowed. Index ranges, disjoint fragments, unique terms, the sum rules and the references to `volume.difference` sections are checked by validators, not by this schema. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "scheme": {
           "oneOf": [
@@ -5100,11 +5100,11 @@
           "type": "string",
           "description": "The producer's name of the flavour, e.g. 'eda-nocv', 'peda', 'sapt0', 'fisapt0', 'almo-eda2'."
         },
-        "method": { "$ref": "#/$defs/EdaMethod" },
+        "method": { "$ref": "#/$defs/DecompositionMethod" },
         "fragments": {
           "type": "array",
           "minItems": 2,
-          "items": { "$ref": "#/$defs/EdaFragment" },
+          "items": { "$ref": "#/$defs/DecompositionFragment" },
           "description": "The fragments: at least two interacting fragments (no `parent`), then any sub-fragments."
         },
         "energies": {
@@ -5125,30 +5125,30 @@
         "terms": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/EdaTerm" },
+          "items": { "$ref": "#/$defs/DecompositionTerm" },
           "description": "The energy terms. Exactly one has the name `interaction` and no `fragments`, `spin` or `parent`: the interaction energy being decomposed."
         },
         "sum_rules": {
           "type": "array",
-          "items": { "$ref": "#/$defs/EdaSumRule" },
+          "items": { "$ref": "#/$defs/DecompositionSumRule" },
           "description": "The additivities that hold between the terms, checked by validators."
         },
-        "orbital_pairs": { "$ref": "#/$defs/EdaOrbitalPairs" },
-        "periodic": { "$ref": "#/$defs/EdaPeriodic" },
+        "orbital_pairs": { "$ref": "#/$defs/DecompositionOrbitalPairs" },
+        "periodic": { "$ref": "#/$defs/DecompositionPeriodic" },
         "notes": {
           "type": "string",
           "description": "Free text for people."
         }
       }
     },
-    "EdaMethod": {
+    "DecompositionMethod": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": [],
-      "description": "The method of an `EdaPayload`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "The method of an `EnergyDecompositionPayload`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "method": {
           "type": "string",
@@ -5168,14 +5168,14 @@
         }
       }
     },
-    "EdaFragment": {
+    "DecompositionFragment": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["label", "atoms"],
-      "description": "One fragment of an `EdaPayload`, named elsewhere by its 0-based index in `fragments`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "One fragment of an `EnergyDecompositionPayload`, named elsewhere by its 0-based index in `fragments`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "label": {
           "type": "string",
@@ -5232,14 +5232,14 @@
         }
       }
     },
-    "EdaTerm": {
+    "DecompositionTerm": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["name", "energy"],
-      "description": "One energy term of an `EdaPayload`, named elsewhere by its 0-based index in `terms`. The combination of `name`, `fragments`, `spin` and `parent` is unique (checked by validators). Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "One energy term of an `EnergyDecompositionPayload`, named elsewhere by its 0-based index in `terms`. The combination of `name`, `fragments`, `spin` and `parent` is unique (checked by validators). Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "name": {
           "oneOf": [
@@ -5251,7 +5251,7 @@
               "pattern": "^x_[A-Za-z0-9_.-]+$"
             }
           ],
-          "description": "What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference` or `coupling`, as QVF spec § 5.16 (eda — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own."
+          "description": "What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference` or `coupling`, as QVF spec § 5.16 (energy_decomposition — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own."
         },
         "energy": {
           "$ref": "#/$defs/ValueWithUnits",
@@ -5289,14 +5289,14 @@
         }
       }
     },
-    "EdaSumRule": {
+    "DecompositionSumRule": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["total", "parts"],
-      "description": "A declared additivity of an `EdaPayload`: the energies of `parts` add up to the energy of `total` within `tolerance`, which validators check. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "A declared additivity of an `EnergyDecompositionPayload`: the energies of `parts` add up to the energy of `total` within `tolerance`, which validators check. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "total": {
           "type": "integer",
@@ -5319,14 +5319,14 @@
         }
       }
     },
-    "EdaOrbitalPairs": {
+    "DecompositionOrbitalPairs": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["type", "pairs"],
-      "description": "The orbital-pair table of an `EdaPayload` (ETS-NOCV, ALMO COVP). The orbitals themselves are not part of this payload. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "The orbital-pair table of an `EnergyDecompositionPayload` (ETS-NOCV, ALMO COVP). The orbitals themselves are not part of this payload. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "type": {
           "oneOf": [
@@ -5355,19 +5355,19 @@
         },
         "pairs": {
           "type": "array",
-          "items": { "$ref": "#/$defs/EdaOrbitalPair" },
+          "items": { "$ref": "#/$defs/DecompositionOrbitalPair" },
           "description": "The listed pairs."
         }
       }
     },
-    "EdaOrbitalPair": {
+    "DecompositionOrbitalPair": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["index", "eigenvalue", "energy"],
-      "description": "One orbital pair of `EdaOrbitalPairs`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "One orbital pair of `DecompositionOrbitalPairs`. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "index": {
           "type": "integer",
@@ -5412,7 +5412,7 @@
         },
         "density_ref": {
           "type": "string",
-          "description": "Id of the `volume.difference` section holding the deformation density of the pair, which names this payload's section in its `eda_ref` and this pair in `pair_index` and `pair_spin`."
+          "description": "Id of the `volume.difference` section holding the deformation density of the pair, which names this payload's section in its `decomposition_ref` and this pair in `pair_index` and `pair_spin`."
         },
         "label": {
           "type": "string",
@@ -5420,14 +5420,14 @@
         }
       }
     },
-    "EdaPeriodic": {
+    "DecompositionPeriodic": {
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
         "^x_": {}
       },
       "required": ["kpoints"],
-      "description": "k-point sampling of a periodic decomposition. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (eda — energy decomposition analysis).",
+      "description": "k-point sampling of a periodic decomposition. Strict: any other key is an error unless it begins with `x_`. See QVF spec § 5.16 (energy_decomposition — energy decomposition analysis).",
       "properties": {
         "kpoints": {
           "$ref": "#/$defs/BlochKpointsPayload",

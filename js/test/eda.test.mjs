@@ -1,4 +1,4 @@
-// The eda kind (spec § 5.16): addEda, the volume.difference fields that name
+// The energy_decomposition kind (spec § 5.16): addEnergyDecomposition, the volume.difference fields that name
 // an orbital pair (§ 5.2), and the validator rules of § 6.
 
 import assert from "node:assert/strict";
@@ -39,27 +39,27 @@ async function archive(payload = ZR()) {
   await w.addStructure(DIMER);
   const eye = [[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]];
   await w.addVolume("volume.difference", { data: new Float32Array(27), shape: [3, 3, 3] }, [0, 0, 0], eye, {
-    sectionId: "nocv_1", edaRef: "eda", edaRole: "orbital_pair", pairIndex: 1,
+    sectionId: "nocv_1", decompositionRef: "energy_decomposition", decompositionRole: "orbital_pair", pairIndex: 1,
   });
-  await w.addEda(payload);
+  await w.addEnergyDecomposition(payload);
   return w.toBytes();
 }
 
-/** An archive whose eda payload skipped addEda's checks (written as a raw section). */
+/** An archive whose energy_decomposition payload skipped addEnergyDecomposition's checks (written as a raw section). */
 /** @param {(p: any) => void} edit @param {number} [pairIndex] */
 async function raw(edit, pairIndex = 1) {
   const w = new Writer(SOURCE, FIXED);
   await w.addStructure(DIMER);
   const eye = [[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]];
   await w.addVolume("volume.difference", { data: new Float32Array(27), shape: [3, 3, 3] }, [0, 0, 0], eye, {
-    sectionId: "nocv_1", edaRef: "eda", edaRole: "orbital_pair", pairIndex,
+    sectionId: "nocv_1", decompositionRef: "energy_decomposition", decompositionRole: "orbital_pair", pairIndex,
   });
   const p = ZR();
   for (const t of p.terms) if (typeof t.energy === "number") t.energy = { value: t.energy, units: "hartree" };
   for (const q of p.orbital_pairs.pairs) q.energy = { value: q.energy, units: "hartree" };
   edit(p);
-  w.addSection({ id: "eda", kind: "eda" });
-  await w.addJson("eda", "decomposition", p, { path: "eda/decomposition.json" });
+  w.addSection({ id: "energy_decomposition", kind: "energy_decomposition" });
+  await w.addJson("energy_decomposition", "decomposition", p, { path: "energy_decomposition/decomposition.json" });
   return w.toBytes();
 }
 
@@ -71,23 +71,23 @@ test("a Ziegler-Rauk decomposition with a NOCV density validates", async () => {
   const report = await validate(bytes);
   assert.deepEqual(report.findings.map((f) => `${f.code} ${f.message}`), []);
   const q = QvfReader.fromBytes(bytes);
-  const p = /** @type {any} */ (await q.readJson("eda", "decomposition"));
+  const p = /** @type {any} */ (await q.readJson("energy_decomposition", "decomposition"));
   assert.deepEqual(p.terms[0].energy, { value: -0.008, units: "hartree" });
   assert.equal(q.section("nocv_1")?.pair_index, 1);
 });
 
-test("addEda refuses what the validator would reject", async () => {
+test("addEnergyDecomposition refuses what the validator would reject", async () => {
   const w = new Writer(SOURCE, FIXED);
   await w.addStructure(DIMER);
   const broken = ZR();
   delete broken.orbital_pairs;
   broken.sum_rules = [{ total: 0, parts: [1, 2, 3] }];
-  await assert.rejects(w.addEda(broken), /add up/);
+  await assert.rejects(w.addEnergyDecomposition(broken), /add up/);
   const overlap = ZR();
   delete overlap.orbital_pairs;
   overlap.fragments[1].atoms.push(0);
-  await assert.rejects(w.addEda(overlap), /disjoint/);
-  await assert.rejects(w.addEda(ZR()), /density_ref/);
+  await assert.rejects(w.addEnergyDecomposition(overlap), /disjoint/);
+  await assert.rejects(w.addEnergyDecomposition(ZR()), /density_ref/);
 });
 
 test("the validator reports the § 6 rules", async () => {

@@ -1,4 +1,4 @@
-//! Rules of an `eda` payload that JSON Schema cannot express (spec § 5.16).
+//! Rules of an `energy_decomposition` payload that JSON Schema cannot express (spec § 5.16).
 //! Mirrors `python/qvf/_eda.py` and `js/src/eda.ts`.
 
 use std::collections::{HashMap, HashSet};
@@ -90,7 +90,7 @@ fn join_ints(v: &[i64]) -> String {
     v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")
 }
 
-/// `(code, message)` for every rule of § 5.16 an `eda` payload breaks; `n_atoms`
+/// `(code, message)` for every rule of § 5.16 an `energy_decomposition` payload breaks; `n_atoms`
 /// is the atom count of the section's structure when it resolves.
 pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(Code, String)> {
     let Some(p) = as_obj(payload) else { return vec![] };

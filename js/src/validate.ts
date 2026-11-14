@@ -584,7 +584,7 @@ function contributionRows(rows: Map<string, number>, spin: unknown): number | nu
 }
 
 /**
- * Rules of an `eda` section that JSON Schema cannot express (spec § 5.16): the
+ * Rules of an `energy_decomposition` section that JSON Schema cannot express (spec § 5.16): the
  * payload rules of `edaPayloadErrors`, and, when `kindsById` is given
  * (references level), the section's `wavefunction_ref` and every pair's
  * `density_ref`. Returns `[code, field, message]`; `field` is `""` for the
@@ -625,8 +625,8 @@ function edaErrors(
 }
 
 /**
- * A `volume.difference` section's `eda_ref` names an `eda` section, and for
- * `eda_role` `orbital_pair` its `pair_index` and `pair_spin` name one of that
+ * A `volume.difference` section's `decomposition_ref` names an `energy_decomposition` section, and for
+ * `decomposition_role` `orbital_pair` its `pair_index` and `pair_spin` name one of that
  * section's orbital pairs (spec § 5.2, § 5.16). Returns `[field, message]`.
  */
 function edaDensityErrors(
@@ -636,20 +636,20 @@ function edaDensityErrors(
   pairsOf: ReadonlyMap<string, Set<string> | null>,
 ): Array<[string, string]> {
   const sec = `section ${quote(sid)}: `;
-  if (!has(section, "eda_ref")) return [];
-  const ref = section.eda_ref;
-  if (typeof ref !== "string" || kindsById.get(ref) !== "eda") {
-    return [["eda_ref", `${sec}eda_ref ${show(ref)} does not name an eda section (spec § 5.2)`]];
+  if (!has(section, "decomposition_ref")) return [];
+  const ref = section.decomposition_ref;
+  if (typeof ref !== "string" || kindsById.get(ref) !== "energy_decomposition") {
+    return [["decomposition_ref", `${sec}decomposition_ref ${show(ref)} does not name an energy_decomposition section (spec § 5.2)`]];
   }
   const index = section.pair_index;
-  if (section.eda_role === "orbital_pair" && index === undefined) {
-    return [["eda_role", `${sec}eda_role 'orbital_pair' needs pair_index (spec § 5.2)`]];
+  if (section.decomposition_role === "orbital_pair" && index === undefined) {
+    return [["decomposition_role", `${sec}decomposition_role 'orbital_pair' needs pair_index (spec § 5.2)`]];
   }
   if (index === undefined) return [];
   const spin = typeof section.pair_spin === "string" ? section.pair_spin : "restricted";
   const keys = pairsOf.get(ref);
   if (isInt(index) && (keys == null || !keys.has(`${index}/${spin}`))) {
-    return [["pair_index", `${sec}pair_index ${index} with pair_spin '${spin}' names no orbital pair of eda section ${quote(ref)} (spec § 5.2)`]];
+    return [["pair_index", `${sec}pair_index ${index} with pair_spin '${spin}' names no orbital pair of energy_decomposition section ${quote(ref)} (spec § 5.2)`]];
   }
   return [];
 }
@@ -2396,12 +2396,12 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
       if (isObject(spectrum) && has(spectrum, "states_ref")) statesRefSpectra.push({ i, sid, payload: spectrum });
     }
     if (rank >= AT_REFERENCES && kind === "volume.transition_density") transitionDensities.push({ i, sid, s });
-    if (kind === "eda") {
+    if (kind === "energy_decomposition") {
       if (!edaPairsOf.has(sid)) edaPairsOf.set(sid, pairKeys(docs.get("decomposition")));
       if (rank >= AT_SEMANTICS) edaSections.push({ i, sid, s, payload: docs.get("decomposition") });
     }
     if (rank >= AT_REFERENCES && kind === "volume.difference" &&
-        ["eda_ref", "eda_role", "pair_index", "pair_spin"].some((f) => has(s, f))) {
+        ["decomposition_ref", "decomposition_role", "pair_index", "pair_spin"].some((f) => has(s, f))) {
       edaDensities.push({ i, sid, s });
     }
     if (rank >= AT_REFERENCES && WAVEFUNCTION_VOLUME_KINDS.has(kind) && has(s, "wavefunction_ref")) {

@@ -1,0 +1,43 @@
+{
+  "archive": "energy_decomposition_ziegler_rauk_nocv.qvf",
+  "description": "Ziegler-Rauk EDA-NOCV of the water dimer (PBE-D3(BJ)/TZ2P magnitudes): electrostatic, Pauli, orbital and dispersion terms with their sum rule, three NOCV pairs in the per-spin eigenvalue convention, two NOCV deformation densities and the orbital-relaxation density as volume.difference sections naming the decomposition (spec \u00a7 5.2, \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure",
+    "volume.difference"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "scheme"
+      ],
+      "equals": "ziegler-rauk"
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "terms",
+        2,
+        "energy",
+        "value"
+      ],
+      "equals": 0.0131950199,
+      "tol": 1e-12
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "orbital_pairs",
+        "pairs",
+        0,
+        "density_ref"
+      ],
+      "equals": "nocv_1"
+    }
+  ]
+}

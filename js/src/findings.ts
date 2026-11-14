@@ -57,7 +57,7 @@ export const FINDING_CODES = {
   E_NORMALIZATION: "error",
   // A grid units.data against the unit of its volume kind (spec § 4.3).
   E_UNIT_CONTRADICTED: "error",
-  // A declared sum rule of an eda payload (spec § 5.16).
+  // A declared sum rule of an energy_decomposition payload (spec § 5.16).
   E_SUM_RULE: "error",
 } as const;
 

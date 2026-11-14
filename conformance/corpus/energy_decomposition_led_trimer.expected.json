@@ -1,0 +1,32 @@
+{
+  "archive": "energy_decomposition_led_trimer.qvf",
+  "description": "A local energy decomposition of the cyclic water trimer: the preparation of each fragment and the electrostatic, exchange and dispersion terms of each fragment pair, with a sum rule to the interaction in kcal/mol tolerance (spec \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "terms",
+        4,
+        "fragments"
+      ],
+      "equals": [
+        0,
+        1
+      ]
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "scheme"
+      ],
+      "equals": "led"
+    }
+  ]
+}

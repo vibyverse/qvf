@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_interaction_missing.qvf",
+  "description": "An energy_decomposition payload without a whole-system interaction term (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

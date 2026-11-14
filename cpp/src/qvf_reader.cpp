@@ -1349,7 +1349,7 @@ inline std::string eda_join(const std::vector<int64_t>& v) {
     return s;
 }
 
-// Rules of an eda section that JSON Schema cannot express (spec § 5.16): the
+// Rules of an energy_decomposition section that JSON Schema cannot express (spec § 5.16): the
 // payload rules, the section's wavefunction_ref and every pair's density_ref.
 inline std::vector<FieldFinding> eda_errors(
     const std::string& sid, const Json& section, const Json* payload,
@@ -1646,7 +1646,7 @@ inline std::vector<FieldFinding> eda_errors(
     return errs;
 }
 
-// A volume.difference section's eda_ref names an eda section, and for eda_role
+// A volume.difference section's decomposition_ref names an energy_decomposition section, and for decomposition_role
 // orbital_pair its pair_index and pair_spin name one of that section's orbital
 // pairs (spec § 5.2). Returns (field, message) pairs.
 inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
@@ -1654,18 +1654,18 @@ inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
     const std::map<std::string, std::string>& kinds_by_id,
     const std::map<std::string, EdaPairs>& pairs_of) {
     std::vector<std::pair<std::string, std::string>> errs;
-    const Json* ref = get(section, "eda_ref");
+    const Json* ref = get(section, "decomposition_ref");
     if (!ref) return errs;
     const std::string sec = "section " + quote_str(sid) + ": ";
     auto it = ref->is_string() ? kinds_by_id.find(ref->as_string()) : kinds_by_id.end();
-    if (it == kinds_by_id.end() || it->second != "eda") {
-        errs.emplace_back("eda_ref", sec + "eda_ref " + show(*ref) + " does not name an eda section (spec § 5.2)");
+    if (it == kinds_by_id.end() || it->second != "energy_decomposition") {
+        errs.emplace_back("decomposition_ref", sec + "decomposition_ref " + show(*ref) + " does not name an energy_decomposition section (spec § 5.2)");
         return errs;
     }
     const Json* index = get(section, "pair_index");
-    const Json* role = get(section, "eda_role");
+    const Json* role = get(section, "decomposition_role");
     if (role && role->is_string() && role->as_string() == "orbital_pair" && !index) {
-        errs.emplace_back("eda_role", sec + "eda_role 'orbital_pair' needs pair_index (spec § 5.2)");
+        errs.emplace_back("decomposition_role", sec + "decomposition_role 'orbital_pair' needs pair_index (spec § 5.2)");
         return errs;
     }
     if (!is_int(index)) return errs;
@@ -1675,7 +1675,7 @@ inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
     if (px == pairs_of.end() || !px->second.known ||
         !px->second.keys.count(std::to_string(index->as_int()) + "/" + s))
         errs.emplace_back("pair_index", sec + "pair_index " + std::to_string(index->as_int()) +
-                                            " with pair_spin '" + s + "' names no orbital pair of eda section " +
+                                            " with pair_spin '" + s + "' names no orbital pair of energy_decomposition section " +
                                             quote_str(ref->as_string()) + " (spec § 5.2)");
     return errs;
 }
@@ -3460,7 +3460,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         }
         if (kind == "volume.transition_density")
             transition_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
-        if (kind == "eda") {
+        if (kind == "energy_decomposition") {
             auto it = docs.find("decomposition");
             const bool has_doc = it != docs.end();
             if (!eda_pairs_of.count(sid))
@@ -3468,7 +3468,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             eda_sections.push_back(DeferredSection{i, sid, &s, has_doc, has_doc ? it->second : Json()});
         }
         if (kind == "volume.difference" &&
-            (s.contains("eda_ref") || s.contains("eda_role") || s.contains("pair_index") ||
+            (s.contains("decomposition_ref") || s.contains("decomposition_role") || s.contains("pair_index") ||
              s.contains("pair_spin")))
             eda_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
         if (is_wavefunction_volume_kind(kind) && s.contains("wavefunction_ref"))

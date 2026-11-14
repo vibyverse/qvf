@@ -354,9 +354,9 @@ pub struct VolumeDifferenceFields {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub eda_ref: Option<String>,
+    pub decomposition_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub eda_role: Option<String>,
+    pub decomposition_role: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pair_index: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3196,7 +3196,7 @@ pub struct MossbauerSpectrumPayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaFields {
+pub struct EnergyDecompositionFields {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
@@ -3218,7 +3218,7 @@ pub struct EdaFields {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaMethod {
+pub struct DecompositionMethod {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3233,7 +3233,7 @@ pub struct EdaMethod {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaFragment {
+pub struct DecompositionFragment {
     pub label: String,
     pub atoms: Vec<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3256,7 +3256,7 @@ pub struct EdaFragment {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaPayloadEnergies {
+pub struct EnergyDecompositionPayloadEnergies {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub system: Option<ValueWithUnits>,
     /// Fields the schema leaves open, kept for the round trip.
@@ -3265,7 +3265,7 @@ pub struct EdaPayloadEnergies {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaTerm {
+pub struct DecompositionTerm {
     pub name: String,
     pub energy: ValueWithUnits,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3286,7 +3286,7 @@ pub struct EdaTerm {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaSumRule {
+pub struct DecompositionSumRule {
     pub total: i64,
     pub parts: Vec<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3297,7 +3297,7 @@ pub struct EdaSumRule {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaOrbitalPair {
+pub struct DecompositionOrbitalPair {
     pub index: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spin: Option<String>,
@@ -3321,7 +3321,7 @@ pub struct EdaOrbitalPair {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaOrbitalPairs {
+pub struct DecompositionOrbitalPairs {
     #[serde(rename = "type")]
     pub type_: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3330,14 +3330,14 @@ pub struct EdaOrbitalPairs {
     pub threshold: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total: Option<ValueWithUnits>,
-    pub pairs: Vec<EdaOrbitalPair>,
+    pub pairs: Vec<DecompositionOrbitalPair>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaPeriodic {
+pub struct DecompositionPeriodic {
     pub kpoints: BlochKpointsPayload,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mesh: Option<[i64; 3]>,
@@ -3349,22 +3349,22 @@ pub struct EdaPeriodic {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EdaPayload {
+pub struct EnergyDecompositionPayload {
     pub scheme: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<EdaMethod>,
-    pub fragments: Vec<EdaFragment>,
+    pub method: Option<DecompositionMethod>,
+    pub fragments: Vec<DecompositionFragment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub energies: Option<EdaPayloadEnergies>,
-    pub terms: Vec<EdaTerm>,
+    pub energies: Option<EnergyDecompositionPayloadEnergies>,
+    pub terms: Vec<DecompositionTerm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sum_rules: Option<Vec<EdaSumRule>>,
+    pub sum_rules: Option<Vec<DecompositionSumRule>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub orbital_pairs: Option<EdaOrbitalPairs>,
+    pub orbital_pairs: Option<DecompositionOrbitalPairs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub periodic: Option<EdaPeriodic>,
+    pub periodic: Option<DecompositionPeriodic>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
@@ -5451,16 +5451,16 @@ impl TypedKind for SpectraMossbauer {
     }
 }
 
-/// A `eda` section with typed members (`SectionEda`).
+/// A `energy_decomposition` section with typed members (`SectionEnergyDecomposition`).
 #[derive(Debug, Clone, PartialEq)]
-pub struct Eda {
+pub struct EnergyDecomposition {
     /// The section fields other than `kind` and `members`.
-    pub fields: EdaFields,
-    pub decomposition: EdaPayload,
+    pub fields: EnergyDecompositionFields,
+    pub decomposition: EnergyDecompositionPayload,
 }
 
-impl TypedKind for Eda {
-    const KIND: &'static str = "eda";
+impl TypedKind for EnergyDecomposition {
+    const KIND: &'static str = "energy_decomposition";
 
     fn from_section(reader: &Reader, section: Section<'_>) -> Result<Self, QvfError> {
         check_kind(section, Self::KIND)?;
@@ -5542,7 +5542,7 @@ pub enum AnyKind {
     SpectraXAS(SpectraXAS),
     SpectraXES(SpectraXES),
     SpectraMossbauer(SpectraMossbauer),
-    Eda(Eda),
+    EnergyDecomposition(EnergyDecomposition),
 }
 
 impl AnyKind {
@@ -5608,7 +5608,7 @@ impl AnyKind {
             SpectraXAS::KIND => AnyKind::SpectraXAS(SpectraXAS::from_section(reader, section)?),
             SpectraXES::KIND => AnyKind::SpectraXES(SpectraXES::from_section(reader, section)?),
             SpectraMossbauer::KIND => AnyKind::SpectraMossbauer(SpectraMossbauer::from_section(reader, section)?),
-            Eda::KIND => AnyKind::Eda(Eda::from_section(reader, section)?),
+            EnergyDecomposition::KIND => AnyKind::EnergyDecomposition(EnergyDecomposition::from_section(reader, section)?),
             _ => return Ok(None),
         }))
     }
@@ -5675,7 +5675,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(_) => SpectraXAS::KIND,
             AnyKind::SpectraXES(_) => SpectraXES::KIND,
             AnyKind::SpectraMossbauer(_) => SpectraMossbauer::KIND,
-            AnyKind::Eda(_) => Eda::KIND,
+            AnyKind::EnergyDecomposition(_) => EnergyDecomposition::KIND,
         }
     }
 
@@ -5741,7 +5741,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(v) => v.id(),
             AnyKind::SpectraXES(v) => v.id(),
             AnyKind::SpectraMossbauer(v) => v.id(),
-            AnyKind::Eda(v) => v.id(),
+            AnyKind::EnergyDecomposition(v) => v.id(),
         }
     }
 
@@ -5807,7 +5807,7 @@ impl AnyKind {
             AnyKind::SpectraXAS(v) => v.to_writer(writer),
             AnyKind::SpectraXES(v) => v.to_writer(writer),
             AnyKind::SpectraMossbauer(v) => v.to_writer(writer),
-            AnyKind::Eda(v) => v.to_writer(writer),
+            AnyKind::EnergyDecomposition(v) => v.to_writer(writer),
         }
     }
 }

@@ -101,7 +101,7 @@
     "spectra.xas",
     "spectra.xes",
     "spectra.mossbauer",
-    "eda"
+    "energy_decomposition"
   ],
   "reserved_kinds": [
     "volume.orbital_projection",
@@ -113,7 +113,7 @@
       "namespace": "x_vibeqc",
       "owner": "vibe-qc",
       "url": "https://vibe-qc.com",
-      "purpose": "First-party vendor data that is not part of the visualization contract: restart-only per-k complex Bloch wavefunctions (x_vibeqc.bloch_wavefunction; its coefficient layout was promoted provisionally to the canonical wavefunction.bloch), live-checkpoint hints, and the periodic energy decomposition record x_vibeqc.peda, promoted provisionally to the canonical eda kind."
+      "purpose": "First-party vendor data that is not part of the visualization contract: restart-only per-k complex Bloch wavefunctions (x_vibeqc.bloch_wavefunction; its coefficient layout was promoted provisionally to the canonical wavefunction.bloch), live-checkpoint hints, and the periodic energy decomposition record x_vibeqc.peda, promoted provisionally to the canonical energy_decomposition kind."
     },
     {
       "namespace": "x_orca",
@@ -136,11 +136,11 @@
   ],
   "promotions": [
     {
-      "kind": "eda",
+      "kind": "energy_decomposition",
       "from": "x_vibeqc.peda",
       "promoted_in": "1 (2026-11)",
       "status": "provisional",
-      "note": "Added by maintainer decision ahead of the two-producer threshold (GOVERNANCE.md, Change process: clear ecosystem need + reference consumer). A general energy decomposition analysis: the scheme (Ziegler-Rauk/ETS and periodic EDA, LMO-EDA, GKS-EDA, Kitaura-Morokuma, ALMO-EDA, SAPT, local energy decomposition, many-body), the fragments with charge, multiplicity, spin flip, basis and sub-fragments, the energy terms with whole-system, per-fragment, pair and n-body scope, spin and a parent hierarchy, declared sum rules checked by validators, an optional NOCV/COVP pair table with per-k values, and k-point sampling. volume.difference gains eda_ref, eda_role, pair_index and pair_spin for deformation densities. Started as the first-party x_vibeqc.peda section; reference data from ADF, BAND, ORCA, Psi4, CP2K and vibe-qc."
+      "note": "Added by maintainer decision ahead of the two-producer threshold (GOVERNANCE.md, Change process: clear ecosystem need + reference consumer). A general energy decomposition analysis: the scheme (Ziegler-Rauk/ETS and periodic EDA, LMO-EDA, GKS-EDA, Kitaura-Morokuma, ALMO-EDA, SAPT, local energy decomposition, many-body), the fragments with charge, multiplicity, spin flip, basis and sub-fragments, the energy terms with whole-system, per-fragment, pair and n-body scope, spin and a parent hierarchy, declared sum rules checked by validators, an optional NOCV/COVP pair table with per-k values, and k-point sampling. volume.difference gains decomposition_ref, decomposition_role, pair_index and pair_spin for deformation densities. Started as the first-party x_vibeqc.peda section; reference data from ADF, BAND, ORCA, Psi4, CP2K and vibe-qc."
     },
     {
       "kind": "spectra.xas",

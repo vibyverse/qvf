@@ -1,0 +1,37 @@
+{
+  "archive": "energy_decomposition_periodic_peda.qvf",
+  "description": "A periodic EDA (pEDA) of water on a 2x2 h-BN sheet on a 2x2x1 k-mesh: the four terms with their sum rule and a NOCV pair with its eigenvalue and weighted energy at each k-point (spec \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "periodic",
+        "mesh"
+      ],
+      "equals": [
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "orbital_pairs",
+        "pairs",
+        0,
+        "kpoint_eigenvalues",
+        3
+      ],
+      "equals": 0.028,
+      "tol": 1e-12
+    }
+  ]
+}

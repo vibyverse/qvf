@@ -245,23 +245,23 @@ export interface VolumeOptions {
   axis?: Obj;
   excitedStatesRef?: string;
   stateIndex?: number;
-  /** The `eda` section a `volume.difference` belongs to (spec § 5.2, § 5.16). */
-  edaRef?: string;
+  /** The `energy_decomposition` section a `volume.difference` belongs to (spec § 5.2, § 5.16). */
+  decompositionRef?: string;
   /** `orbital_pair`, `orbital_relaxation`, `interaction`, `polarization`, `charge_transfer` or an `x_` name. */
-  edaRole?: string;
-  /** The orbital pair's `index`; required for `edaRole` `orbital_pair`. */
+  decompositionRole?: string;
+  /** The orbital pair's `index`; required for `decompositionRole` `orbital_pair`. */
   pairIndex?: number;
   /** `restricted` (default), `alpha` or `beta`. */
   pairSpin?: string;
 }
 
-export interface EdaOptions {
+export interface EnergyDecompositionOptions {
   /** The structure the fragments' atom indices address (else the first structure). */
   structureRef?: string;
   /** The `wavefunction.gto` or `wavefunction.bloch` section of the complete system. */
   wavefunctionRef?: string;
   label?: string;
-  /** Default `"eda"`. */
+  /** Default `"energy_decomposition"`. */
   sectionId?: string;
 }
 
@@ -1108,19 +1108,19 @@ export class Writer {
       peers.excited_states_ref = options.excitedStatesRef;
       if (options.stateIndex !== undefined) peers.state_index = integer(options.stateIndex, "stateIndex", 1);
     }
-    if ([options.edaRef, options.edaRole, options.pairIndex, options.pairSpin].some((v) => v !== undefined)) {
-      if (kind !== "volume.difference") throw new RangeError("edaRef, edaRole, pairIndex and pairSpin apply to volume.difference only");
-      if (!options.edaRef) throw new RangeError("volume.difference: edaRole, pairIndex and pairSpin need edaRef (spec § 5.2)");
-      peers.eda_ref = options.edaRef;
-      if (options.edaRole !== undefined) {
+    if ([options.decompositionRef, options.decompositionRole, options.pairIndex, options.pairSpin].some((v) => v !== undefined)) {
+      if (kind !== "volume.difference") throw new RangeError("decompositionRef, decompositionRole, pairIndex and pairSpin apply to volume.difference only");
+      if (!options.decompositionRef) throw new RangeError("volume.difference: decompositionRole, pairIndex and pairSpin need decompositionRef (spec § 5.2)");
+      peers.decomposition_ref = options.decompositionRef;
+      if (options.decompositionRole !== undefined) {
         const roles = ["orbital_pair", "orbital_relaxation", "interaction", "polarization", "charge_transfer"];
-        if (!roles.includes(options.edaRole) && !/^x_[A-Za-z0-9_.-]+$/.test(options.edaRole)) {
-          throw new RangeError(`volume.difference: edaRole '${options.edaRole}' is not one of ${roles.join(", ")} or an x_ name (spec § 5.2)`);
+        if (!roles.includes(options.decompositionRole) && !/^x_[A-Za-z0-9_.-]+$/.test(options.decompositionRole)) {
+          throw new RangeError(`volume.difference: decompositionRole '${options.decompositionRole}' is not one of ${roles.join(", ")} or an x_ name (spec § 5.2)`);
         }
-        peers.eda_role = options.edaRole;
+        peers.decomposition_role = options.decompositionRole;
       }
-      if (options.edaRole === "orbital_pair" && options.pairIndex === undefined) {
-        throw new RangeError("volume.difference: edaRole 'orbital_pair' needs pairIndex (spec § 5.2)");
+      if (options.decompositionRole === "orbital_pair" && options.pairIndex === undefined) {
+        throw new RangeError("volume.difference: decompositionRole 'orbital_pair' needs pairIndex (spec § 5.2)");
       }
       if (options.pairSpin !== undefined && options.pairIndex === undefined) throw new RangeError("volume.difference: pairSpin needs pairIndex (spec § 5.2)");
       if (options.pairIndex !== undefined) peers.pair_index = integer(options.pairIndex, "pairIndex", 1);
@@ -1221,55 +1221,55 @@ export class Writer {
   }
 
   /**
-   * `add_eda`: an `eda` section (spec § 5.16), one energy decomposition. The
-   * payload follows `$defs/EdaPayload`; numeric energies are written in
+   * `add_energy_decomposition`: an `energy_decomposition` section (spec § 5.16), one energy decomposition. The
+   * payload follows `$defs/EnergyDecompositionPayload`; numeric energies are written in
    * `hartree`. The rules of § 5.16 (fragments, term references, declared sum
    * rules, pair indices, per-k lengths) are checked before anything is
    * written, and every pair's `density_ref` must name an added
    * `volume.difference` section.
    */
-  async addEda(decomposition: Obj, options: EdaOptions = {}): Promise<string> {
-    const sid = options.sectionId ?? "eda";
+  async addEnergyDecomposition(decomposition: Obj, options: EnergyDecompositionOptions = {}): Promise<string> {
+    const sid = options.sectionId ?? "energy_decomposition";
     this.checkNewId(sid);
-    if (!isObject(decomposition)) throw new TypeError("eda: decomposition must be an object");
+    if (!isObject(decomposition)) throw new TypeError("energy_decomposition: decomposition must be an object");
     const energy = (v: unknown, what: string): unknown => (typeof v === "number" ? { value: finite(v, what), units: "hartree" } : v);
     const payload = JSON.parse(JSON.stringify(decomposition)) as Obj;
     const each = (arr: unknown, field: string, what: string): void => {
       if (!Array.isArray(arr)) return;
       arr.forEach((o: unknown, k: number) => {
-        if (isObject(o) && o[field] !== undefined) o[field] = energy(o[field], `eda: ${what}[${k}].${field}`);
+        if (isObject(o) && o[field] !== undefined) o[field] = energy(o[field], `energy_decomposition: ${what}[${k}].${field}`);
       });
     };
     each(payload.fragments, "energy", "fragments");
     each(payload.terms, "energy", "terms");
     each(payload.sum_rules, "tolerance", "sum_rules");
     if (isObject(payload.energies) && payload.energies.system !== undefined) {
-      payload.energies.system = energy(payload.energies.system, "eda: energies.system");
+      payload.energies.system = energy(payload.energies.system, "energy_decomposition: energies.system");
     }
     const pairs = payload.orbital_pairs;
     if (isObject(pairs)) {
-      if (pairs.total !== undefined) pairs.total = energy(pairs.total, "eda: orbital_pairs.total");
+      if (pairs.total !== undefined) pairs.total = energy(pairs.total, "energy_decomposition: orbital_pairs.total");
       each(pairs.pairs, "energy", "orbital_pairs.pairs");
       if (Array.isArray(pairs.pairs)) {
         pairs.pairs.forEach((p: unknown, k: number) => {
-          if (isObject(p) && p.density_ref !== undefined) this.checkRef(`eda: orbital_pairs.pairs[${k}].density_ref`, p.density_ref, ["volume.difference"]);
+          if (isObject(p) && p.density_ref !== undefined) this.checkRef(`energy_decomposition: orbital_pairs.pairs[${k}].density_ref`, p.density_ref, ["volume.difference"]);
         });
       }
     }
     const problems = edaPayloadErrors(payload).map(([, msg]) => msg);
-    if (problems.length > 0) throw new RangeError(`eda: ${problems.join("; ")}`);
+    if (problems.length > 0) throw new RangeError(`energy_decomposition: ${problems.join("; ")}`);
     const peers: Obj = {};
     if (options.label !== undefined) peers.label = options.label;
     if (options.structureRef !== undefined) {
-      this.checkRef("eda structureRef", options.structureRef, ["structure"]);
+      this.checkRef("energy_decomposition structureRef", options.structureRef, ["structure"]);
       peers.structure_ref = options.structureRef;
     }
     if (options.wavefunctionRef !== undefined) {
-      this.checkRef("eda wavefunctionRef", options.wavefunctionRef, ["wavefunction.gto", "wavefunction.bloch"]);
+      this.checkRef("energy_decomposition wavefunctionRef", options.wavefunctionRef, ["wavefunction.gto", "wavefunction.bloch"]);
       peers.wavefunction_ref = options.wavefunctionRef;
     }
-    this.precheck("eda", "decomposition", payload, sid);
-    this.addSection({ id: sid, kind: "eda", ...peers });
+    this.precheck("energy_decomposition", "decomposition", payload, sid);
+    this.addSection({ id: sid, kind: "energy_decomposition", ...peers });
     await this.addJson(sid, "decomposition", payload, { path: `${sid}/decomposition.json` });
     return sid;
   }

@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_sum_rule_violated.qvf",
+  "description": "An energy_decomposition payload whose declared sum rule does not hold: electrostatic + pauli + orbital is -0.25 hartree but the interaction is -0.30 hartree (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_SUM_RULE",
+      "severity": "error"
+    }
+  ]
+}

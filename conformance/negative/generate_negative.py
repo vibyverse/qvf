@@ -2359,69 +2359,69 @@ def _eda_case(edit=None) -> Archive:
     payload = _eda_ok()
     if edit is not None:
         edit(payload)
-    return _payload_case("eda", "eda", "decomposition", payload)
+    return _payload_case("energy_decomposition", "energy_decomposition", "decomposition", payload)
 
 
-@case("eda_sum_rule_violated")
+@case("energy_decomposition_sum_rule_violated")
 def _():
     def edit(p):
         p["terms"][3]["energy"]["value"] = -0.20
     return (_eda_case(edit).to_bytes(),
-            "An eda payload whose declared sum rule does not hold: electrostatic + "
+            "An energy_decomposition payload whose declared sum rule does not hold: electrostatic + "
             "pauli + orbital is -0.25 hartree but the interaction is -0.30 hartree "
             "(spec § 5.16).",
             _err("E_SUM_RULE"), None)
 
 
-@case("eda_fragments_overlap")
+@case("energy_decomposition_fragments_overlap")
 def _():
     def edit(p):
         p["fragments"][1]["atoms"] = [0, 1, 2]
     return (_eda_case(edit).to_bytes(),
-            "Two interacting fragments of an eda payload share atom 0; interacting "
+            "Two interacting fragments of an energy_decomposition payload share atom 0; interacting "
             "fragments are disjoint (spec § 5.16).",
             _err("E_MEMBER_MALFORMED"), None)
 
 
-@case("eda_fragment_atom_out_of_range")
+@case("energy_decomposition_fragment_atom_out_of_range")
 def _():
     def edit(p):
         p["fragments"][1]["atoms"] = [1, 2, 3]
     return (_eda_case(edit).to_bytes(),
-            "An eda fragment names atom 3 of a three-atom structure (spec § 5.16).",
+            "An energy_decomposition fragment names atom 3 of a three-atom structure (spec § 5.16).",
             _err("E_MEMBER_MALFORMED"), None)
 
 
-@case("eda_interaction_missing")
+@case("energy_decomposition_interaction_missing")
 def _():
     def edit(p):
         p["terms"][0]["name"] = "x_total"
     return (_eda_case(edit).to_bytes(),
-            "An eda payload without a whole-system interaction term (spec § 5.16).",
+            "An energy_decomposition payload without a whole-system interaction term (spec § 5.16).",
             _err("E_MEMBER_MALFORMED"), None)
 
 
-@case("eda_term_parent_cycle")
+@case("energy_decomposition_term_parent_cycle")
 def _():
     def edit(p):
         p["terms"][1]["parent"] = 2
         p["terms"][2]["parent"] = 1
     return (_eda_case(edit).to_bytes(),
-            "Two eda terms name each other as parent (spec § 5.16).",
+            "Two energy_decomposition terms name each other as parent (spec § 5.16).",
             _err("E_MEMBER_MALFORMED"), None)
 
 
-@case("eda_energy_unit")
+@case("energy_decomposition_energy_unit")
 def _():
     def edit(p):
         p["terms"][2]["energy"]["units"] = "angstrom"
     return (_eda_case(edit).to_bytes(),
-            "An eda term energy in angstrom, which is not an energy unit (spec "
+            "An energy_decomposition term energy in angstrom, which is not an energy unit (spec "
             "§ 5.16).",
             _err("E_UNIT_CONTRADICTED"), None)
 
 
-@case("eda_nocv_convention_missing")
+@case("energy_decomposition_nocv_convention_missing")
 def _():
     def edit(p):
         del p["orbital_pairs"]["eigenvalue_convention"]
@@ -2431,41 +2431,41 @@ def _():
             _err("E_MEMBER_MALFORMED"), None)
 
 
-@case("eda_density_ref_unresolved")
+@case("energy_decomposition_density_ref_unresolved")
 def _():
     def edit(p):
         p["orbital_pairs"]["pairs"][0]["density_ref"] = "nocv_1"
     return (_eda_case(edit).to_bytes(),
-            "An eda orbital pair whose density_ref names no volume.difference "
+            "An energy_decomposition orbital pair whose density_ref names no volume.difference "
             "section (spec § 5.16).",
             _err("E_REF_UNRESOLVED"), None)
 
 
-@case("eda_pair_index_unresolved")
+@case("energy_decomposition_pair_index_unresolved")
 def _():
     a = _eda_case()
     grid = _json({"origin": [0.0, 0.0, 0.0], "voxel_vectors": [[0.5, 0, 0], [0, 0.5, 0],
                                                                  [0, 0, 0.5]],
                   "shape": [2, 2, 2]})
     data = bytes(8 * 4)
-    a.add_section({"id": "nocv_2", "kind": "volume.difference", "eda_ref": "eda",
-                   "eda_role": "orbital_pair", "pair_index": 2,
+    a.add_section({"id": "nocv_2", "kind": "volume.difference", "decomposition_ref": "energy_decomposition",
+                   "decomposition_role": "orbital_pair", "pair_index": 2,
                    "members": {"grid": json_member("volumes/nocv_2_grid.json", grid),
                                "data": binary_member("volumes/nocv_2.dat", data,
                                                      "float32", [2, 2, 2])}},
                   {"volumes/nocv_2_grid.json": grid, "volumes/nocv_2.dat": data})
     return (a.to_bytes(),
-            "A volume.difference names orbital pair 2 of an eda section that lists "
+            "A volume.difference names orbital pair 2 of an energy_decomposition section that lists "
             "pair 1 only (spec § 5.2, § 5.16).",
             _err("E_REF_UNRESOLVED"), None)
 
 
-@case("eda_scheme_unknown")
+@case("energy_decomposition_scheme_unknown")
 def _():
     def edit(p):
         p["scheme"] = "energy-split"
     return (_eda_case(edit).to_bytes(),
-            "An eda payload whose scheme is neither a scheme name of § 5.16 nor an "
+            "An energy_decomposition payload whose scheme is neither a scheme name of § 5.16 nor an "
             "x_ name (spec § 5.16).",
             _err("E_PAYLOAD_SCHEMA"), None)
 

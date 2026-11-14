@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_fragment_atom_out_of_range.qvf",
+  "description": "An energy_decomposition fragment names atom 3 of a three-atom structure (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

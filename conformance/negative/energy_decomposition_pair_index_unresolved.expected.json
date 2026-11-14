@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_pair_index_unresolved.qvf",
+  "description": "A volume.difference names orbital pair 2 of an energy_decomposition section that lists pair 1 only (spec \u00a7 5.2, \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_REF_UNRESOLVED",
+      "severity": "error"
+    }
+  ]
+}

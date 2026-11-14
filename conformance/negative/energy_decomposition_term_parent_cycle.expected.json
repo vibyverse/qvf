@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_term_parent_cycle.qvf",
+  "description": "Two energy_decomposition terms name each other as parent (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

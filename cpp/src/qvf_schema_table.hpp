@@ -133,43 +133,43 @@ inline constexpr const char* kStrings[556] = {
     "end_insertion_code", "helix_class", "sheet_id", "strand", "structure", "bonds", "chains",
     "residues", "secondary_structure", "b_factors", "smiles", "inchi", "inchikey",
     "wavefunction_ref", "grid", "data", "origin", "voxel_vectors", "periodic",
-    "includes_endpoint", "mo_index", "spin", "operand_a", "operand_b", "eda_ref", "eda_role",
-    "pair_index", "pair_spin", "axis", "values", "labels", "trajectory_ref", "meta",
-    "mulliken_charge", "loewdin_charge", "hirshfeld_charge", "iao_charge", "spin_population",
-    "cm5_charge", "chelpg_charge", "resp_charge", "esp_charge", "nbo_charge", "mbis_charge",
-    "bader_charge", "ddec_charge", "valence", "bonded_valence", "fukui_plus", "fukui_minus",
-    "fukui_zero", "dual_descriptor", "atomic_energy_eh", "atomic_volume_bohr3",
-    "nmr_shielding_iso_ppm", "magnetic_moment", "force_eh_bohr", "coords", "lattice",
-    "velocities", "gradient", "times", "cell_volumes", "temperatures", "symbols",
-    "atomic_numbers", "n_frames", "ensemble", "timestep_fs", "precision", "frame_volumes",
-    "volume_grid", "frame_index", "energy_eh", "waypoints", "reaction_coordinate",
-    "reaction_coordinate_label", "reaction_coordinate_unit", "dim", "dim_per_frame",
-    "volume_frame_index", "volume_label", "volume_isovalue", "axis_a", "axis_b", "geometries",
-    "unit", "axis_a_label", "axis_b_label", "coordinate_a_label", "coordinate_a_unit",
-    "coordinate_b_label", "coordinate_b_unit", "energy_unit", "scheme", "steps", "reactants",
-    "products", "reagents", "arrow", "conditions", "yield_percent", "yield_text",
-    "coefficient", "deltas", "terms", "enthalpy", "gibbs_free_energy", "temperature_k",
-    "pressure_atm", "energy", "value_eh", "kcal_mol", "enthalpy_eh", "gibbs_free_energy_eh",
-    "job_id", "run_id", "program_version", "specification", "parser", "input_sha256",
-    "locations", "hessian_ref", "displacements", "frequencies", "ir_intensities",
-    "raman_activities", "reduced_masses", "force_constants", "symmetry_labels", "imaginary",
-    "n_modes", "spectrum", "intensities", "x", "x_units", "y_units", "peaks", "broadening",
-    "fwhm", "raman", "laser_nm", "depolarization_ratios", "uvvis", "x_axis", "xray",
-    "states_ref", "intensity", "edge", "element", "core_orbital", "line", "energy_shift_ev",
-    "y", "width", "assignment", "mode_index", "state_index", "atom_index", "isotope",
-    "reference", "solvent", "chemical_shifts", "isotropic_shift_ppm", "anisotropy_ppm",
-    "asymmetry", "shielding_tensors", "tensor", "isotropic_ppm", "j_couplings", "i", "j",
-    "value_hz", "isotope_i", "isotope_j", "g_tensor", "matrix", "isotropic", "principal",
-    "hyperfine", "a_iso_mhz", "a_tensor_mhz", "a_principal_mhz", "zero_field_splitting",
-    "d_mhz", "e_mhz", "tensor_mhz", "sites", "calibration", "alpha", "c", "beta",
-    "isomer_shift_mm_s", "quadrupole_splitting_mm_s", "efg_au", "contact_density_au",
-    "hyperfine_field_t", "linewidth_mm_s", "population", "mo_metadata", "mo_coefficients",
-    "mo_coefficients_alpha", "mo_coefficients_beta", "overlap", "density_matrix",
-    "density_matrix_alpha", "density_matrix_beta", "center", "l", "exponents", "coefficients",
-    "pure", "powers", "local", "n_core_electrons", "projectors", "shells", "n_ao", "ecp",
-    "occupations", "n_mo", "orbital_kind", "occupation_semantics", "k_point", "complex",
-    "coefficient_encoding", "coefficient_components", "state_ref", "nto_role",
-    "localization_method", "localization_reference_basis", "atom_populations",
+    "includes_endpoint", "mo_index", "spin", "operand_a", "operand_b", "decomposition_ref",
+    "decomposition_role", "pair_index", "pair_spin", "axis", "values", "labels",
+    "trajectory_ref", "meta", "mulliken_charge", "loewdin_charge", "hirshfeld_charge",
+    "iao_charge", "spin_population", "cm5_charge", "chelpg_charge", "resp_charge",
+    "esp_charge", "nbo_charge", "mbis_charge", "bader_charge", "ddec_charge", "valence",
+    "bonded_valence", "fukui_plus", "fukui_minus", "fukui_zero", "dual_descriptor",
+    "atomic_energy_eh", "atomic_volume_bohr3", "nmr_shielding_iso_ppm", "magnetic_moment",
+    "force_eh_bohr", "coords", "lattice", "velocities", "gradient", "times", "cell_volumes",
+    "temperatures", "symbols", "atomic_numbers", "n_frames", "ensemble", "timestep_fs",
+    "precision", "frame_volumes", "volume_grid", "frame_index", "energy_eh", "waypoints",
+    "reaction_coordinate", "reaction_coordinate_label", "reaction_coordinate_unit", "dim",
+    "dim_per_frame", "volume_frame_index", "volume_label", "volume_isovalue", "axis_a",
+    "axis_b", "geometries", "unit", "axis_a_label", "axis_b_label", "coordinate_a_label",
+    "coordinate_a_unit", "coordinate_b_label", "coordinate_b_unit", "energy_unit", "scheme",
+    "steps", "reactants", "products", "reagents", "arrow", "conditions", "yield_percent",
+    "yield_text", "coefficient", "deltas", "terms", "enthalpy", "gibbs_free_energy",
+    "temperature_k", "pressure_atm", "energy", "value_eh", "kcal_mol", "enthalpy_eh",
+    "gibbs_free_energy_eh", "job_id", "run_id", "program_version", "specification", "parser",
+    "input_sha256", "locations", "hessian_ref", "displacements", "frequencies",
+    "ir_intensities", "raman_activities", "reduced_masses", "force_constants",
+    "symmetry_labels", "imaginary", "n_modes", "spectrum", "intensities", "x", "x_units",
+    "y_units", "peaks", "broadening", "fwhm", "raman", "laser_nm", "depolarization_ratios",
+    "uvvis", "x_axis", "xray", "states_ref", "intensity", "edge", "element", "core_orbital",
+    "line", "energy_shift_ev", "y", "width", "assignment", "mode_index", "state_index",
+    "atom_index", "isotope", "reference", "solvent", "chemical_shifts", "isotropic_shift_ppm",
+    "anisotropy_ppm", "asymmetry", "shielding_tensors", "tensor", "isotropic_ppm",
+    "j_couplings", "i", "j", "value_hz", "isotope_i", "isotope_j", "g_tensor", "matrix",
+    "isotropic", "principal", "hyperfine", "a_iso_mhz", "a_tensor_mhz", "a_principal_mhz",
+    "zero_field_splitting", "d_mhz", "e_mhz", "tensor_mhz", "sites", "calibration", "alpha",
+    "c", "beta", "isomer_shift_mm_s", "quadrupole_splitting_mm_s", "efg_au",
+    "contact_density_au", "hyperfine_field_t", "linewidth_mm_s", "population", "mo_metadata",
+    "mo_coefficients", "mo_coefficients_alpha", "mo_coefficients_beta", "overlap",
+    "density_matrix", "density_matrix_alpha", "density_matrix_beta", "center", "l",
+    "exponents", "coefficients", "pure", "powers", "local", "n_core_electrons", "projectors",
+    "shells", "n_ao", "ecp", "occupations", "n_mo", "orbital_kind", "occupation_semantics",
+    "k_point", "complex", "coefficient_encoding", "coefficient_components", "state_ref",
+    "nto_role", "localization_method", "localization_reference_basis", "atom_populations",
     "centroids_bohr", "n_centres", "iao_charges", "excitation_index", "excitation_energy_ev",
     "kpoints", "weights", "mesh", "shift", "time_reversal", "n_spin", "k_point_convention",
     "n_mo_per_k", "kpath", "eigenvalues", "projections", "start", "end", "n_points",
@@ -259,13 +259,14 @@ inline constexpr const char* kValues[254] = {
     "\"forces\"", "\"gradient\"", "\"hessian\"", "\"excited_states\"",
     "\"properties.electric\"", "\"properties.elastic\"", "\"properties.dielectric\"",
     "\"buckingham\"", "\"voigt\"", "\"reuss\"", "\"hill\"", "\"volume.transition_density\"",
-    "\"preview\"", "\"image/png\"", "\"image/jpeg\"", "\"image/svg+xml\"", "\"eda\"",
-    "\"ziegler-rauk\"", "\"lmo-eda\"", "\"gks-eda\"", "\"kitaura-morokuma\"", "\"almo-eda\"",
-    "\"sapt\"", "\"led\"", "\"many-body\"", "\"own\"", "\"supersystem\"", "\"electrostatic\"",
-    "\"pauli\"", "\"exchange\"", "\"repulsion\"", "\"orbital\"", "\"induction\"",
-    "\"dispersion\"", "\"exchange_induction\"", "\"exchange_dispersion\"", "\"delta_hf\"",
-    "\"preparation\"", "\"frozen\"", "\"exchange_correlation\"", "\"correlation\"",
-    "\"reference\"", "\"coupling\"", "\"nocv\"", "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
+    "\"preview\"", "\"image/png\"", "\"image/jpeg\"", "\"image/svg+xml\"",
+    "\"energy_decomposition\"", "\"ziegler-rauk\"", "\"lmo-eda\"", "\"gks-eda\"",
+    "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"", "\"led\"", "\"many-body\"", "\"own\"",
+    "\"supersystem\"", "\"electrostatic\"", "\"pauli\"", "\"exchange\"", "\"repulsion\"",
+    "\"orbital\"", "\"induction\"", "\"dispersion\"", "\"exchange_induction\"",
+    "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"", "\"frozen\"",
+    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"", "\"nocv\"",
+    "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
 };
 // Node lists, string lists and value lists (see the opcodes).
 inline constexpr std::int32_t kLists[899] = {
@@ -798,7 +799,7 @@ inline constexpr Op kOps[3133] = {
     {kProperties, 322, 3, 0},  // n29 properties: kind, wavefunction_ref, members
     {kProperties, 332, 2, 0},  // n30 properties: kind, members
     {kProperties, 340, 2, 0},  // n31 properties: kind, members
-    {kProperties, 348, 9, 0},  // n32 properties: kind, operand_a, operand_b, description, eda_ref, eda_role, ...
+    {kProperties, 348, 9, 0},  // n32 properties: kind, operand_a, operand_b, description, decomposition_ref, ...
     {kDependentRequired, 6, 5, 0},  // dependentRequired
     {kProperties, 370, 2, 0},  // n33 properties: kind, members
     {kProperties, 378, 2, 0},  // n34 properties: kind, members
@@ -1458,7 +1459,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 158, 0, 0},  // n341 $ref #/$defs/SectionExcitedStates
     {kRef, 173, 0, 0},  // n342 $ref #/$defs/SectionVolumeTransitionDensity
     {kRef, 174, 0, 0},  // n343 $ref #/$defs/SectionPreview
-    {kRef, 177, 0, 0},  // n344 $ref #/$defs/SectionEda
+    {kRef, 177, 0, 0},  // n344 $ref #/$defs/SectionEnergyDecomposition
     {kRef, 159, 0, 0},  // n345 $ref #/$defs/SectionPropertiesElectric
     {kRef, 164, 0, 0},  // n346 $ref #/$defs/SectionPropertiesElastic
     {kRef, 165, 0, 0},  // n347 $ref #/$defs/SectionPropertiesDielectric
@@ -3623,7 +3624,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 8, 0, 0},  // n1795 $ref #/$defs/Sha256Hex
     {kRef, 11, 0, 0},  // n1796 $ref #/$defs/MemberSize
     {kEnum, 818, 3, 0},  // n1797 enum
-    {kConst, 223, 0, 0},  // n1798 const "eda"
+    {kConst, 223, 0, 0},  // n1798 const "energy_decomposition"
     {kType, 32, 0, 0},  // n1799 type
     {kType, 4, 0, 0},  // n1800 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -3635,11 +3636,11 @@ inline constexpr Op kOps[3133] = {
     {kType, 32, 0, 0},  // n1805 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kType, 32, 0, 0},  // n1806 type
-    {kRef, 179, 0, 0},  // n1807 $ref #/$defs/EdaMethod
+    {kRef, 179, 0, 0},  // n1807 $ref #/$defs/DecompositionMethod
     {kType, 8, 0, 0},  // n1808 type
     {kMinItems, 2, 0, 0},  // minItems
     {kItems, 1809, 0, 0},  // items
-    {kRef, 180, 0, 0},  // n1809 $ref #/$defs/EdaFragment
+    {kRef, 180, 0, 0},  // n1809 $ref #/$defs/DecompositionFragment
     {kType, 4, 0, 0},  // n1810 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2336, 1, 0},  // patternProperties
@@ -3649,12 +3650,12 @@ inline constexpr Op kOps[3133] = {
     {kType, 8, 0, 0},  // n1813 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1814, 0, 0},  // items
-    {kRef, 181, 0, 0},  // n1814 $ref #/$defs/EdaTerm
+    {kRef, 181, 0, 0},  // n1814 $ref #/$defs/DecompositionTerm
     {kType, 8, 0, 0},  // n1815 type
     {kItems, 1816, 0, 0},  // items
-    {kRef, 182, 0, 0},  // n1816 $ref #/$defs/EdaSumRule
-    {kRef, 183, 0, 0},  // n1817 $ref #/$defs/EdaOrbitalPairs
-    {kRef, 185, 0, 0},  // n1818 $ref #/$defs/EdaPeriodic
+    {kRef, 182, 0, 0},  // n1816 $ref #/$defs/DecompositionSumRule
+    {kRef, 183, 0, 0},  // n1817 $ref #/$defs/DecompositionOrbitalPairs
+    {kRef, 185, 0, 0},  // n1818 $ref #/$defs/DecompositionPeriodic
     {kType, 32, 0, 0},  // n1819 type
     {kType, 32, 0, 0},  // n1821 type
     {kType, 32, 0, 0},  // n1822 type
@@ -3715,7 +3716,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 1, 0, 0},  // n1861 $ref #/$defs/ValueWithUnits
     {kType, 8, 0, 0},  // n1862 type
     {kItems, 1863, 0, 0},  // items
-    {kRef, 184, 0, 0},  // n1863 $ref #/$defs/EdaOrbitalPair
+    {kRef, 184, 0, 0},  // n1863 $ref #/$defs/DecompositionOrbitalPair
     {kType, 64, 0, 0},  // n1865 type
     {kMinimum, 2, 0, 0},  // minimum
     {kEnum, 882, 3, 0},  // n1866 enum
@@ -4028,15 +4029,15 @@ inline constexpr Def kDefs[196] = {
     {"SectionPreview", 174},
     {"PreviewThumbnail", 175},
     {"PreviewImage", 176},
-    {"SectionEda", 177},
-    {"EdaPayload", 178},
-    {"EdaMethod", 179},
-    {"EdaFragment", 180},
-    {"EdaTerm", 181},
-    {"EdaSumRule", 182},
-    {"EdaOrbitalPairs", 183},
-    {"EdaOrbitalPair", 184},
-    {"EdaPeriodic", 185},
+    {"SectionEnergyDecomposition", 177},
+    {"EnergyDecompositionPayload", 178},
+    {"DecompositionMethod", 179},
+    {"DecompositionFragment", 180},
+    {"DecompositionTerm", 181},
+    {"DecompositionSumRule", 182},
+    {"DecompositionOrbitalPairs", 183},
+    {"DecompositionOrbitalPair", 184},
+    {"DecompositionPeriodic", 185},
     {"SectionVendor", 186},
     {"Metadata", 187},
     {"MetadataAuthor", 188},

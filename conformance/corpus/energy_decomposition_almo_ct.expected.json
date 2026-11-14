@@ -1,0 +1,32 @@
+{
+  "archive": "energy_decomposition_almo_ct.qvf",
+  "description": "An ALMO-EDA of the water dimer: frozen, polarization and charge-transfer terms, the charge transfer split into its two directions, and one COVP with donor and acceptor fragments (spec \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "terms",
+        4,
+        "directed"
+      ],
+      "equals": true
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "orbital_pairs",
+        "pairs",
+        0,
+        "donor"
+      ],
+      "equals": 1
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_nocv_convention_missing.qvf",
+  "description": "A nocv orbital-pair table without its eigenvalue_convention (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

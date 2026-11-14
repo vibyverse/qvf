@@ -766,7 +766,7 @@ fn state_indices(payload: Option<&Value>) -> Option<StateSet> {
     Some(states.iter().filter_map(|s| int_of(as_obj(Some(s))?.get("index")).map(|x| x as i64)).collect())
 }
 
-/// Rules of an `eda` section that JSON Schema cannot express (spec § 5.16): the payload
+/// Rules of an `energy_decomposition` section that JSON Schema cannot express (spec § 5.16): the payload
 /// rules of [`eda::payload_errors`] and, with `kinds_by_id` (references level), the
 /// section's `wavefunction_ref` and every pair's `density_ref`. `field` is empty for the
 /// `decomposition` member.
@@ -826,7 +826,7 @@ fn eda_errors(
     errors
 }
 
-/// A `volume.difference` section's `eda_ref` names an `eda` section, and for `eda_role`
+/// A `volume.difference` section's `decomposition_ref` names an `energy_decomposition` section, and for `decomposition_role`
 /// `orbital_pair` its `pair_index` and `pair_spin` name one of that section's orbital pairs
 /// (spec § 5.2, § 5.16).
 fn eda_density_errors(
@@ -836,16 +836,22 @@ fn eda_density_errors(
     pairs_of: &HashMap<String, Option<HashSet<(i64, String)>>>,
 ) -> Vec<(String, String)> {
     let s = sec(sid);
-    if !section.contains_key("eda_ref") {
+    if !section.contains_key("decomposition_ref") {
         return vec![];
     }
-    let r = section.get("eda_ref");
-    let Some(rs) = str_of(r).filter(|x| kinds_by_id.get(*x).map(String::as_str) == Some("eda")) else {
-        return vec![("eda_ref".into(), format!("{s}eda_ref {} does not name an eda section (spec § 5.2)", show(r)))];
+    let r = section.get("decomposition_ref");
+    let Some(rs) = str_of(r).filter(|x| kinds_by_id.get(*x).map(String::as_str) == Some("energy_decomposition")) else {
+        return vec![(
+            "decomposition_ref".into(),
+            format!("{s}decomposition_ref {} does not name an energy_decomposition section (spec § 5.2)", show(r)),
+        )];
     };
     let index = section.get("pair_index");
-    if str_of(section.get("eda_role")) == Some("orbital_pair") && index.is_none() {
-        return vec![("eda_role".into(), format!("{s}eda_role 'orbital_pair' needs pair_index (spec § 5.2)"))];
+    if str_of(section.get("decomposition_role")) == Some("orbital_pair") && index.is_none() {
+        return vec![(
+            "decomposition_role".into(),
+            format!("{s}decomposition_role 'orbital_pair' needs pair_index (spec § 5.2)"),
+        )];
     }
     let Some(i) = int_of(index) else { return vec![] };
     let spin = str_of(section.get("pair_spin")).unwrap_or("restricted");
@@ -854,7 +860,7 @@ fn eda_density_errors(
         return vec![(
             "pair_index".into(),
             format!(
-                "{s}pair_index {} with pair_spin '{spin}' names no orbital pair of eda section {} (spec § 5.2)",
+                "{s}pair_index {} with pair_spin '{spin}' names no orbital pair of energy_decomposition section {} (spec § 5.2)",
                 num(i),
                 quote(rs)
             ),
@@ -2880,7 +2886,7 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         if level >= Level::References && kind == "volume.transition_density" {
             transition_densities.push(d);
         }
-        if kind == "eda" {
+        if kind == "energy_decomposition" {
             eda_pairs_of.entry(sid.to_string()).or_insert_with(|| eda::pair_keys(docs.get("decomposition")));
             if level >= Level::Semantics {
                 eda_sections.push(d);
@@ -2888,7 +2894,7 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         }
         if level >= Level::References
             && kind == "volume.difference"
-            && ["eda_ref", "eda_role", "pair_index", "pair_spin"].iter().any(|f| s.contains_key(*f))
+            && ["decomposition_ref", "decomposition_role", "pair_index", "pair_spin"].iter().any(|f| s.contains_key(*f))
         {
             eda_densities.push(d);
         }

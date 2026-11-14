@@ -898,9 +898,9 @@ inline constexpr RoleInfo kRoles57[] = {
 inline constexpr RoleInfo kRoles58[] = {
     {"spectrum", true, Format::Json, nullptr, 0, -1, -1, "MossbauerSpectrumPayload", false},
 };
-// eda ($defs/SectionEda)
+// energy_decomposition ($defs/SectionEnergyDecomposition)
 inline constexpr RoleInfo kRoles59[] = {
-    {"decomposition", true, Format::Json, nullptr, 0, -1, -1, "EdaPayload", false},
+    {"decomposition", true, Format::Json, nullptr, 0, -1, -1, "EnergyDecompositionPayload", false},
 };
 }  // namespace tables
 
@@ -965,7 +965,7 @@ inline constexpr KindInfo kKindInfos[] = {
     {"spectra.xas", tables::kRoles56, 1, false},
     {"spectra.xes", tables::kRoles57, 1, false},
     {"spectra.mossbauer", tables::kRoles58, 1, false},
-    {"eda", tables::kRoles59, 1, false},
+    {"energy_decomposition", tables::kRoles59, 1, false},
 };
 inline constexpr std::size_t kKindCount = 60;
 
@@ -983,7 +983,7 @@ inline constexpr std::string_view kCanonicalKinds[] = {
     "phonon_bands", "phonon_dos", "topology.qtaim", "run.record", "job.spec", "forces",
     "hessian", "excited_states", "volume.transition_density", "properties.electric",
     "properties.elastic", "properties.dielectric", "reaction.scheme", "preview", "spectra.xas",
-    "spectra.xes", "spectra.mossbauer", "eda",
+    "spectra.xes", "spectra.mossbauer", "energy_decomposition",
 };
 
 // The KindInfo of a canonical kind, or nullptr (unknown or vendor kinds).
@@ -1071,7 +1071,7 @@ inline constexpr PayloadDef kPayloadDefs[] = {
     {"properties.elastic", "properties", "ElasticPropertiesPayload"},
     {"properties.dielectric", "properties", "DielectricPropertiesPayload"},
     {"excited_states", "states", "ExcitedStatesPayload"},
-    {"eda", "decomposition", "EdaPayload"},
+    {"energy_decomposition", "decomposition", "EnergyDecompositionPayload"},
     {"volume.transition_density", "grid", "VolumeGridPayload"},
 };
 
@@ -4192,8 +4192,8 @@ struct VolumeDifferenceFields {
     std::optional<std::string> operand_a{};
     std::optional<std::string> operand_b{};
     std::optional<std::string> description{};
-    std::optional<std::string> eda_ref{};
-    std::optional<std::string> eda_role{};
+    std::optional<std::string> decomposition_ref{};
+    std::optional<std::string> decomposition_role{};
     std::optional<int64_t> pair_index{};
     std::optional<std::string> pair_spin{};
     std::map<std::string, Json> extra;
@@ -4205,10 +4205,10 @@ struct VolumeDifferenceFields {
         if (operand_b) codec::put(out, "operand_b", *operand_b);
         if (out.has("description")) throw std::invalid_argument("use the typed field, not extra: description");
         if (description) codec::put(out, "description", *description);
-        if (out.has("eda_ref")) throw std::invalid_argument("use the typed field, not extra: eda_ref");
-        if (eda_ref) codec::put(out, "eda_ref", *eda_ref);
-        if (out.has("eda_role")) throw std::invalid_argument("use the typed field, not extra: eda_role");
-        if (eda_role) codec::put(out, "eda_role", *eda_role);
+        if (out.has("decomposition_ref")) throw std::invalid_argument("use the typed field, not extra: decomposition_ref");
+        if (decomposition_ref) codec::put(out, "decomposition_ref", *decomposition_ref);
+        if (out.has("decomposition_role")) throw std::invalid_argument("use the typed field, not extra: decomposition_role");
+        if (decomposition_role) codec::put(out, "decomposition_role", *decomposition_role);
         if (out.has("pair_index")) throw std::invalid_argument("use the typed field, not extra: pair_index");
         if (pair_index) codec::put(out, "pair_index", *pair_index);
         if (out.has("pair_spin")) throw std::invalid_argument("use the typed field, not extra: pair_spin");
@@ -4221,11 +4221,11 @@ struct VolumeDifferenceFields {
         if (j.has("operand_a")) out.operand_a.emplace(codec::get<std::string>(j, "operand_a"));
         if (j.has("operand_b")) out.operand_b.emplace(codec::get<std::string>(j, "operand_b"));
         if (j.has("description")) out.description.emplace(codec::get<std::string>(j, "description"));
-        if (j.has("eda_ref")) out.eda_ref.emplace(codec::get<std::string>(j, "eda_ref"));
-        if (j.has("eda_role")) out.eda_role.emplace(codec::get<std::string>(j, "eda_role"));
+        if (j.has("decomposition_ref")) out.decomposition_ref.emplace(codec::get<std::string>(j, "decomposition_ref"));
+        if (j.has("decomposition_role")) out.decomposition_role.emplace(codec::get<std::string>(j, "decomposition_role"));
         if (j.has("pair_index")) out.pair_index.emplace(codec::get<int64_t>(j, "pair_index"));
         if (j.has("pair_spin")) out.pair_spin.emplace(codec::get<std::string>(j, "pair_spin"));
-        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra[kv.first] = kv.second;
+        for (const auto& kv : j.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "decomposition_ref" && kv.first != "decomposition_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -8124,7 +8124,7 @@ struct MossbauerSpectrumPayload {
     }
 };
 
-struct EdaFields {
+struct EnergyDecompositionFields {
     std::optional<std::string> wavefunction_ref{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -8133,16 +8133,16 @@ struct EdaFields {
         if (wavefunction_ref) codec::put(out, "wavefunction_ref", *wavefunction_ref);
         return out;
     }
-    static EdaFields from_json(const Json& j) {
+    static EnergyDecompositionFields from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaFields out;
+        EnergyDecompositionFields out;
         if (j.has("wavefunction_ref")) out.wavefunction_ref.emplace(codec::get<std::string>(j, "wavefunction_ref"));
         for (const auto& kv : j.items()) if (kv.first != "wavefunction_ref") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaMethod {
+struct DecompositionMethod {
     std::optional<std::string> method{};
     std::optional<std::string> functional{};
     std::optional<std::string> basis{};
@@ -8160,9 +8160,9 @@ struct EdaMethod {
         if (dispersion) codec::put(out, "dispersion", *dispersion);
         return out;
     }
-    static EdaMethod from_json(const Json& j) {
+    static DecompositionMethod from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaMethod out;
+        DecompositionMethod out;
         if (j.has("method")) out.method.emplace(codec::get<std::string>(j, "method"));
         if (j.has("functional")) out.functional.emplace(codec::get<std::string>(j, "functional"));
         if (j.has("basis")) out.basis.emplace(codec::get<std::string>(j, "basis"));
@@ -8172,7 +8172,7 @@ struct EdaMethod {
     }
 };
 
-struct EdaFragment {
+struct DecompositionFragment {
     std::string label{};
     std::vector<int64_t> atoms{};
     std::optional<int64_t> parent{};
@@ -8205,9 +8205,9 @@ struct EdaFragment {
         if (energy) codec::put(out, "energy", *energy);
         return out;
     }
-    static EdaFragment from_json(const Json& j) {
+    static DecompositionFragment from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaFragment out;
+        DecompositionFragment out;
         out.label = codec::get<std::string>(j, "label");
         out.atoms = codec::get<std::vector<int64_t>>(j, "atoms");
         if (j.has("parent")) out.parent.emplace(codec::get<int64_t>(j, "parent"));
@@ -8222,7 +8222,7 @@ struct EdaFragment {
     }
 };
 
-struct EdaPayloadEnergies {
+struct EnergyDecompositionPayloadEnergies {
     std::optional<ValueWithUnits> system{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -8231,16 +8231,16 @@ struct EdaPayloadEnergies {
         if (system) codec::put(out, "system", *system);
         return out;
     }
-    static EdaPayloadEnergies from_json(const Json& j) {
+    static EnergyDecompositionPayloadEnergies from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPayloadEnergies out;
+        EnergyDecompositionPayloadEnergies out;
         if (j.has("system")) out.system.emplace(codec::get<ValueWithUnits>(j, "system"));
         for (const auto& kv : j.items()) if (kv.first != "system") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaTerm {
+struct DecompositionTerm {
     std::string name{};
     ValueWithUnits energy{};
     std::optional<std::vector<int64_t>> fragments{};
@@ -8270,9 +8270,9 @@ struct EdaTerm {
         if (label) codec::put(out, "label", *label);
         return out;
     }
-    static EdaTerm from_json(const Json& j) {
+    static DecompositionTerm from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaTerm out;
+        DecompositionTerm out;
         out.name = codec::get<std::string>(j, "name");
         out.energy = codec::get<ValueWithUnits>(j, "energy");
         if (j.has("fragments")) out.fragments.emplace(codec::get<std::vector<int64_t>>(j, "fragments"));
@@ -8286,7 +8286,7 @@ struct EdaTerm {
     }
 };
 
-struct EdaSumRule {
+struct DecompositionSumRule {
     int64_t total{};
     std::vector<int64_t> parts{};
     std::optional<ValueWithUnits> tolerance{};
@@ -8301,9 +8301,9 @@ struct EdaSumRule {
         if (tolerance) codec::put(out, "tolerance", *tolerance);
         return out;
     }
-    static EdaSumRule from_json(const Json& j) {
+    static DecompositionSumRule from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaSumRule out;
+        DecompositionSumRule out;
         out.total = codec::get<int64_t>(j, "total");
         out.parts = codec::get<std::vector<int64_t>>(j, "parts");
         if (j.has("tolerance")) out.tolerance.emplace(codec::get<ValueWithUnits>(j, "tolerance"));
@@ -8312,7 +8312,7 @@ struct EdaSumRule {
     }
 };
 
-struct EdaOrbitalPair {
+struct DecompositionOrbitalPair {
     int64_t index{};
     std::optional<std::string> spin{};
     double eigenvalue{};
@@ -8348,9 +8348,9 @@ struct EdaOrbitalPair {
         if (label) codec::put(out, "label", *label);
         return out;
     }
-    static EdaOrbitalPair from_json(const Json& j) {
+    static DecompositionOrbitalPair from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaOrbitalPair out;
+        DecompositionOrbitalPair out;
         out.index = codec::get<int64_t>(j, "index");
         if (j.has("spin")) out.spin.emplace(codec::get<std::string>(j, "spin"));
         out.eigenvalue = codec::get<double>(j, "eigenvalue");
@@ -8366,12 +8366,12 @@ struct EdaOrbitalPair {
     }
 };
 
-struct EdaOrbitalPairs {
+struct DecompositionOrbitalPairs {
     std::string type{};
     std::optional<std::string> eigenvalue_convention{};
     std::optional<double> threshold{};
     std::optional<ValueWithUnits> total{};
-    std::vector<EdaOrbitalPair> pairs{};
+    std::vector<DecompositionOrbitalPair> pairs{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -8387,20 +8387,20 @@ struct EdaOrbitalPairs {
         codec::put(out, "pairs", pairs);
         return out;
     }
-    static EdaOrbitalPairs from_json(const Json& j) {
+    static DecompositionOrbitalPairs from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaOrbitalPairs out;
+        DecompositionOrbitalPairs out;
         out.type = codec::get<std::string>(j, "type");
         if (j.has("eigenvalue_convention")) out.eigenvalue_convention.emplace(codec::get<std::string>(j, "eigenvalue_convention"));
         if (j.has("threshold")) out.threshold.emplace(codec::get<double>(j, "threshold"));
         if (j.has("total")) out.total.emplace(codec::get<ValueWithUnits>(j, "total"));
-        out.pairs = codec::get<std::vector<EdaOrbitalPair>>(j, "pairs");
+        out.pairs = codec::get<std::vector<DecompositionOrbitalPair>>(j, "pairs");
         for (const auto& kv : j.items()) if (kv.first != "type" && kv.first != "eigenvalue_convention" && kv.first != "threshold" && kv.first != "total" && kv.first != "pairs") out.extra[kv.first] = kv.second;
         return out;
     }
 };
 
-struct EdaPeriodic {
+struct DecompositionPeriodic {
     BlochKpointsPayload kpoints{};
     std::optional<std::array<int64_t, 3>> mesh{};
     std::optional<bool> orbital_pairs_gamma_only{};
@@ -8415,9 +8415,9 @@ struct EdaPeriodic {
         if (orbital_pairs_gamma_only) codec::put(out, "orbital_pairs_gamma_only", *orbital_pairs_gamma_only);
         return out;
     }
-    static EdaPeriodic from_json(const Json& j) {
+    static DecompositionPeriodic from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPeriodic out;
+        DecompositionPeriodic out;
         out.kpoints = codec::get<BlochKpointsPayload>(j, "kpoints");
         if (j.has("mesh")) out.mesh.emplace(codec::get<std::array<int64_t, 3>>(j, "mesh"));
         if (j.has("orbital_pairs_gamma_only")) out.orbital_pairs_gamma_only.emplace(codec::get<bool>(j, "orbital_pairs_gamma_only"));
@@ -8426,16 +8426,16 @@ struct EdaPeriodic {
     }
 };
 
-struct EdaPayload {
+struct EnergyDecompositionPayload {
     std::string scheme{};
     std::optional<std::string> variant{};
-    std::optional<EdaMethod> method{};
-    std::vector<EdaFragment> fragments{};
-    std::optional<EdaPayloadEnergies> energies{};
-    std::vector<EdaTerm> terms{};
-    std::optional<std::vector<EdaSumRule>> sum_rules{};
-    std::optional<EdaOrbitalPairs> orbital_pairs{};
-    std::optional<EdaPeriodic> periodic{};
+    std::optional<DecompositionMethod> method{};
+    std::vector<DecompositionFragment> fragments{};
+    std::optional<EnergyDecompositionPayloadEnergies> energies{};
+    std::vector<DecompositionTerm> terms{};
+    std::optional<std::vector<DecompositionSumRule>> sum_rules{};
+    std::optional<DecompositionOrbitalPairs> orbital_pairs{};
+    std::optional<DecompositionPeriodic> periodic{};
     std::optional<std::string> notes{};
     std::map<std::string, Json> extra;
     Json to_json() const {
@@ -8462,18 +8462,18 @@ struct EdaPayload {
         if (notes) codec::put(out, "notes", *notes);
         return out;
     }
-    static EdaPayload from_json(const Json& j) {
+    static EnergyDecompositionPayload from_json(const Json& j) {
         codec::require(j.is_object(), "expected typed payload object");
-        EdaPayload out;
+        EnergyDecompositionPayload out;
         out.scheme = codec::get<std::string>(j, "scheme");
         if (j.has("variant")) out.variant.emplace(codec::get<std::string>(j, "variant"));
-        if (j.has("method")) out.method.emplace(codec::get<EdaMethod>(j, "method"));
-        out.fragments = codec::get<std::vector<EdaFragment>>(j, "fragments");
-        if (j.has("energies")) out.energies.emplace(codec::get<EdaPayloadEnergies>(j, "energies"));
-        out.terms = codec::get<std::vector<EdaTerm>>(j, "terms");
-        if (j.has("sum_rules")) out.sum_rules.emplace(codec::get<std::vector<EdaSumRule>>(j, "sum_rules"));
-        if (j.has("orbital_pairs")) out.orbital_pairs.emplace(codec::get<EdaOrbitalPairs>(j, "orbital_pairs"));
-        if (j.has("periodic")) out.periodic.emplace(codec::get<EdaPeriodic>(j, "periodic"));
+        if (j.has("method")) out.method.emplace(codec::get<DecompositionMethod>(j, "method"));
+        out.fragments = codec::get<std::vector<DecompositionFragment>>(j, "fragments");
+        if (j.has("energies")) out.energies.emplace(codec::get<EnergyDecompositionPayloadEnergies>(j, "energies"));
+        out.terms = codec::get<std::vector<DecompositionTerm>>(j, "terms");
+        if (j.has("sum_rules")) out.sum_rules.emplace(codec::get<std::vector<DecompositionSumRule>>(j, "sum_rules"));
+        if (j.has("orbital_pairs")) out.orbital_pairs.emplace(codec::get<DecompositionOrbitalPairs>(j, "orbital_pairs"));
+        if (j.has("periodic")) out.periodic.emplace(codec::get<DecompositionPeriodic>(j, "periodic"));
         if (j.has("notes")) out.notes.emplace(codec::get<std::string>(j, "notes"));
         for (const auto& kv : j.items()) if (kv.first != "scheme" && kv.first != "variant" && kv.first != "method" && kv.first != "fragments" && kv.first != "energies" && kv.first != "terms" && kv.first != "sum_rules" && kv.first != "orbital_pairs" && kv.first != "periodic" && kv.first != "notes") out.extra[kv.first] = kv.second;
         return out;
@@ -8670,7 +8670,7 @@ struct VolumeDifference : SectionFields {
         out.fields = VolumeDifferenceFields::from_json(section.extra);
         out.fields.extra.clear();
         out.extra = Json::object();
-        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "eda_ref" && kv.first != "eda_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra.set(kv.first, kv.second);
+        for (const auto& kv : section.extra.items()) if (kv.first != "operand_a" && kv.first != "operand_b" && kv.first != "description" && kv.first != "decomposition_ref" && kv.first != "decomposition_role" && kv.first != "pair_index" && kv.first != "pair_spin") out.extra.set(kv.first, kv.second);
         out.grid = codec::Value<VolumeGridPayload>::decode(reader.json(section, "grid"));
         out.data = TensorData(reader.tensor(section, "data"));
         return out;
@@ -9936,27 +9936,27 @@ struct SpectraMossbauer : SectionFields {
     }
 };
 
-struct Eda : SectionFields {
-    static constexpr std::string_view kind = "eda";
-    Eda() { id = "eda"; }
-    EdaFields fields;
-    EdaPayload decomposition{};
+struct EnergyDecomposition : SectionFields {
+    static constexpr std::string_view kind = "energy_decomposition";
+    EnergyDecomposition() { id = "energy_decomposition"; }
+    EnergyDecompositionFields fields;
+    EnergyDecompositionPayload decomposition{};
     std::string to_section(Writer& writer) const {
         Section s = descriptor(std::string(kind));
         const Json peer_fields = fields.to_json();
         for (const auto& kv : peer_fields.items()) s.extra.set(kv.first, kv.second);
         std::vector<JsonPayload> json; std::vector<BinaryPayload> binary; std::vector<OpaquePayload> opaque;
-        json.push_back({"decomposition", codec::Value<EdaPayload>::encode(decomposition)});
+        json.push_back({"decomposition", codec::Value<EnergyDecompositionPayload>::encode(decomposition)});
         return writer.add_payload(std::move(s), json, binary, opaque);
     }
-    static Eda from_section(const Reader& reader, const Section& section) {
+    static EnergyDecomposition from_section(const Reader& reader, const Section& section) {
         if (!section.kind || *section.kind != kind) throw std::invalid_argument("wrong section kind");
-        Eda out; out.load(section);
-        out.fields = EdaFields::from_json(section.extra);
+        EnergyDecomposition out; out.load(section);
+        out.fields = EnergyDecompositionFields::from_json(section.extra);
         out.fields.extra.clear();
         out.extra = Json::object();
         for (const auto& kv : section.extra.items()) if (kv.first != "wavefunction_ref") out.extra.set(kv.first, kv.second);
-        out.decomposition = codec::Value<EdaPayload>::decode(reader.json(section, "decomposition"));
+        out.decomposition = codec::Value<EnergyDecompositionPayload>::decode(reader.json(section, "decomposition"));
         return out;
     }
 };
@@ -10022,7 +10022,7 @@ inline std::string copy_section(const Reader& reader, const Section& section, Wr
     if (*section.kind == "spectra.xas") return writer.add(SpectraXAS::from_section(reader, section));
     if (*section.kind == "spectra.xes") return writer.add(SpectraXES::from_section(reader, section));
     if (*section.kind == "spectra.mossbauer") return writer.add(SpectraMossbauer::from_section(reader, section));
-    if (*section.kind == "eda") return writer.add(Eda::from_section(reader, section));
+    if (*section.kind == "energy_decomposition") return writer.add(EnergyDecomposition::from_section(reader, section));
     throw std::invalid_argument("copy_section requires a canonical kind");
 }
 } } // qvf::kinds
@@ -11146,43 +11146,43 @@ inline constexpr const char* kStrings[556] = {
     "end_insertion_code", "helix_class", "sheet_id", "strand", "structure", "bonds", "chains",
     "residues", "secondary_structure", "b_factors", "smiles", "inchi", "inchikey",
     "wavefunction_ref", "grid", "data", "origin", "voxel_vectors", "periodic",
-    "includes_endpoint", "mo_index", "spin", "operand_a", "operand_b", "eda_ref", "eda_role",
-    "pair_index", "pair_spin", "axis", "values", "labels", "trajectory_ref", "meta",
-    "mulliken_charge", "loewdin_charge", "hirshfeld_charge", "iao_charge", "spin_population",
-    "cm5_charge", "chelpg_charge", "resp_charge", "esp_charge", "nbo_charge", "mbis_charge",
-    "bader_charge", "ddec_charge", "valence", "bonded_valence", "fukui_plus", "fukui_minus",
-    "fukui_zero", "dual_descriptor", "atomic_energy_eh", "atomic_volume_bohr3",
-    "nmr_shielding_iso_ppm", "magnetic_moment", "force_eh_bohr", "coords", "lattice",
-    "velocities", "gradient", "times", "cell_volumes", "temperatures", "symbols",
-    "atomic_numbers", "n_frames", "ensemble", "timestep_fs", "precision", "frame_volumes",
-    "volume_grid", "frame_index", "energy_eh", "waypoints", "reaction_coordinate",
-    "reaction_coordinate_label", "reaction_coordinate_unit", "dim", "dim_per_frame",
-    "volume_frame_index", "volume_label", "volume_isovalue", "axis_a", "axis_b", "geometries",
-    "unit", "axis_a_label", "axis_b_label", "coordinate_a_label", "coordinate_a_unit",
-    "coordinate_b_label", "coordinate_b_unit", "energy_unit", "scheme", "steps", "reactants",
-    "products", "reagents", "arrow", "conditions", "yield_percent", "yield_text",
-    "coefficient", "deltas", "terms", "enthalpy", "gibbs_free_energy", "temperature_k",
-    "pressure_atm", "energy", "value_eh", "kcal_mol", "enthalpy_eh", "gibbs_free_energy_eh",
-    "job_id", "run_id", "program_version", "specification", "parser", "input_sha256",
-    "locations", "hessian_ref", "displacements", "frequencies", "ir_intensities",
-    "raman_activities", "reduced_masses", "force_constants", "symmetry_labels", "imaginary",
-    "n_modes", "spectrum", "intensities", "x", "x_units", "y_units", "peaks", "broadening",
-    "fwhm", "raman", "laser_nm", "depolarization_ratios", "uvvis", "x_axis", "xray",
-    "states_ref", "intensity", "edge", "element", "core_orbital", "line", "energy_shift_ev",
-    "y", "width", "assignment", "mode_index", "state_index", "atom_index", "isotope",
-    "reference", "solvent", "chemical_shifts", "isotropic_shift_ppm", "anisotropy_ppm",
-    "asymmetry", "shielding_tensors", "tensor", "isotropic_ppm", "j_couplings", "i", "j",
-    "value_hz", "isotope_i", "isotope_j", "g_tensor", "matrix", "isotropic", "principal",
-    "hyperfine", "a_iso_mhz", "a_tensor_mhz", "a_principal_mhz", "zero_field_splitting",
-    "d_mhz", "e_mhz", "tensor_mhz", "sites", "calibration", "alpha", "c", "beta",
-    "isomer_shift_mm_s", "quadrupole_splitting_mm_s", "efg_au", "contact_density_au",
-    "hyperfine_field_t", "linewidth_mm_s", "population", "mo_metadata", "mo_coefficients",
-    "mo_coefficients_alpha", "mo_coefficients_beta", "overlap", "density_matrix",
-    "density_matrix_alpha", "density_matrix_beta", "center", "l", "exponents", "coefficients",
-    "pure", "powers", "local", "n_core_electrons", "projectors", "shells", "n_ao", "ecp",
-    "occupations", "n_mo", "orbital_kind", "occupation_semantics", "k_point", "complex",
-    "coefficient_encoding", "coefficient_components", "state_ref", "nto_role",
-    "localization_method", "localization_reference_basis", "atom_populations",
+    "includes_endpoint", "mo_index", "spin", "operand_a", "operand_b", "decomposition_ref",
+    "decomposition_role", "pair_index", "pair_spin", "axis", "values", "labels",
+    "trajectory_ref", "meta", "mulliken_charge", "loewdin_charge", "hirshfeld_charge",
+    "iao_charge", "spin_population", "cm5_charge", "chelpg_charge", "resp_charge",
+    "esp_charge", "nbo_charge", "mbis_charge", "bader_charge", "ddec_charge", "valence",
+    "bonded_valence", "fukui_plus", "fukui_minus", "fukui_zero", "dual_descriptor",
+    "atomic_energy_eh", "atomic_volume_bohr3", "nmr_shielding_iso_ppm", "magnetic_moment",
+    "force_eh_bohr", "coords", "lattice", "velocities", "gradient", "times", "cell_volumes",
+    "temperatures", "symbols", "atomic_numbers", "n_frames", "ensemble", "timestep_fs",
+    "precision", "frame_volumes", "volume_grid", "frame_index", "energy_eh", "waypoints",
+    "reaction_coordinate", "reaction_coordinate_label", "reaction_coordinate_unit", "dim",
+    "dim_per_frame", "volume_frame_index", "volume_label", "volume_isovalue", "axis_a",
+    "axis_b", "geometries", "unit", "axis_a_label", "axis_b_label", "coordinate_a_label",
+    "coordinate_a_unit", "coordinate_b_label", "coordinate_b_unit", "energy_unit", "scheme",
+    "steps", "reactants", "products", "reagents", "arrow", "conditions", "yield_percent",
+    "yield_text", "coefficient", "deltas", "terms", "enthalpy", "gibbs_free_energy",
+    "temperature_k", "pressure_atm", "energy", "value_eh", "kcal_mol", "enthalpy_eh",
+    "gibbs_free_energy_eh", "job_id", "run_id", "program_version", "specification", "parser",
+    "input_sha256", "locations", "hessian_ref", "displacements", "frequencies",
+    "ir_intensities", "raman_activities", "reduced_masses", "force_constants",
+    "symmetry_labels", "imaginary", "n_modes", "spectrum", "intensities", "x", "x_units",
+    "y_units", "peaks", "broadening", "fwhm", "raman", "laser_nm", "depolarization_ratios",
+    "uvvis", "x_axis", "xray", "states_ref", "intensity", "edge", "element", "core_orbital",
+    "line", "energy_shift_ev", "y", "width", "assignment", "mode_index", "state_index",
+    "atom_index", "isotope", "reference", "solvent", "chemical_shifts", "isotropic_shift_ppm",
+    "anisotropy_ppm", "asymmetry", "shielding_tensors", "tensor", "isotropic_ppm",
+    "j_couplings", "i", "j", "value_hz", "isotope_i", "isotope_j", "g_tensor", "matrix",
+    "isotropic", "principal", "hyperfine", "a_iso_mhz", "a_tensor_mhz", "a_principal_mhz",
+    "zero_field_splitting", "d_mhz", "e_mhz", "tensor_mhz", "sites", "calibration", "alpha",
+    "c", "beta", "isomer_shift_mm_s", "quadrupole_splitting_mm_s", "efg_au",
+    "contact_density_au", "hyperfine_field_t", "linewidth_mm_s", "population", "mo_metadata",
+    "mo_coefficients", "mo_coefficients_alpha", "mo_coefficients_beta", "overlap",
+    "density_matrix", "density_matrix_alpha", "density_matrix_beta", "center", "l",
+    "exponents", "coefficients", "pure", "powers", "local", "n_core_electrons", "projectors",
+    "shells", "n_ao", "ecp", "occupations", "n_mo", "orbital_kind", "occupation_semantics",
+    "k_point", "complex", "coefficient_encoding", "coefficient_components", "state_ref",
+    "nto_role", "localization_method", "localization_reference_basis", "atom_populations",
     "centroids_bohr", "n_centres", "iao_charges", "excitation_index", "excitation_energy_ev",
     "kpoints", "weights", "mesh", "shift", "time_reversal", "n_spin", "k_point_convention",
     "n_mo_per_k", "kpath", "eigenvalues", "projections", "start", "end", "n_points",
@@ -11272,13 +11272,14 @@ inline constexpr const char* kValues[254] = {
     "\"forces\"", "\"gradient\"", "\"hessian\"", "\"excited_states\"",
     "\"properties.electric\"", "\"properties.elastic\"", "\"properties.dielectric\"",
     "\"buckingham\"", "\"voigt\"", "\"reuss\"", "\"hill\"", "\"volume.transition_density\"",
-    "\"preview\"", "\"image/png\"", "\"image/jpeg\"", "\"image/svg+xml\"", "\"eda\"",
-    "\"ziegler-rauk\"", "\"lmo-eda\"", "\"gks-eda\"", "\"kitaura-morokuma\"", "\"almo-eda\"",
-    "\"sapt\"", "\"led\"", "\"many-body\"", "\"own\"", "\"supersystem\"", "\"electrostatic\"",
-    "\"pauli\"", "\"exchange\"", "\"repulsion\"", "\"orbital\"", "\"induction\"",
-    "\"dispersion\"", "\"exchange_induction\"", "\"exchange_dispersion\"", "\"delta_hf\"",
-    "\"preparation\"", "\"frozen\"", "\"exchange_correlation\"", "\"correlation\"",
-    "\"reference\"", "\"coupling\"", "\"nocv\"", "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
+    "\"preview\"", "\"image/png\"", "\"image/jpeg\"", "\"image/svg+xml\"",
+    "\"energy_decomposition\"", "\"ziegler-rauk\"", "\"lmo-eda\"", "\"gks-eda\"",
+    "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"", "\"led\"", "\"many-body\"", "\"own\"",
+    "\"supersystem\"", "\"electrostatic\"", "\"pauli\"", "\"exchange\"", "\"repulsion\"",
+    "\"orbital\"", "\"induction\"", "\"dispersion\"", "\"exchange_induction\"",
+    "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"", "\"frozen\"",
+    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"", "\"nocv\"",
+    "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
 };
 // Node lists, string lists and value lists (see the opcodes).
 inline constexpr std::int32_t kLists[899] = {
@@ -11811,7 +11812,7 @@ inline constexpr Op kOps[3133] = {
     {kProperties, 322, 3, 0},  // n29 properties: kind, wavefunction_ref, members
     {kProperties, 332, 2, 0},  // n30 properties: kind, members
     {kProperties, 340, 2, 0},  // n31 properties: kind, members
-    {kProperties, 348, 9, 0},  // n32 properties: kind, operand_a, operand_b, description, eda_ref, eda_role, ...
+    {kProperties, 348, 9, 0},  // n32 properties: kind, operand_a, operand_b, description, decomposition_ref, ...
     {kDependentRequired, 6, 5, 0},  // dependentRequired
     {kProperties, 370, 2, 0},  // n33 properties: kind, members
     {kProperties, 378, 2, 0},  // n34 properties: kind, members
@@ -12471,7 +12472,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 158, 0, 0},  // n341 $ref #/$defs/SectionExcitedStates
     {kRef, 173, 0, 0},  // n342 $ref #/$defs/SectionVolumeTransitionDensity
     {kRef, 174, 0, 0},  // n343 $ref #/$defs/SectionPreview
-    {kRef, 177, 0, 0},  // n344 $ref #/$defs/SectionEda
+    {kRef, 177, 0, 0},  // n344 $ref #/$defs/SectionEnergyDecomposition
     {kRef, 159, 0, 0},  // n345 $ref #/$defs/SectionPropertiesElectric
     {kRef, 164, 0, 0},  // n346 $ref #/$defs/SectionPropertiesElastic
     {kRef, 165, 0, 0},  // n347 $ref #/$defs/SectionPropertiesDielectric
@@ -14636,7 +14637,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 8, 0, 0},  // n1795 $ref #/$defs/Sha256Hex
     {kRef, 11, 0, 0},  // n1796 $ref #/$defs/MemberSize
     {kEnum, 818, 3, 0},  // n1797 enum
-    {kConst, 223, 0, 0},  // n1798 const "eda"
+    {kConst, 223, 0, 0},  // n1798 const "energy_decomposition"
     {kType, 32, 0, 0},  // n1799 type
     {kType, 4, 0, 0},  // n1800 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -14648,11 +14649,11 @@ inline constexpr Op kOps[3133] = {
     {kType, 32, 0, 0},  // n1805 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kType, 32, 0, 0},  // n1806 type
-    {kRef, 179, 0, 0},  // n1807 $ref #/$defs/EdaMethod
+    {kRef, 179, 0, 0},  // n1807 $ref #/$defs/DecompositionMethod
     {kType, 8, 0, 0},  // n1808 type
     {kMinItems, 2, 0, 0},  // minItems
     {kItems, 1809, 0, 0},  // items
-    {kRef, 180, 0, 0},  // n1809 $ref #/$defs/EdaFragment
+    {kRef, 180, 0, 0},  // n1809 $ref #/$defs/DecompositionFragment
     {kType, 4, 0, 0},  // n1810 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2336, 1, 0},  // patternProperties
@@ -14662,12 +14663,12 @@ inline constexpr Op kOps[3133] = {
     {kType, 8, 0, 0},  // n1813 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1814, 0, 0},  // items
-    {kRef, 181, 0, 0},  // n1814 $ref #/$defs/EdaTerm
+    {kRef, 181, 0, 0},  // n1814 $ref #/$defs/DecompositionTerm
     {kType, 8, 0, 0},  // n1815 type
     {kItems, 1816, 0, 0},  // items
-    {kRef, 182, 0, 0},  // n1816 $ref #/$defs/EdaSumRule
-    {kRef, 183, 0, 0},  // n1817 $ref #/$defs/EdaOrbitalPairs
-    {kRef, 185, 0, 0},  // n1818 $ref #/$defs/EdaPeriodic
+    {kRef, 182, 0, 0},  // n1816 $ref #/$defs/DecompositionSumRule
+    {kRef, 183, 0, 0},  // n1817 $ref #/$defs/DecompositionOrbitalPairs
+    {kRef, 185, 0, 0},  // n1818 $ref #/$defs/DecompositionPeriodic
     {kType, 32, 0, 0},  // n1819 type
     {kType, 32, 0, 0},  // n1821 type
     {kType, 32, 0, 0},  // n1822 type
@@ -14728,7 +14729,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 1, 0, 0},  // n1861 $ref #/$defs/ValueWithUnits
     {kType, 8, 0, 0},  // n1862 type
     {kItems, 1863, 0, 0},  // items
-    {kRef, 184, 0, 0},  // n1863 $ref #/$defs/EdaOrbitalPair
+    {kRef, 184, 0, 0},  // n1863 $ref #/$defs/DecompositionOrbitalPair
     {kType, 64, 0, 0},  // n1865 type
     {kMinimum, 2, 0, 0},  // minimum
     {kEnum, 882, 3, 0},  // n1866 enum
@@ -15041,15 +15042,15 @@ inline constexpr Def kDefs[196] = {
     {"SectionPreview", 174},
     {"PreviewThumbnail", 175},
     {"PreviewImage", 176},
-    {"SectionEda", 177},
-    {"EdaPayload", 178},
-    {"EdaMethod", 179},
-    {"EdaFragment", 180},
-    {"EdaTerm", 181},
-    {"EdaSumRule", 182},
-    {"EdaOrbitalPairs", 183},
-    {"EdaOrbitalPair", 184},
-    {"EdaPeriodic", 185},
+    {"SectionEnergyDecomposition", 177},
+    {"EnergyDecompositionPayload", 178},
+    {"DecompositionMethod", 179},
+    {"DecompositionFragment", 180},
+    {"DecompositionTerm", 181},
+    {"DecompositionSumRule", 182},
+    {"DecompositionOrbitalPairs", 183},
+    {"DecompositionOrbitalPair", 184},
+    {"DecompositionPeriodic", 185},
     {"SectionVendor", 186},
     {"Metadata", 187},
     {"MetadataAuthor", 188},
@@ -22868,7 +22869,7 @@ inline std::string eda_join(const std::vector<int64_t>& v) {
     return s;
 }
 
-// Rules of an eda section that JSON Schema cannot express (spec § 5.16): the
+// Rules of an energy_decomposition section that JSON Schema cannot express (spec § 5.16): the
 // payload rules, the section's wavefunction_ref and every pair's density_ref.
 inline std::vector<FieldFinding> eda_errors(
     const std::string& sid, const Json& section, const Json* payload,
@@ -23165,7 +23166,7 @@ inline std::vector<FieldFinding> eda_errors(
     return errs;
 }
 
-// A volume.difference section's eda_ref names an eda section, and for eda_role
+// A volume.difference section's decomposition_ref names an energy_decomposition section, and for decomposition_role
 // orbital_pair its pair_index and pair_spin name one of that section's orbital
 // pairs (spec § 5.2). Returns (field, message) pairs.
 inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
@@ -23173,18 +23174,18 @@ inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
     const std::map<std::string, std::string>& kinds_by_id,
     const std::map<std::string, EdaPairs>& pairs_of) {
     std::vector<std::pair<std::string, std::string>> errs;
-    const Json* ref = get(section, "eda_ref");
+    const Json* ref = get(section, "decomposition_ref");
     if (!ref) return errs;
     const std::string sec = "section " + quote_str(sid) + ": ";
     auto it = ref->is_string() ? kinds_by_id.find(ref->as_string()) : kinds_by_id.end();
-    if (it == kinds_by_id.end() || it->second != "eda") {
-        errs.emplace_back("eda_ref", sec + "eda_ref " + show(*ref) + " does not name an eda section (spec § 5.2)");
+    if (it == kinds_by_id.end() || it->second != "energy_decomposition") {
+        errs.emplace_back("decomposition_ref", sec + "decomposition_ref " + show(*ref) + " does not name an energy_decomposition section (spec § 5.2)");
         return errs;
     }
     const Json* index = get(section, "pair_index");
-    const Json* role = get(section, "eda_role");
+    const Json* role = get(section, "decomposition_role");
     if (role && role->is_string() && role->as_string() == "orbital_pair" && !index) {
-        errs.emplace_back("eda_role", sec + "eda_role 'orbital_pair' needs pair_index (spec § 5.2)");
+        errs.emplace_back("decomposition_role", sec + "decomposition_role 'orbital_pair' needs pair_index (spec § 5.2)");
         return errs;
     }
     if (!is_int(index)) return errs;
@@ -23194,7 +23195,7 @@ inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
     if (px == pairs_of.end() || !px->second.known ||
         !px->second.keys.count(std::to_string(index->as_int()) + "/" + s))
         errs.emplace_back("pair_index", sec + "pair_index " + std::to_string(index->as_int()) +
-                                            " with pair_spin '" + s + "' names no orbital pair of eda section " +
+                                            " with pair_spin '" + s + "' names no orbital pair of energy_decomposition section " +
                                             quote_str(ref->as_string()) + " (spec § 5.2)");
     return errs;
 }
@@ -24979,7 +24980,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         }
         if (kind == "volume.transition_density")
             transition_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
-        if (kind == "eda") {
+        if (kind == "energy_decomposition") {
             auto it = docs.find("decomposition");
             const bool has_doc = it != docs.end();
             if (!eda_pairs_of.count(sid))
@@ -24987,7 +24988,7 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             eda_sections.push_back(DeferredSection{i, sid, &s, has_doc, has_doc ? it->second : Json()});
         }
         if (kind == "volume.difference" &&
-            (s.contains("eda_ref") || s.contains("eda_role") || s.contains("pair_index") ||
+            (s.contains("decomposition_ref") || s.contains("decomposition_role") || s.contains("pair_index") ||
              s.contains("pair_spin")))
             eda_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
         if (is_wavefunction_volume_kind(kind) && s.contains("wavefunction_ref"))

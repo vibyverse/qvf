@@ -1,4 +1,4 @@
-"""Energy decomposition analysis (spec § 5.16): the ``eda`` kind, its
+"""Energy decomposition analysis (spec § 5.16): the ``energy_decomposition`` kind, its
 reference writer, the rules validators check, and the ``volume.difference``
 fields that name a decomposition's orbital pairs (§ 5.2)."""
 from __future__ import annotations
@@ -41,14 +41,14 @@ ZR = {
 }
 
 
-def _archive(tmp_path, payload=ZR, *, densities=True, name="eda.qvf"):
+def _archive(tmp_path, payload=ZR, *, densities=True, name="energy_decomposition.qvf"):
     w = QvfWriter("test", "1.0", auto_metadata=False)
     w.add_structure(WATER_DIMER)
     if densities:
         w.add_volume("volume.difference", np.zeros((3, 3, 3)), [0.0, 0.0, 0.0],
-                     np.eye(3) * 0.5, section_id="nocv_1", eda_ref="eda",
-                     eda_role="orbital_pair", pair_index=1)
-    w.add_eda(payload)
+                     np.eye(3) * 0.5, section_id="nocv_1", decomposition_ref="energy_decomposition",
+                     decomposition_role="orbital_pair", pair_index=1)
+    w.add_energy_decomposition(payload)
     path = tmp_path / name
     w.write(str(path))
     return path
@@ -58,8 +58,8 @@ def _codes(path) -> set[str]:
     return {f["code"] for f in validate_qvf(str(path))["findings"]}
 
 
-def _rewrite(src, dst, *, payload_edit=None, section_edit=None, sid="eda"):
-    """Copy ``src`` to ``dst`` with the eda payload or a section edited and the
+def _rewrite(src, dst, *, payload_edit=None, section_edit=None, sid="energy_decomposition"):
+    """Copy ``src`` to ``dst`` with the energy_decomposition payload or a section edited and the
     member's sha256 and size updated."""
     with zipfile.ZipFile(src) as zin:
         manifest = json.loads(zin.read("manifest.json"))
@@ -87,7 +87,7 @@ def _rewrite(src, dst, *, payload_edit=None, section_edit=None, sid="eda"):
 
 
 def test_payload_definition():
-    assert PAYLOAD_DEFS[("eda", "decomposition")] == "EdaPayload"
+    assert PAYLOAD_DEFS[("energy_decomposition", "decomposition")] == "EnergyDecompositionPayload"
 
 
 def test_ziegler_rauk_nocv_round_trip(tmp_path):
@@ -96,10 +96,10 @@ def test_ziegler_rauk_nocv_round_trip(tmp_path):
     assert report["ok"], report["findings"]
     with zipfile.ZipFile(path) as z:
         manifest = json.loads(z.read("manifest.json"))
-        payload = json.loads(z.read("eda/decomposition.json"))
+        payload = json.loads(z.read("energy_decomposition/decomposition.json"))
     sec = {s["id"]: s for s in manifest["sections"]}
-    assert sec["eda"]["kind"] == "eda"
-    assert sec["nocv_1"]["eda_ref"] == "eda" and sec["nocv_1"]["pair_index"] == 1
+    assert sec["energy_decomposition"]["kind"] == "energy_decomposition"
+    assert sec["nocv_1"]["decomposition_ref"] == "energy_decomposition" and sec["nocv_1"]["pair_index"] == 1
     # numbers are written in hartree, {value, units} objects as given
     assert payload["terms"][0]["energy"] == {"value": -0.008, "units": "hartree"}
     assert payload["terms"][4]["energy"]["units"] == "kcal_per_mol"
@@ -166,7 +166,7 @@ def test_periodic_per_k_pairs(tmp_path):
          "kpoint_eigenvalues": [0.05, 0.03], "kpoint_energies": [-0.0025, -0.0015]}]
     payload["periodic"] = {"kpoints": {"kpoints": [[0, 0, 0], [0.5, 0, 0]],
                                        "weights": [0.5, 0.5]}, "mesh": [2, 1, 1]}
-    w.add_eda(payload)
+    w.add_energy_decomposition(payload)
     path = tmp_path / "p.qvf"
     w.write(str(path))
     report = validate_qvf(str(path))
@@ -206,7 +206,7 @@ def test_writer_refuses(payload, match):
     w = QvfWriter("test", "1.0", auto_metadata=False)
     w.add_structure(WATER_DIMER)
     with pytest.raises(ValueError, match=match):
-        w.add_eda(payload)
+        w.add_energy_decomposition(payload)
 
 
 def test_sum_rule_tolerance(tmp_path):
@@ -240,7 +240,7 @@ def test_validator_findings(tmp_path, edit, code):
 @pytest.mark.parametrize("edit", [
     lambda s: s.__setitem__("pair_index", 7),
     lambda s: s.__setitem__("pair_spin", "alpha"),
-    lambda s: s.__setitem__("eda_ref", "structure"),
+    lambda s: s.__setitem__("decomposition_ref", "structure"),
     lambda s: s.pop("pair_index"),
 ])
 def test_density_references(tmp_path, edit):
@@ -258,8 +258,8 @@ def test_volume_fields_checked_by_writer():
     w = QvfWriter("test", "1.0", auto_metadata=False)
     grid = (np.zeros((2, 2, 2)), [0.0, 0.0, 0.0], np.eye(3))
     with pytest.raises(ValueError, match="volume.difference only"):
-        w.add_volume("volume.density", *grid, eda_ref="eda")
+        w.add_volume("volume.density", *grid, decomposition_ref="energy_decomposition")
     with pytest.raises(ValueError, match="needs pair_index"):
-        w.add_volume("volume.difference", *grid, eda_ref="eda", eda_role="orbital_pair")
+        w.add_volume("volume.difference", *grid, decomposition_ref="energy_decomposition", decomposition_role="orbital_pair")
     with pytest.raises(ValueError, match="need"):
         w.add_volume("volume.difference", *grid, pair_index=1)

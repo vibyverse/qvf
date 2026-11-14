@@ -1,0 +1,32 @@
+{
+  "archive": "energy_decomposition_open_shell_spin_flip.qvf",
+  "description": "An electron-sharing bond: ethane from two methyl radicals, the second with its unpaired spin flipped, with spin-resolved orbital terms under the orbital term and alpha and beta NOCV pairs (spec \u00a7 5.16).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "energy_decomposition",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "fragments",
+        1,
+        "spin_flip"
+      ],
+      "equals": true
+    },
+    {
+      "section": "energy_decomposition",
+      "member": "decomposition",
+      "json_pointer": [
+        "orbital_pairs",
+        "pairs",
+        1,
+        "spin"
+      ],
+      "equals": "beta"
+    }
+  ]
+}

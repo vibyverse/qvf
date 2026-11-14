@@ -1413,27 +1413,27 @@ _EDA_ROLES = ("orbital_pair", "orbital_relaxation", "interaction", "polarization
 _PAIR_SPINS = ("restricted", "alpha", "beta")
 
 
-def _eda_volume_fields(kind: str, eda_ref: Any, eda_role: Any, pair_index: Any,
+def _eda_volume_fields(kind: str, decomposition_ref: Any, decomposition_role: Any, pair_index: Any,
                        pair_spin: Any) -> dict[str, Any]:
-    """The ``eda_ref``, ``eda_role``, ``pair_index`` and ``pair_spin`` section
+    """The ``decomposition_ref``, ``decomposition_role``, ``pair_index`` and ``pair_spin`` section
     fields of a ``volume.difference`` (spec § 5.2, § 5.16)."""
-    if eda_ref is None and eda_role is None and pair_index is None and pair_spin is None:
+    if decomposition_ref is None and decomposition_role is None and pair_index is None and pair_spin is None:
         return {}
     if kind != "volume.difference":
-        raise ValueError(f"{kind}: eda_ref, eda_role, pair_index and pair_spin apply "
+        raise ValueError(f"{kind}: decomposition_ref, decomposition_role, pair_index and pair_spin apply "
                          f"to volume.difference only")
-    if not isinstance(eda_ref, str) or not eda_ref:
-        raise ValueError("volume.difference: eda_role, pair_index and pair_spin need "
-                         "eda_ref, an eda section id (spec § 5.2)")
-    fields: dict[str, Any] = {"eda_ref": eda_ref}
-    if eda_role is not None:
-        if eda_role not in _EDA_ROLES and not (isinstance(eda_role, str)
-                                               and _VENDOR_KEY_RE.fullmatch(eda_role)):
-            raise ValueError(f"volume.difference: eda_role {eda_role!r} is not one of "
+    if not isinstance(decomposition_ref, str) or not decomposition_ref:
+        raise ValueError("volume.difference: decomposition_role, pair_index and pair_spin need "
+                         "decomposition_ref, an energy_decomposition section id (spec § 5.2)")
+    fields: dict[str, Any] = {"decomposition_ref": decomposition_ref}
+    if decomposition_role is not None:
+        if decomposition_role not in _EDA_ROLES and not (isinstance(decomposition_role, str)
+                                               and _VENDOR_KEY_RE.fullmatch(decomposition_role)):
+            raise ValueError(f"volume.difference: decomposition_role {decomposition_role!r} is not one of "
                              f"{', '.join(_EDA_ROLES)} or an x_ name (spec § 5.2)")
-        fields["eda_role"] = eda_role
-    if eda_role == "orbital_pair" and pair_index is None:
-        raise ValueError("volume.difference: eda_role 'orbital_pair' needs pair_index "
+        fields["decomposition_role"] = decomposition_role
+    if decomposition_role == "orbital_pair" and pair_index is None:
+        raise ValueError("volume.difference: decomposition_role 'orbital_pair' needs pair_index "
                          "(spec § 5.2)")
     if pair_spin is not None and pair_index is None:
         raise ValueError("volume.difference: pair_spin needs pair_index (spec § 5.2)")
@@ -1452,7 +1452,7 @@ def _eda_energy(value: Any, where: str) -> dict[str, Any]:
     if isinstance(value, Mapping):
         out = dict(value)
         if set(out) != {"value", "units"}:
-            raise ValueError(f"eda: {where} must be a number or {{value, units}}")
+            raise ValueError(f"energy_decomposition: {where} must be a number or {{value, units}}")
         num = out["value"]
     else:
         out, num = {"value": value, "units": "hartree"}, value
@@ -1460,7 +1460,7 @@ def _eda_energy(value: Any, where: str) -> dict[str, Any]:
         num = num.item()
     if (isinstance(num, bool) or not isinstance(num, numbers.Real)
             or not math.isfinite(num)):
-        raise ValueError(f"eda: {where} must be a finite number, got {num!r}")
+        raise ValueError(f"energy_decomposition: {where} must be a finite number, got {num!r}")
     out["value"] = float(num)
     return out
 
@@ -2081,8 +2081,8 @@ class QvfWriter:
                   wavefunction_ref: str | None = None,
                   mo_index: int | None = None,
                   spin: str | None = None,
-                  eda_ref: str | None = None,
-                  eda_role: str | None = None,
+                  decomposition_ref: str | None = None,
+                  decomposition_role: str | None = None,
                   pair_index: int | None = None,
                   pair_spin: str | None = None) -> str:
         """Add any ``volume.*`` section; ``origin`` and ``voxel_vectors`` are
@@ -2135,12 +2135,12 @@ class QvfWriter:
         The validator checks the span; this writer does not.
 
         For a ``volume.difference`` of an energy decomposition (spec § 5.2,
-        § 5.16) ``eda_ref`` names the ``eda`` section, ``eda_role`` says what
+        § 5.16) ``decomposition_ref`` names the ``energy_decomposition`` section, ``decomposition_role`` says what
         the density is (``"orbital_pair"``, ``"orbital_relaxation"``,
         ``"interaction"``, ``"polarization"``, ``"charge_transfer"`` or an
         ``x_`` name), and ``pair_index`` with ``pair_spin`` (``"restricted"``,
         ``"alpha"`` or ``"beta"``) the orbital pair, which ``"orbital_pair"``
-        requires. The ``eda`` section is usually added after its densities, so
+        requires. The ``energy_decomposition`` section is usually added after its densities, so
         the references are resolved by the validators, not here."""
         if section_id is not None:
             self._check_new_id(section_id)
@@ -2185,7 +2185,7 @@ class QvfWriter:
                     state_index, "volume.transition_density state_index")
         state_fields.update(self._wavefunction_volume_fields(
             kind, wavefunction_ref, mo_index, spin))
-        state_fields.update(_eda_volume_fields(kind, eda_ref, eda_role,
+        state_fields.update(_eda_volume_fields(kind, decomposition_ref, decomposition_role,
                                                pair_index, pair_spin))
         sid = section_id or (kind.replace(".", "_") + f"_{len(self._sections)}")
         self._check_new_id(sid)
@@ -3400,14 +3400,14 @@ class QvfWriter:
 
     # -- energy decomposition analysis (spec § 5.16) ---------------------
 
-    def add_eda(self, decomposition: Mapping[str, Any], *,
+    def add_energy_decomposition(self, decomposition: Mapping[str, Any], *,
                 structure_ref: str | None = None,
                 wavefunction_ref: str | None = None,
                 label: str | None = None,
-                section_id: str = "eda") -> str:
-        """Add an ``eda`` section (spec § 5.16): one energy decomposition.
+                section_id: str = "energy_decomposition") -> str:
+        """Add an ``energy_decomposition`` section (spec § 5.16): one energy decomposition.
 
-        ``decomposition`` is the ``$defs/EdaPayload`` mapping: ``scheme``
+        ``decomposition`` is the ``$defs/EnergyDecompositionPayload`` mapping: ``scheme``
         (``"ziegler-rauk"``, ``"lmo-eda"``, ``"gks-eda"``,
         ``"kitaura-morokuma"``, ``"almo-eda"``, ``"sapt"``, ``"led"``,
         ``"many-body"`` or an ``x_`` name), ``fragments`` (at least two
@@ -3434,15 +3434,15 @@ class QvfWriter:
 
         self._check_new_id(section_id)
         if not isinstance(decomposition, Mapping):
-            raise ValueError("eda: decomposition must be a mapping")
+            raise ValueError("energy_decomposition: decomposition must be a mapping")
         payload = _eda_normalised(decomposition)
         by_id = {s["id"]: s for s in self._sections}
         if structure_ref is not None:
-            self._check_ref("eda structure_ref", structure_ref, "structure")
+            self._check_ref("energy_decomposition structure_ref", structure_ref, "structure")
         if wavefunction_ref is not None:
             found = by_id.get(wavefunction_ref) if isinstance(wavefunction_ref, str) else None
             if found is None or found["kind"] not in ("wavefunction.gto", "wavefunction.bloch"):
-                raise ValueError(f"eda: wavefunction_ref {wavefunction_ref!r} must name an "
+                raise ValueError(f"energy_decomposition: wavefunction_ref {wavefunction_ref!r} must name an "
                                  f"added wavefunction.gto or wavefunction.bloch section "
                                  f"(spec § 5.16)")
         # atom indices against the structure are checked by the validators
@@ -3456,9 +3456,9 @@ class QvfWriter:
                                     f"name an added volume.difference section "
                                     f"(spec § 5.16)")
         if problems:
-            raise ValueError("eda: " + "; ".join(problems))
+            raise ValueError("energy_decomposition: " + "; ".join(problems))
         sid = self._reserve_id(section_id)
-        section: dict[str, Any] = {"id": sid, "kind": "eda"}
+        section: dict[str, Any] = {"id": sid, "kind": "energy_decomposition"}
         if structure_ref is not None:
             section["structure_ref"] = structure_ref
         if wavefunction_ref is not None:
