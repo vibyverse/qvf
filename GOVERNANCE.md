@@ -92,6 +92,81 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
+### 2026-11-14: Energy decomposition analysis (`eda`)
+
+**Status.** Proposed for maintainer decision under "Change process" (a new
+canonical kind added directly when a clear ecosystem need exists and a
+reference consumer will render it), promoted provisionally from the
+first-party `x_vibeqc.peda` section (§ 7.5). Energy decomposition analyses
+are produced by ADF, BAND, ORCA, Q-Chem, Psi4, CP2K, GAMESS and vibe-qc, and
+had no canonical carrier: vibe-qc wrote them as a vendor section that no
+other program could read. vibe-viewer is the reference consumer. The kind
+stays provisional until a second producer ships it.
+
+**Decision.** One canonical kind, `eda`, appended to the end of
+`registry.json` `canonical_kinds`, with one strict JSON member
+`decomposition` (`$defs/EdaPayload`, spec § 5.16), and four optional section
+fields on `volume.difference` (spec § 5.2).
+
+1. **General across schemes.** `scheme` names the partition family from a
+   closed vocabulary (`ziegler-rauk`, `lmo-eda`, `gks-eda`,
+   `kitaura-morokuma`, `almo-eda`, `sapt`, `led`, `many-body`) or an `x_`
+   name; `variant` is the producer's own name. Every scheme writes the same
+   three things: the fragments, the terms with what each belongs to, and the
+   additivities the scheme guarantees.
+2. **Fragments.** At least two disjoint interacting fragments, which need not
+   cover every atom (an environment), with charge, multiplicity,
+   `spin_flip` (electron-sharing bonds), `basis` (`own` or `supersystem`,
+   i.e. counterpoise) and a reference energy. Sub-fragments name their
+   parent and subdivide it, for functional-group partitions (F-SAPT).
+3. **Terms.** Each term has a `name` from a vocabulary of nineteen names or
+   an `x_` name, an energy, and optionally `fragments` (absent: the whole
+   interaction; one: a per-fragment term such as preparation; two: a pair
+   term; more: n-body), `directed` (an ordered donor-acceptor pair),
+   `spin`, `parent` (the term it is a part of) and `order`. The key
+   (`name`, `fragments`, `spin`, `parent`) is unique, and exactly one term is
+   the whole-system interaction.
+4. **Sum rules are declared, not assumed.** Schemes differ in what adds up to
+   what, so a producer states each additivity (`total`, `parts`,
+   `tolerance`, default 1e-6 hartree) and validators check it, reporting
+   the new code `E_SUM_RULE`. A consumer must not add terms that no rule
+   relates.
+5. **Energies** are `{value, units}` objects in an energy unit, as in the root
+   `energies` block (§ 3.6); hartree is recommended, and a producer may keep
+   the unit it prints. Any other unit is `E_UNIT_CONTRADICTED`.
+6. **Orbital pairs.** An optional NOCV or COVP table: index per spin
+   channel, eigenvalue with an explicit `eigenvalue_convention` (`per_spin`
+   as ADF and BAND print it, or `spin_summed`), energy, donor and acceptor
+   fragments, per-k eigenvalues and energies of a periodic decomposition,
+   and `density_ref`. The orbitals themselves are not part of the kind yet; a
+   later additive revision may add them as an optional member.
+7. **Densities.** NOCV deformation densities, the orbital-relaxation density
+   and the interaction density stay `volume.difference` sections, which name
+   their decomposition with `eda_ref`, `eda_role`, `pair_index` and
+   `pair_spin`; validators resolve both directions (`E_REF_UNRESOLVED`).
+8. **Periodic decompositions** give their k-points as a
+   `$defs/BlochKpointsPayload` (the representation of `wavefunction.bloch`),
+   an optional Monkhorst–Pack `mesh`, and `orbital_pairs_gamma_only` for
+   codes that compute NOCVs at Γ only.
+
+**Evidence.** Sample outputs of ADF (EDA-NOCV of a water dimer, a water
+trimer and ethane from spin-flipped methyl radicals), BAND (pEDA-NOCV of
+H2O on h-BN and on Si(001)), ORCA 6.1 (EDA-NOCV and DLPNO-CCSD(T) LED), Psi4
+1.9 (SAPT0 and F-SAPT), CP2K 2026.1 (ALMO-EDA) and vibe-qc (pEDA with per-k
+NOCVs, LMO-EDA and Kitaura–Morokuma) were mapped onto the payload. The
+corpus has one positive archive per scheme shape and one negative archive
+per rule.
+
+**Readings to settle.** (a) The kind name: `eda` or
+`energy_decomposition`. (b) Whether the per-k NOCV arrays should move to an
+optional binary member for large meshes. (c) Whether the fragment model
+should become a shared QVF concept for counterpoise, charge-transfer
+analysis and QM/MM regions.
+
+**Compatibility.** Additive: a new kind and four new optional section
+fields of an existing kind. No `qvf_version` change; consumers that do not
+know `eda` list it as unsupported, as for any new kind.
+
 ### 2026-11-05: X-ray absorption and emission and Mössbauer spectra
 
 **Status.** Accepted by the maintainer on 2026-11-05 under "Change
