@@ -167,9 +167,11 @@ acronym `eda`, so that its name reads for people who do not know the method;
 the section fields of `volume.difference` follow as `decomposition_ref` and
 `decomposition_role`. (b) The per-k orbital-pair arrays stay in the JSON
 payload: their size is pairs × k-points numbers, small next to any volume.
-(c) Open: whether the fragment model should become a shared QVF concept for
-counterpoise, charge-transfer analysis and QM/MM regions; this record keeps
-it inside the payload. (d) For maintainer decision: an unknown `scheme` is
+(c) A shared fragment model (named atom groups that counterpoise,
+charge-transfer analysis, QM/MM regions and viewers could also name) was
+considered and deferred: the fragments stay inside the payload. If such a
+model is added later, each decomposition fragment can gain an optional
+reference to a shared group, which is an additive change. (d) For maintainer decision: an unknown `scheme` is
 currently a schema error (`E_PAYLOAD_SCHEMA`); the proposer would accept a
 warning instead, so that a producer with a new partition need not wait for a
 registry change.
