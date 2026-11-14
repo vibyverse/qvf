@@ -149,13 +149,18 @@ fields on `volume.difference` (spec § 5.2).
    an optional Monkhorst–Pack `mesh`, and `orbital_pairs_gamma_only` for
    codes that compute NOCVs at Γ only.
 
-**Evidence.** Sample outputs of ADF (EDA-NOCV of a water dimer, a water
-trimer and ethane from spin-flipped methyl radicals), BAND (pEDA-NOCV of
-H2O on h-BN and on Si(001)), ORCA 6.1 (EDA-NOCV and DLPNO-CCSD(T) LED), Psi4
-1.9 (SAPT0 and F-SAPT), CP2K 2026.1 (ALMO-EDA) and vibe-qc (pEDA with per-k
-NOCVs, LMO-EDA and Kitaura–Morokuma) were mapped onto the payload. The
-corpus has one positive archive per scheme shape and one negative archive
-per rule.
+**Evidence.** Real outputs mapped onto the payload and validated: BAND
+pEDA-NOCV (H2O on h-BN, CO on MgO(001), H2O on H-terminated Si(001) at Γ and
+on a 5×3 k-mesh), including BAND's kinetic, electrostatic and
+exchange–correlation split of the steric and orbital terms as sub-terms with
+sum rules at the printed precision; vibe-qc pEDA-NOCV with deformation
+densities (H2O on h-BN with own and ghost fragment bases, the water dimer in
+three cells); and vibe-qc molecular LMO-EDA and Kitaura–Morokuma of one water
+dimer as two `eda` sections of one archive. Sample runs of ADF (EDA-NOCV of a
+water dimer, a water trimer and ethane from spin-flipped methyl radicals),
+ORCA 6.1 (EDA-NOCV and DLPNO-CCSD(T) LED), Psi4 1.9 (SAPT0, F-SAPT) and CP2K
+2026.1 (ALMO-EDA) are being mapped the same way. The corpus has one positive
+archive per scheme shape and one negative archive per rule.
 
 **Readings to settle.** (a) The kind name: `eda` or
 `energy_decomposition`. (b) Whether the per-k NOCV arrays should move to an

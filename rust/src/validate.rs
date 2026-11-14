@@ -788,7 +788,10 @@ fn eda_errors(
                 errors.push((
                     Code::E_REF_UNRESOLVED,
                     "wavefunction_ref".into(),
-                    format!("{s}wavefunction_ref {} does not name a wavefunction.gto or wavefunction.bloch section (spec § 5.16)", show(r)),
+                    format!(
+                        "{s}wavefunction_ref {} does not name a wavefunction.gto or wavefunction.bloch section (spec § 5.16)",
+                        show(r)
+                    ),
                 ));
             }
         }
@@ -812,7 +815,10 @@ fn eda_errors(
                 errors.push((
                     Code::E_REF_UNRESOLVED,
                     String::new(),
-                    format!("{s}orbital_pairs.pairs[{k}].density_ref {} does not name a volume.difference section (spec § 5.16)", show(r)),
+                    format!(
+                        "{s}orbital_pairs.pairs[{k}].density_ref {} does not name a volume.difference section (spec § 5.16)",
+                        show(r)
+                    ),
                 ));
             }
         }
@@ -847,7 +853,11 @@ fn eda_density_errors(
     if !found {
         return vec![(
             "pair_index".into(),
-            format!("{s}pair_index {} with pair_spin '{spin}' names no orbital pair of eda section {} (spec § 5.2)", num(i), quote(rs)),
+            format!(
+                "{s}pair_index {} with pair_spin '{spin}' names no orbital pair of eda section {} (spec § 5.2)",
+                num(i),
+                quote(rs)
+            ),
         )];
     }
     vec![]
@@ -2981,7 +2991,8 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     for d in &eda_sections {
         let refs = if level >= Level::References { Some(&kinds_by_id) } else { None };
         for (code, field, msg) in eda_errors(d.sid, d.s, all_docs[d.i].get("decomposition"), refs, &n_atoms_of, first_structure) {
-            let w = if field.is_empty() { member_pointer(d.i, "decomposition") } else { format!("{}/{field}", section_pointer(d.i)) };
+            let w =
+                if field.is_empty() { member_pointer(d.i, "decomposition") } else { format!("{}/{field}", section_pointer(d.i)) };
             out.push(code, w, msg);
         }
     }

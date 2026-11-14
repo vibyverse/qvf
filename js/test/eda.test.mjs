@@ -9,10 +9,12 @@ import { QvfReader, Writer, validate } from "../dist/index.js";
 import { FIXED, SOURCE } from "./writerFixtures.mjs";
 
 const DIMER = [
-  ["O", [0, 0, 0]], ["H", [0, 0, 0.96]], ["H", [0, 0.929, -0.24]],
-  ["O", [0, 0, 2.95]], ["H", [0, 0.759, 3.538]], ["H", [0, -0.759, 3.538]],
-].map(([symbol, position]) => ({ symbol, position }));
+  { symbol: "O", position: [0, 0, 0] }, { symbol: "H", position: [0, 0, 0.96] },
+  { symbol: "H", position: [0, 0.929, -0.24] }, { symbol: "O", position: [0, 0, 2.95] },
+  { symbol: "H", position: [0, 0.759, 3.538] }, { symbol: "H", position: [0, -0.759, 3.538] },
+];
 
+/** A Ziegler-Rauk payload with one NOCV pair. @returns {any} */
 const ZR = () => ({
   scheme: "ziegler-rauk",
   variant: "eda-nocv",
@@ -31,6 +33,7 @@ const ZR = () => ({
   },
 });
 
+/** @param {any} [payload] */
 async function archive(payload = ZR()) {
   const w = new Writer(SOURCE, FIXED);
   await w.addStructure(DIMER);
@@ -43,6 +46,7 @@ async function archive(payload = ZR()) {
 }
 
 /** An archive whose eda payload skipped addEda's checks (written as a raw section). */
+/** @param {(p: any) => void} edit @param {number} [pairIndex] */
 async function raw(edit, pairIndex = 1) {
   const w = new Writer(SOURCE, FIXED);
   await w.addStructure(DIMER);
@@ -59,6 +63,7 @@ async function raw(edit, pairIndex = 1) {
   return w.toBytes();
 }
 
+/** @param {Uint8Array} bytes */
 const codes = async (bytes) => new Set((await validate(bytes)).findings.map((f) => f.code));
 
 test("a Ziegler-Rauk decomposition with a NOCV density validates", async () => {
@@ -66,7 +71,7 @@ test("a Ziegler-Rauk decomposition with a NOCV density validates", async () => {
   const report = await validate(bytes);
   assert.deepEqual(report.findings.map((f) => `${f.code} ${f.message}`), []);
   const q = QvfReader.fromBytes(bytes);
-  const p = await q.readJson("eda", "decomposition");
+  const p = /** @type {any} */ (await q.readJson("eda", "decomposition"));
   assert.deepEqual(p.terms[0].energy, { value: -0.008, units: "hartree" });
   assert.equal(q.section("nocv_1")?.pair_index, 1);
 });
@@ -86,6 +91,7 @@ test("addEda refuses what the validator would reject", async () => {
 });
 
 test("the validator reports the § 6 rules", async () => {
+  /** @type {Array<[(p: any) => void, import("../dist/index.js").FindingCode]>} */
   const cases = [
     [(p) => p.sum_rules[0].parts.pop(), "E_SUM_RULE"],
     [(p) => p.fragments[1].atoms.push(9), "E_MEMBER_MALFORMED"],

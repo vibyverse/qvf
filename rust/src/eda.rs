@@ -95,7 +95,8 @@ fn join_ints(v: &[i64]) -> String {
 pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(Code, String)> {
     let Some(p) = as_obj(payload) else { return vec![] };
     let mut errors: Vec<(Code, String)> = Vec::new();
-    let bad = |msg: String, errors: &mut Vec<(Code, String)>| errors.push((Code::E_MEMBER_MALFORMED, format!("{msg} ({SECTION})")));
+    let bad =
+        |msg: String, errors: &mut Vec<(Code, String)>| errors.push((Code::E_MEMBER_MALFORMED, format!("{msg} ({SECTION})")));
 
     // --- fragments ---------------------------------------------------------------------
     let fragments = list(p.get("fragments"));
@@ -104,10 +105,17 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
         .iter()
         .map(|f| f.get("atoms").and_then(Value::as_array).map(|a| a.iter().filter_map(|x| idx(Some(x))).collect()))
         .collect();
-    let top: Vec<usize> =
-        fragments.iter().enumerate().filter(|(_, f)| f.as_object().is_some_and(|o| !o.contains_key("parent"))).map(|(k, _)| k).collect();
+    let top: Vec<usize> = fragments
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| f.as_object().is_some_and(|o| !o.contains_key("parent")))
+        .map(|(k, _)| k)
+        .collect();
     if p.get("fragments").is_some_and(Value::is_array) && top.len() < 2 {
-        bad(format!("fragments has {} interacting fragment(s) (no parent); a decomposition needs at least two", top.len()), &mut errors);
+        bad(
+            format!("fragments has {} interacting fragment(s) (no parent); a decomposition needs at least two", top.len()),
+            &mut errors,
+        );
     }
     let mut owner: HashMap<i64, usize> = HashMap::new();
     for &k in &top {
@@ -115,7 +123,10 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
         atoms.sort();
         for a in atoms {
             if let Some(&prev) = owner.get(&a) {
-                bad(format!("fragments[{k}] and fragments[{prev}] both contain atom {a}; interacting fragments are disjoint"), &mut errors);
+                bad(
+                    format!("fragments[{k}] and fragments[{prev}] both contain atom {a}; interacting fragments are disjoint"),
+                    &mut errors,
+                );
             } else {
                 owner.insert(a, k);
             }
@@ -142,11 +153,20 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
                         let mut extra: Vec<i64> = mine.difference(theirs).copied().collect();
                         extra.sort();
                         if !extra.is_empty() {
-                            bad(format!("fragments[{k}] has atoms [{}] that its parent fragments[{pi}] does not contain", join_ints(&extra)), &mut errors);
+                            bad(
+                                format!(
+                                    "fragments[{k}] has atoms [{}] that its parent fragments[{pi}] does not contain",
+                                    join_ints(&extra)
+                                ),
+                                &mut errors,
+                            );
                         }
                     }
                 }
-                _ => bad(format!("fragments[{k}].parent {} is not the index of another fragment", show(f.get("parent"))), &mut errors),
+                _ => bad(
+                    format!("fragments[{k}].parent {} is not the index of another fragment", show(f.get("parent"))),
+                    &mut errors,
+                ),
             }
         }
     }
@@ -168,7 +188,10 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
                 }
             }
             if directed && frs.len() != 2 {
-                bad(format!("terms[{k}] is directed but names {} fragments; a directed term names [donor, acceptor]", frs.len()), &mut errors);
+                bad(
+                    format!("terms[{k}] is directed but names {} fragments; a directed term names [donor, acceptor]", frs.len()),
+                    &mut errors,
+                );
             }
             if !directed {
                 ints.sort();
@@ -224,7 +247,9 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
             if hartree_per_energy_unit(u).is_none() {
                 errors.push((
                     Code::E_UNIT_CONTRADICTED,
-                    format!("{where_} is in '{u}', which is not an energy unit (hartree, ev, kcal_per_mol, kj_per_mol) ({SECTION})"),
+                    format!(
+                        "{where_} is in '{u}', which is not an energy unit (hartree, ev, kcal_per_mol, kj_per_mol) ({SECTION})"
+                    ),
                 ));
             }
         }
@@ -239,7 +264,10 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
         let all: Vec<i64> = total.into_iter().chain(parts.iter().copied()).collect();
         let out_of_range: Vec<i64> = all.iter().copied().filter(|i| *i < 0 || *i >= n_terms).collect();
         if !out_of_range.is_empty() {
-            bad(format!("sum_rules[{k}] names term(s) [{}], but there are {n_terms} terms", join_ints(&out_of_range)), &mut errors);
+            bad(
+                format!("sum_rules[{k}] names term(s) [{}], but there are {n_terms} terms", join_ints(&out_of_range)),
+                &mut errors,
+            );
             continue;
         }
         let (Some(total), Some(_)) = (total, parts_v) else { continue };
@@ -288,14 +316,20 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
             let spin = str_of(q.get("spin")).unwrap_or("restricted");
             let key = format!("{}/{spin}", q.get("index").map(Value::to_string).unwrap_or_default());
             if let Some(&prev) = seen.get(&key) {
-                bad(format!("orbital_pairs.pairs[{k}] repeats index {} of spin '{spin}' (pairs[{prev}])", show(q.get("index"))), &mut errors);
+                bad(
+                    format!("orbital_pairs.pairs[{k}] repeats index {} of spin '{spin}' (pairs[{prev}])", show(q.get("index"))),
+                    &mut errors,
+                );
             } else {
                 seen.insert(key, k);
             }
             for field in ["donor", "acceptor"] {
                 if let Some(f) = idx(q.get(field)) {
                     if f < 0 || f >= n_frag {
-                        bad(format!("orbital_pairs.pairs[{k}].{field} names fragment {f}, but there are {n_frag} fragments"), &mut errors);
+                        bad(
+                            format!("orbital_pairs.pairs[{k}].{field} names fragment {f}, but there are {n_frag} fragments"),
+                            &mut errors,
+                        );
                     }
                 }
             }
@@ -305,9 +339,10 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
                 }
                 match (n_k, q.get(field).and_then(Value::as_array)) {
                     (None, _) => bad(format!("orbital_pairs.pairs[{k}].{field} needs periodic.kpoints"), &mut errors),
-                    (Some(n), Some(a)) if a.len() != n => {
-                        bad(format!("orbital_pairs.pairs[{k}].{field} has {} entries for {} k-points", a.len(), num(n as f64)), &mut errors)
-                    }
+                    (Some(n), Some(a)) if a.len() != n => bad(
+                        format!("orbital_pairs.pairs[{k}].{field} has {} entries for {} k-points", a.len(), num(n as f64)),
+                        &mut errors,
+                    ),
                     _ => {}
                 }
             }
