@@ -10,7 +10,7 @@
 
 pub const SCHEMA_ID: &str = "https://vibe-qc.org/spec/qvf/1/manifest.schema.json";
 /// SHA-256 of the schema file the tables were generated from.
-pub const SCHEMA_SHA256: &str = "c2653b7e227f8e5052b355d942472a98230d4737e072086f09a3a7ba76c278c6";
+pub const SCHEMA_SHA256: &str = "0bece3cf4cc71fec95d509154ca783d3d6f24fe18f5447ce2faef84601eb3cae";
 pub const QVF_VERSION: i64 = 1;
 
 /// Opcodes; operands a, b, c per opcode as in scripts/gen_kinds.py.

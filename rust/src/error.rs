@@ -45,6 +45,7 @@ pub enum Code {
     E_ROOT_INCONSISTENT,
     E_NORMALIZATION,
     E_UNIT_CONTRADICTED,
+    E_SUM_RULE,
 }
 
 impl Code {
@@ -87,6 +88,7 @@ impl Code {
         Code::E_ROOT_INCONSISTENT,
         Code::E_NORMALIZATION,
         Code::E_UNIT_CONTRADICTED,
+        Code::E_SUM_RULE,
     ];
 
     /// The code as Appendix B spells it.
@@ -129,6 +131,7 @@ impl Code {
             Code::E_ROOT_INCONSISTENT => "E_ROOT_INCONSISTENT",
             Code::E_NORMALIZATION => "E_NORMALIZATION",
             Code::E_UNIT_CONTRADICTED => "E_UNIT_CONTRADICTED",
+            Code::E_SUM_RULE => "E_SUM_RULE",
         }
     }
 

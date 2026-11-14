@@ -31,6 +31,7 @@
 
 pub mod builders;
 pub mod conformance;
+pub mod eda;
 pub mod editor;
 pub mod error;
 #[rustfmt::skip]

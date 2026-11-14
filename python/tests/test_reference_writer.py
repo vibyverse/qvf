@@ -906,6 +906,8 @@ def _every_option_writer() -> QvfWriter:
     w.add_volume("volume.difference", dens, origin, vox, label="rho - homo",
                  operand_a=a, operand_b=b, description="rho - homo",
                  section_id="diff")
+    w.add_volume("volume.difference", dens, origin, vox, section_id="nocv_a1",
+                 eda_ref="eda", eda_role="orbital_pair", pair_index=1, pair_spin="alpha")
     # A cube-style periodic grid over the slab's two periodic axes (spec § 5.2):
     # voxel_vectors[a] x (shape[a] - 1) is lattice row a in bohr.
     step = 6.0 * BOHR_PER_ANGSTROM / 4
@@ -1248,6 +1250,18 @@ def _every_option_writer() -> QvfWriter:
     # Section references and the root metadata block (spec § 4.1, § 3.5).
     w.annotate_section("rho", structure_ref=sid, run_ref="run", group="densities",
                        label="electron density")
+    w.add_eda({"scheme": "ziegler-rauk",
+               "fragments": [{"label": "O", "atoms": [0]}, {"label": "H2", "atoms": [1, 2]}],
+               "terms": [{"name": "interaction", "energy": -0.3},
+                         {"name": "electrostatic", "energy": -0.2},
+                         {"name": "pauli", "energy": 0.15},
+                         {"name": "orbital", "energy": -0.25}],
+               "sum_rules": [{"total": 0, "parts": [1, 2, 3]}],
+               "orbital_pairs": {"type": "nocv", "eigenvalue_convention": "per_spin",
+                                 "pairs": [{"index": 1, "spin": "alpha", "eigenvalue": 0.4,
+                                            "energy": -0.1, "density_ref": "nocv_a1"}]}},
+              structure_ref=sid, wavefunction_ref="wf_rhf", label="decomposition",
+              section_id="eda")
     w.annotate_section("wf_rhf", structure_ref=sid, run_ref="run", group="orbitals")
     w.annotate_section("demo", structure_ref=sid, group="vendor")
     w.set_metadata(title="every option", description="writer coverage",

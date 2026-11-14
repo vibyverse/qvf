@@ -20,6 +20,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
+use crate::eda;
 use crate::error::{Code, Severity};
 use crate::generated::{CANONICAL_KINDS, LEGACY_UNITS, UNIT_NAMES};
 use crate::json::{
@@ -763,6 +764,93 @@ type StateSet = HashSet<i64>;
 fn state_indices(payload: Option<&Value>) -> Option<StateSet> {
     let states = as_obj(payload)?.get("states")?.as_array()?;
     Some(states.iter().filter_map(|s| int_of(as_obj(Some(s))?.get("index")).map(|x| x as i64)).collect())
+}
+
+/// Rules of an `eda` section that JSON Schema cannot express (spec § 5.16): the payload
+/// rules of [`eda::payload_errors`] and, with `kinds_by_id` (references level), the
+/// section's `wavefunction_ref` and every pair's `density_ref`. `field` is empty for the
+/// `decomposition` member.
+fn eda_errors(
+    sid: &str,
+    section: &Obj,
+    payload: Option<&Value>,
+    kinds_by_id: Option<&HashMap<String, String>>,
+    n_atoms_of: &HashMap<String, f64>,
+    first_structure: Option<&str>,
+) -> Vec<(Code, String, String)> {
+    let s = sec(sid);
+    let mut errors = Vec::new();
+    if let Some(kinds) = kinds_by_id {
+        if section.contains_key("wavefunction_ref") {
+            let r = section.get("wavefunction_ref");
+            let kind = str_of(r).and_then(|x| kinds.get(x)).map(String::as_str);
+            if !matches!(kind, Some("wavefunction.gto") | Some("wavefunction.bloch")) {
+                errors.push((
+                    Code::E_REF_UNRESOLVED,
+                    "wavefunction_ref".into(),
+                    format!("{s}wavefunction_ref {} does not name a wavefunction.gto or wavefunction.bloch section (spec § 5.16)", show(r)),
+                ));
+            }
+        }
+    }
+    let structure = if section.contains_key("structure_ref") { str_of(section.get("structure_ref")) } else { first_structure };
+    let n_atoms = structure.and_then(|x| n_atoms_of.get(x)).map(|n| *n as usize);
+    for (code, msg) in eda::payload_errors(payload, n_atoms) {
+        errors.push((code, String::new(), format!("{s}{msg}")));
+    }
+    if let (Some(kinds), Some(pairs)) = (
+        kinds_by_id,
+        as_obj(payload).and_then(|p| as_obj(p.get("orbital_pairs"))).and_then(|o| o.get("pairs")).and_then(Value::as_array),
+    ) {
+        for (k, q) in pairs.iter().enumerate() {
+            let Some(q) = q.as_object() else { continue };
+            if !q.contains_key("density_ref") {
+                continue;
+            }
+            let r = q.get("density_ref");
+            if str_of(r).and_then(|x| kinds.get(x)).map(String::as_str) != Some("volume.difference") {
+                errors.push((
+                    Code::E_REF_UNRESOLVED,
+                    String::new(),
+                    format!("{s}orbital_pairs.pairs[{k}].density_ref {} does not name a volume.difference section (spec § 5.16)", show(r)),
+                ));
+            }
+        }
+    }
+    errors
+}
+
+/// A `volume.difference` section's `eda_ref` names an `eda` section, and for `eda_role`
+/// `orbital_pair` its `pair_index` and `pair_spin` name one of that section's orbital pairs
+/// (spec § 5.2, § 5.16).
+fn eda_density_errors(
+    sid: &str,
+    section: &Obj,
+    kinds_by_id: &HashMap<String, String>,
+    pairs_of: &HashMap<String, Option<HashSet<(i64, String)>>>,
+) -> Vec<(String, String)> {
+    let s = sec(sid);
+    if !section.contains_key("eda_ref") {
+        return vec![];
+    }
+    let r = section.get("eda_ref");
+    let Some(rs) = str_of(r).filter(|x| kinds_by_id.get(*x).map(String::as_str) == Some("eda")) else {
+        return vec![("eda_ref".into(), format!("{s}eda_ref {} does not name an eda section (spec § 5.2)", show(r)))];
+    };
+    let index = section.get("pair_index");
+    if str_of(section.get("eda_role")) == Some("orbital_pair") && index.is_none() {
+        return vec![("eda_role".into(), format!("{s}eda_role 'orbital_pair' needs pair_index (spec § 5.2)"))];
+    }
+    let Some(i) = int_of(index) else { return vec![] };
+    let spin = str_of(section.get("pair_spin")).unwrap_or("restricted");
+    let found = pairs_of.get(rs).and_then(Option::as_ref).is_some_and(|keys| keys.contains(&(i as i64, spin.to_string())));
+    if !found {
+        return vec![(
+            "pair_index".into(),
+            format!("{s}pair_index {} with pair_spin '{spin}' names no orbital pair of eda section {} (spec § 5.2)", num(i), quote(rs)),
+        )];
+    }
+    vec![]
 }
 
 struct ExcitedRefs<'a> {
@@ -2571,6 +2659,10 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     let mut excited_sections: Vec<Deferred> = Vec::new();
     let mut states_ref_spectra: Vec<Deferred> = Vec::new();
     let mut transition_densities: Vec<Deferred> = Vec::new();
+    // Energy decompositions (spec § 5.16) and the difference densities that name them.
+    let mut eda_sections: Vec<Deferred> = Vec::new();
+    let mut eda_densities: Vec<Deferred> = Vec::new();
+    let mut eda_pairs_of: HashMap<String, Option<HashSet<(i64, String)>>> = HashMap::new();
     let mut wavefunction_volumes: Vec<(Deferred, &str)> = Vec::new();
     let mut bloch_sections: Vec<Deferred> = Vec::new();
     let mut derivative_sections: Vec<(Deferred, &str)> = Vec::new();
@@ -2778,6 +2870,18 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         if level >= Level::References && kind == "volume.transition_density" {
             transition_densities.push(d);
         }
+        if kind == "eda" {
+            eda_pairs_of.entry(sid.to_string()).or_insert_with(|| eda::pair_keys(docs.get("decomposition")));
+            if level >= Level::Semantics {
+                eda_sections.push(d);
+            }
+        }
+        if level >= Level::References
+            && kind == "volume.difference"
+            && ["eda_ref", "eda_role", "pair_index", "pair_spin"].iter().any(|f| s.contains_key(*f))
+        {
+            eda_densities.push(d);
+        }
         if level >= Level::References && is_wavefunction_volume_kind(kind) && s.contains_key("wavefunction_ref") {
             wavefunction_volumes.push((d, kind));
         }
@@ -2869,6 +2973,20 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     }
     for d in &transition_densities {
         for (field, msg) in transition_density_errors(d.sid, d.s, &kinds_by_id, &state_indices_of) {
+            out.push(Code::E_REF_UNRESOLVED, format!("{}/{field}", section_pointer(d.i)), msg);
+        }
+    }
+    // Energy decompositions and their difference densities (spec § 5.2, § 5.16).
+    let first_structure = structure_ids.first().copied();
+    for d in &eda_sections {
+        let refs = if level >= Level::References { Some(&kinds_by_id) } else { None };
+        for (code, field, msg) in eda_errors(d.sid, d.s, all_docs[d.i].get("decomposition"), refs, &n_atoms_of, first_structure) {
+            let w = if field.is_empty() { member_pointer(d.i, "decomposition") } else { format!("{}/{field}", section_pointer(d.i)) };
+            out.push(code, w, msg);
+        }
+    }
+    for d in &eda_densities {
+        for (field, msg) in eda_density_errors(d.sid, d.s, &kinds_by_id, &eda_pairs_of) {
             out.push(Code::E_REF_UNRESOLVED, format!("{}/{field}", section_pointer(d.i)), msg);
         }
     }

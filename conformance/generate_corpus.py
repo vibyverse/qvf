@@ -5050,6 +5050,265 @@ def build_xray_mossbauer():
        "hyperfine field in tesla, linewidths and populations (spec § 5.4, "
        "spectra.mossbauer).")
 
+
+def build_eda():
+    """eda_ziegler_rauk_nocv, eda_open_shell_spin_flip, eda_periodic_peda,
+    eda_sapt_fsapt, eda_led_trimer, eda_almo_ct: the energy decomposition
+    kind (spec § 5.16) in the shapes of the schemes it covers. The numbers are
+    synthetic but have the magnitudes of real calculations, and every declared
+    sum rule holds; the NOCV deformation densities are small Gaussian
+    difference fields on coarse grids."""
+    kcal = 1.0 / 627.5094740631
+    E = lambda x: {"value": round(x * kcal, 10), "units": "hartree"}
+    dimer = [{"symbol": s, "position": p, "atomic_number": z} for s, z, p in [
+        ("O", 8, [0.0, 0.0, 0.0]), ("H", 1, [0.0, 0.0, 0.96]), ("H", 1, [0.0, 0.929, -0.24]),
+        ("O", 8, [0.0, 0.0, 2.95]), ("H", 1, [0.0, 0.759, 3.538]),
+        ("H", 1, [0.0, -0.759, 3.538])]]
+    dimer_frags = [{"label": "H2O donor", "atoms": [0, 1, 2], "charge": 0,
+                    "multiplicity": 1, "basis": "own"},
+                   {"label": "H2O acceptor", "atoms": [3, 4, 5], "charge": 0,
+                    "multiplicity": 1, "basis": "own"}]
+    bohr = 1.0 / 0.529177210903
+
+    def deformation(shape, step, origin, plus, minus, width=1.2):
+        """+ lobe at `plus`, - lobe at `minus` (bohr): a field integrating to ~0."""
+        idx = np.indices(shape).reshape(3, -1).T * step + np.asarray(origin)
+        g = lambda c: np.exp(-np.sum((idx - np.asarray(c)) ** 2, axis=1) / width ** 2)
+        return (0.01 * (g(plus) - g(minus))).reshape(shape)
+
+    # 1) Ziegler-Rauk EDA-NOCV of the water dimer (ADF style), two NOCV densities.
+    w = QvfWriter(_PROGRAM, _VERSION, "water dimer EDA-NOCV")
+    w.add_structure(dimer, charge=0, multiplicity=1)
+    shape, step = (8, 8, 10), 0.8
+    origin = [-2.8, -2.8, -2.0]
+    for k, (plus, minus) in enumerate([([0.0, 0.0, 2.6 * bohr], [0.0, 0.0, 3.0 * bohr]),
+                                       ([0.0, 0.0, 1.4 * bohr], [0.0, 0.5, 2.9 * bohr])], 1):
+        w.add_volume("volume.difference", deformation(shape, step, origin, plus, minus),
+                     origin, np.eye(3) * step, section_id=f"nocv_{k}", eda_ref="eda",
+                     eda_role="orbital_pair", pair_index=k,
+                     label=f"NOCV pair {k} deformation density")
+    w.add_volume("volume.difference",
+                 deformation(shape, step, origin, [0, 0, 2.4 * bohr], [0, 0, 3.1 * bohr]),
+                 origin, np.eye(3) * step, section_id="relaxation", eda_ref="eda",
+                 eda_role="orbital_relaxation", label="relaxed minus frozen density")
+    w.add_eda({
+        "scheme": "ziegler-rauk", "variant": "eda-nocv",
+        "method": {"method": "rks", "functional": "pbe", "basis": "tz2p", "dispersion": "d3bj"},
+        "fragments": dimer_frags,
+        "energies": {"system": {"value": -0.81920431, "units": "hartree"}},
+        "terms": [{"name": "interaction", "energy": E(-5.05)},
+                  {"name": "electrostatic", "energy": E(-7.87), "label": "Electrostatic Interaction"},
+                  {"name": "pauli", "energy": E(8.28), "label": "Pauli Repulsion"},
+                  {"name": "orbital", "energy": E(-4.61), "label": "Orbital Interactions"},
+                  {"name": "dispersion", "energy": E(-0.85), "label": "Dispersion Energy"}],
+        "sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}],
+        "orbital_pairs": {"type": "nocv", "eigenvalue_convention": "per_spin",
+                          "threshold": 0.01, "total": E(-4.58),
+                          "pairs": [{"index": 1, "eigenvalue": 0.0451, "energy": E(-2.95),
+                                     "density_ref": "nocv_1", "label": "n(O) -> sigma*(O-H)"},
+                                    {"index": 2, "eigenvalue": 0.0168, "energy": E(-0.69),
+                                     "density_ref": "nocv_2"},
+                                    {"index": 3, "eigenvalue": 0.0102, "energy": E(-0.31)}]},
+    })
+    _write("eda_ziegler_rauk_nocv", w, [
+        {"section": "eda", "member": "decomposition", "json_pointer": ["scheme"],
+         "equals": "ziegler-rauk"},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["terms", 2, "energy", "value"], "equals": round(8.28 * kcal, 10),
+         "tol": 1e-12},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["orbital_pairs", "pairs", 0, "density_ref"], "equals": "nocv_1"},
+    ], "Ziegler-Rauk EDA-NOCV of the water dimer (PBE-D3(BJ)/TZ2P magnitudes): "
+       "electrostatic, Pauli, orbital and dispersion terms with their sum rule, three "
+       "NOCV pairs in the per-spin eigenvalue convention, two NOCV deformation densities "
+       "and the orbital-relaxation density as volume.difference sections naming the "
+       "decomposition (spec § 5.2, § 5.16).")
+
+    # 2) Electron-sharing bond: ethane from two CH3 radicals, one spin-flipped.
+    ethane = [{"symbol": s, "position": p, "atomic_number": z} for s, z, p in [
+        ("C", 6, [0.019664, -0.034069, 0.009101]), ("H", 1, [0.039672, -0.069395, 1.10962]),
+        ("H", 1, [1.063205, -0.065727, -0.341092]), ("H", 1, [-0.47423, -0.953693, -0.341621]),
+        ("C", 6, [-0.70321, 1.217999, -0.497874]), ("H", 1, [-0.723753, 1.252869, -1.598316]),
+        ("H", 1, [-1.746567, 1.250049, -0.147169]), ("H", 1, [-0.208833, 2.137544, -0.147653])]]
+    w = QvfWriter(_PROGRAM, _VERSION, "ethane EDA-NOCV from CH3 radicals")
+    w.add_structure(ethane, charge=0, multiplicity=1)
+    w.add_eda({
+        "scheme": "ziegler-rauk", "variant": "eda-nocv",
+        "method": {"method": "uks", "functional": "pbe", "basis": "tz2p"},
+        "fragments": [{"label": "CH3 (alpha SOMO)", "atoms": [0, 1, 2, 3], "multiplicity": 2,
+                       "state": "SOMO alpha-occupied"},
+                      {"label": "CH3 (beta SOMO)", "atoms": [4, 5, 6, 7], "multiplicity": 2,
+                       "spin_flip": True, "state": "SOMO beta-occupied"}],
+        "terms": [{"name": "interaction", "energy": E(-113.1)},
+                  {"name": "electrostatic", "energy": E(-110.0)},
+                  {"name": "pauli", "energy": E(246.0)},
+                  {"name": "orbital", "energy": E(-249.1)},
+                  {"name": "orbital", "spin": "alpha", "parent": 3, "energy": E(-124.55)},
+                  {"name": "orbital", "spin": "beta", "parent": 3, "energy": E(-124.55)}],
+        "sum_rules": [{"total": 0, "parts": [1, 2, 3]}, {"total": 3, "parts": [4, 5]}],
+        "orbital_pairs": {"type": "nocv", "eigenvalue_convention": "per_spin",
+                          "pairs": [{"index": 1, "spin": "alpha", "eigenvalue": 0.68,
+                                     "energy": E(-95.3), "label": "sigma(C-C)"},
+                                    {"index": 1, "spin": "beta", "eigenvalue": 0.68,
+                                     "energy": E(-95.3), "label": "sigma(C-C)"},
+                                    {"index": 2, "spin": "alpha", "eigenvalue": 0.12,
+                                     "energy": E(-11.2)}]},
+    })
+    _write("eda_open_shell_spin_flip", w, [
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["fragments", 1, "spin_flip"], "equals": True},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["orbital_pairs", "pairs", 1, "spin"], "equals": "beta"},
+    ], "An electron-sharing bond: ethane from two methyl radicals, the second with its "
+       "unpaired spin flipped, with spin-resolved orbital terms under the orbital term "
+       "and alpha and beta NOCV pairs (spec § 5.16).")
+
+    # 3) Periodic EDA: H2O on a 2x2 h-BN sheet, NOCV pairs with per-k values.
+    a = 2.504
+    a1, a2 = np.array([a, 0, 0]), np.array([a / 2, a * 3 ** 0.5 / 2, 0])
+    atoms = []
+    for i in range(2):
+        for j in range(2):
+            o = i * a1 + j * a2
+            atoms += [("B", 5, o), ("N", 7, o + (a1 + a2) / 3)]
+    c = (a1 + a2) / 3 + 0.5 * (a1 + a2)
+    atoms += [("O", 8, [c[0], c[1], 3.2]), ("H", 1, [c[0], c[1], 2.23]),
+              ("H", 1, [c[0] + 0.93, c[1], 3.45])]
+    slab = [{"symbol": s, "atomic_number": z, "position": [float(x) for x in p]}
+            for s, z, p in atoms]
+    w = QvfWriter(_PROGRAM, _VERSION, "H2O on h-BN periodic EDA")
+    w.add_structure(slab, pbc=[True, True, False],
+                    lattice_vectors=[list(2 * a1), list(2 * a2), [0.0, 0.0, 20.0]])
+    kpts = [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.5, 0.5, 0.0]]
+    e1 = [-1.40, -1.30, -1.30, -1.20]
+    w.add_eda({
+        "scheme": "ziegler-rauk", "variant": "peda",
+        "method": {"method": "rks", "functional": "pbe", "basis": "def2-svp", "dispersion": "d3bj"},
+        "fragments": [{"label": "h-BN", "atoms": list(range(8)), "basis": "own"},
+                      {"label": "H2O", "atoms": [8, 9, 10], "basis": "own"}],
+        "terms": [{"name": "interaction", "energy": E(-4.60)},
+                  {"name": "electrostatic", "energy": E(-3.90)},
+                  {"name": "pauli", "energy": E(5.60)},
+                  {"name": "orbital", "energy": E(-2.40)},
+                  {"name": "dispersion", "energy": E(-3.90)}],
+        "sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}],
+        "orbital_pairs": {"type": "nocv", "eigenvalue_convention": "per_spin",
+                          "pairs": [{"index": 1, "eigenvalue": 0.031, "energy": E(sum(e1) / 4),
+                                     "kpoint_eigenvalues": [0.034, 0.031, 0.031, 0.028],
+                                     "kpoint_energies": [round(x / 4 * kcal, 10) for x in e1]}]},
+        "periodic": {"kpoints": {"kpoints": kpts, "weights": [0.25] * 4}, "mesh": [2, 2, 1]},
+    })
+    _write("eda_periodic_peda", w, [
+        {"section": "eda", "member": "decomposition", "json_pointer": ["periodic", "mesh"],
+         "equals": [2, 2, 1]},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["orbital_pairs", "pairs", 0, "kpoint_eigenvalues", 3],
+         "equals": 0.028, "tol": 1e-12},
+    ], "A periodic EDA (pEDA) of water on a 2x2 h-BN sheet on a 2x2x1 k-mesh: the four "
+       "terms with their sum rule and a NOCV pair with its eigenvalue and weighted energy "
+       "at each k-point (spec § 5.16).")
+
+    # 4) SAPT0 with an F-SAPT partition into atoms.
+    w = QvfWriter(_PROGRAM, _VERSION, "water dimer SAPT0 / F-SAPT")
+    w.add_structure(dimer, charge=0, multiplicity=1)
+    subs = [{"label": f"{dimer[i]['symbol']}{i}", "atoms": [i], "parent": 0 if i < 3 else 1}
+            for i in range(6)]
+    w.add_eda({
+        "scheme": "sapt", "variant": "fisapt0",
+        "method": {"method": "sapt0", "basis": "jun-cc-pvdz"},
+        "fragments": [dict(f, basis="supersystem") for f in dimer_frags] + subs,
+        "terms": [{"name": "interaction", "energy": E(-5.06)},
+                  {"name": "electrostatic", "energy": E(-8.29), "order": "(10)", "label": "Elst10,r"},
+                  {"name": "exchange", "energy": E(7.64), "order": "(10)", "label": "Exch10"},
+                  {"name": "induction", "energy": E(-2.17)},
+                  {"name": "dispersion", "energy": E(-2.24)},
+                  {"name": "x_ind20r", "parent": 3, "order": "(20),r", "label": "Ind20,r",
+                   "energy": E(-2.90)},
+                  {"name": "exchange_induction", "parent": 3, "order": "(20),r",
+                   "label": "Exch-Ind20,r", "energy": E(1.55)},
+                  {"name": "delta_hf", "parent": 3, "label": "delta HF,r (2)", "energy": E(-0.82)},
+                  {"name": "x_disp20", "parent": 4, "order": "(20)", "label": "Disp20",
+                   "energy": E(-2.68)},
+                  {"name": "exchange_dispersion", "parent": 4, "order": "(20)",
+                   "label": "Exch-Disp20", "energy": E(0.44)},
+                  {"name": "electrostatic", "fragments": [4, 5], "energy": E(-6.10),
+                   "label": "F-SAPT Elst H2 ... O3"},
+                  {"name": "electrostatic", "fragments": [2, 5], "energy": E(-0.95)}],
+        "sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}, {"total": 3, "parts": [5, 6, 7]},
+                      {"total": 4, "parts": [8, 9]}],
+    })
+    _write("eda_sapt_fsapt", w, [
+        {"section": "eda", "member": "decomposition", "json_pointer": ["terms", 6, "parent"],
+         "equals": 3},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["fragments", 5, "parent"], "equals": 1},
+    ], "SAPT0 of the water dimer in the dimer basis: the four SAPT terms, the second-order "
+       "corrections as parts of induction and dispersion with three sum rules, and an F-SAPT "
+       "partition into atoms (sub-fragments) with two atom-pair electrostatic terms "
+       "(spec § 5.16).")
+
+    # 5) Local energy decomposition of the cyclic water trimer.
+    trimer = [{"symbol": s, "position": p, "atomic_number": z} for s, z, p in [
+        ("O", 8, [0.0, 1.62, 0.0]), ("H", 1, [0.815, 2.11, 0.15]), ("H", 1, [0.76, 0.99, -0.05]),
+        ("O", 8, [1.403, -0.81, 0.0]), ("H", 1, [1.42, -1.78, 0.15]), ("H", 1, [0.42, -0.7, -0.05]),
+        ("O", 8, [-1.403, -0.81, 0.0]), ("H", 1, [-2.23, -0.33, 0.15]), ("H", 1, [-1.17, 0.09, -0.05])]]
+    w = QvfWriter(_PROGRAM, _VERSION, "water trimer LED")
+    w.add_structure(trimer, charge=0, multiplicity=1)
+    terms = [{"name": "interaction", "energy": E(-22.3)}]
+    parts = []
+    for f, prep in enumerate([3.9, 3.8, 3.9]):
+        parts.append(len(terms))
+        terms.append({"name": "preparation", "fragments": [f], "energy": E(prep)})
+    for pair, (el, ex, disp) in zip([[0, 1], [1, 2], [0, 2]],
+                                    [(-7.2, -3.1, -1.0), (-7.0, -3.0, -1.1), (-7.3, -3.2, -1.0)]):
+        for name, val in (("electrostatic", el), ("exchange", ex), ("dispersion", disp)):
+            parts.append(len(terms))
+            terms.append({"name": name, "fragments": pair, "energy": E(val)})
+    w.add_eda({
+        "scheme": "led", "variant": "dlpno-ccsd(t)",
+        "method": {"method": "dlpno-ccsd(t)", "basis": "def2-tzvp"},
+        "fragments": [{"label": f"H2O {k + 1}", "atoms": [3 * k, 3 * k + 1, 3 * k + 2]}
+                      for k in range(3)],
+        "terms": terms,
+        "sum_rules": [{"total": 0, "parts": parts,
+                       "tolerance": {"value": 0.01, "units": "kcal_per_mol"}}],
+    })
+    _write("eda_led_trimer", w, [
+        {"section": "eda", "member": "decomposition", "json_pointer": ["terms", 4, "fragments"],
+         "equals": [0, 1]},
+        {"section": "eda", "member": "decomposition", "json_pointer": ["scheme"], "equals": "led"},
+    ], "A local energy decomposition of the cyclic water trimer: the preparation of each "
+       "fragment and the electrostatic, exchange and dispersion terms of each fragment pair, "
+       "with a sum rule to the interaction in kcal/mol tolerance (spec § 5.16).")
+
+    # 6) ALMO-EDA with directed charge transfer and a COVP.
+    w = QvfWriter(_PROGRAM, _VERSION, "water dimer ALMO-EDA")
+    w.add_structure(dimer, charge=0, multiplicity=1)
+    w.add_eda({
+        "scheme": "almo-eda", "variant": "almo-eda2",
+        "method": {"method": "rks", "functional": "pbe", "basis": "dzvp-molopt-gth"},
+        "fragments": dimer_frags,
+        "terms": [{"name": "interaction", "energy": E(-4.4)},
+                  {"name": "frozen", "energy": E(-2.0)},
+                  {"name": "polarization", "energy": E(-0.8)},
+                  {"name": "charge_transfer", "energy": E(-1.6)},
+                  {"name": "charge_transfer", "fragments": [1, 0], "directed": True,
+                   "energy": E(-1.4)},
+                  {"name": "charge_transfer", "fragments": [0, 1], "directed": True,
+                   "energy": E(-0.2)}],
+        "sum_rules": [{"total": 0, "parts": [1, 2, 3]}, {"total": 3, "parts": [4, 5]}],
+        "orbital_pairs": {"type": "covp", "pairs": [
+            {"index": 1, "eigenvalue": 0.011, "energy": E(-1.3), "donor": 1, "acceptor": 0}]},
+    })
+    _write("eda_almo_ct", w, [
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["terms", 4, "directed"], "equals": True},
+        {"section": "eda", "member": "decomposition",
+         "json_pointer": ["orbital_pairs", "pairs", 0, "donor"], "equals": 1},
+    ], "An ALMO-EDA of the water dimer: frozen, polarization and charge-transfer terms, the "
+       "charge transfer split into its two directions, and one COVP with donor and acceptor "
+       "fragments (spec § 5.16).")
+
 if __name__ == "__main__":
     build()
     build_zero_spin()
@@ -5060,3 +5319,4 @@ if __name__ == "__main__":
     build_volume_wavefunction_refs()
     build_compound_units()
     build_xray_mossbauer()
+    build_eda()

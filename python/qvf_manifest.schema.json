@@ -858,7 +858,7 @@
         },
         "eda_ref": {
           "type": "string",
-          "description": "Id of the `eda` section (§ 5.16) whose decomposition this difference density belongs to. It must name a section of kind `eda` in this archive."
+          "description": "Id of the `eda` section whose decomposition this difference density belongs to. It must name a section of kind `eda` in this archive; see QVF spec § 5.16 (eda — energy decomposition analysis)."
         },
         "eda_role": {
           "oneOf": [
@@ -5251,11 +5251,11 @@
               "pattern": "^x_[A-Za-z0-9_.-]+$"
             }
           ],
-          "description": "What the term is: one of the names of § 5.16 (`interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference`, `coupling`), or an `x_` name for a term of the producer's own."
+          "description": "What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference` or `coupling`, as QVF spec § 5.16 (eda — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own."
         },
         "energy": {
           "$ref": "#/$defs/ValueWithUnits",
-          "description": "The energy of the term. Producers SHOULD write it in `hartree`; validators accept the energy units of § 4.3 (`hartree`, `ev`, `kcal_per_mol`, `kj_per_mol`)."
+          "description": "The energy of the term. Producers SHOULD write it in `hartree`; validators accept the energy units `hartree`, `ev`, `kcal_per_mol` and `kj_per_mol` of QVF spec § 4.3 (Units and numeric conventions)."
         },
         "fragments": {
           "type": "array",

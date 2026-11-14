@@ -22809,6 +22809,396 @@ inline std::vector<std::pair<std::string, std::string>> transition_density_error
     return errs;
 }
 
+// --- energy decomposition analysis (spec § 5.2, § 5.16) -------------------------
+// Mirrors python/qvf/_eda.py, _eda_errors() and _eda_density_errors().
+
+// Hartree per unit of an energy unit a decomposition may use (§ 4.3), legacy
+// spellings included; false for any other unit.
+inline bool eda_hartree_per_unit(const std::string& u, double& factor) {
+    if (u == "hartree" || u == "Eh" || u == "Ha" || u == "Hartree") factor = 1.0;
+    else if (u == "ev" || u == "eV") factor = 1.0 / 27.211386245988;
+    else if (u == "kcal_per_mol") factor = 1.0 / 627.5094740631;
+    else if (u == "kj_per_mol") factor = 1.0 / 2625.4996394799;
+    else return false;
+    return true;
+}
+
+// An {value, units} energy in hartree; false when it is not one.
+inline bool eda_energy_eh(const Json* e, double& out) {
+    if (!e || !e->is_object()) return false;
+    const Json* v = get(*e, "value");
+    const Json* u = get(*e, "units");
+    double factor = 0.0;
+    if (!v || !v->is_number() || !u || !u->is_string() ||
+        !eda_hartree_per_unit(u->as_string(), factor))
+        return false;
+    out = v->as_double() * factor;
+    return std::isfinite(out);
+}
+
+inline const std::vector<Json>& eda_list(const Json* j) {
+    static const std::vector<Json> empty;
+    return j && j->is_array() ? j->elements() : empty;
+}
+
+// "<index>/<spin>" of every orbital pair; `known` is false without a pair table.
+struct EdaPairs {
+    bool known = false;
+    std::set<std::string> keys;
+};
+
+inline EdaPairs eda_pair_keys(const Json* payload) {
+    EdaPairs out;
+    const Json* pairs = payload ? get(*payload, "orbital_pairs") : nullptr;
+    if (!pairs || !pairs->is_object()) return out;
+    out.known = true;
+    for (const Json& p : eda_list(get(*pairs, "pairs"))) {
+        const Json* idx = get(p, "index");
+        const Json* spin = get(p, "spin");
+        if (is_int(idx))
+            out.keys.insert(std::to_string(idx->as_int()) + "/" +
+                            (spin && spin->is_string() ? spin->as_string() : "restricted"));
+    }
+    return out;
+}
+
+inline std::string eda_join(const std::vector<int64_t>& v) {
+    std::string s;
+    for (size_t k = 0; k < v.size(); ++k) s += (k ? ", " : "") + std::to_string(v[k]);
+    return s;
+}
+
+// Rules of an eda section that JSON Schema cannot express (spec § 5.16): the
+// payload rules, the section's wavefunction_ref and every pair's density_ref.
+inline std::vector<FieldFinding> eda_errors(
+    const std::string& sid, const Json& section, const Json* payload,
+    const std::map<std::string, std::string>& kinds_by_id,
+    const std::map<std::string, int64_t>& n_atoms_of, const std::string* first_structure) {
+    std::vector<FieldFinding> errs;
+    const std::string sec = "section " + quote_str(sid) + ": ";
+    const std::string tail = " (spec § 5.16)";
+    auto bad = [&](const std::string& msg) {
+        errs.push_back({"E_MEMBER_MALFORMED", "", sec + msg + tail});
+    };
+    auto kind_of = [&](const Json* ref) -> std::string {
+        if (!ref || !ref->is_string()) return "";
+        auto it = kinds_by_id.find(ref->as_string());
+        return it == kinds_by_id.end() ? "" : it->second;
+    };
+    if (const Json* ref = get(section, "wavefunction_ref")) {
+        const std::string k = kind_of(ref);
+        if (k != "wavefunction.gto" && k != "wavefunction.bloch")
+            errs.push_back({"E_REF_UNRESOLVED", "wavefunction_ref",
+                            sec + "wavefunction_ref " + show(*ref) +
+                                " does not name a wavefunction.gto or wavefunction.bloch section" + tail});
+    }
+    if (!payload || !payload->is_object()) return errs;
+    const Json& p = *payload;
+    bool have_atoms = false;
+    int64_t n_atoms = 0;
+    {
+        const Json* sref = get(section, "structure_ref");
+        const std::string* structure =
+            sref && sref->is_string() ? &sref->as_string() : (sref ? nullptr : first_structure);
+        if (structure) {
+            auto it = n_atoms_of.find(*structure);
+            if (it != n_atoms_of.end()) {
+                have_atoms = true;
+                n_atoms = it->second;
+            }
+        }
+    }
+
+    // --- fragments
+    const auto& fragments = eda_list(get(p, "fragments"));
+    const int64_t n_frag = static_cast<int64_t>(fragments.size());
+    std::vector<std::set<int64_t>> atoms_of(fragments.size());
+    std::vector<bool> has_atoms(fragments.size(), false);
+    std::vector<size_t> top;
+    for (size_t k = 0; k < fragments.size(); ++k) {
+        const Json* atoms = get(fragments[k], "atoms");
+        if (atoms && atoms->is_array()) {
+            has_atoms[k] = true;
+            for (const Json& a : atoms->elements())
+                if (is_int(&a)) atoms_of[k].insert(a.as_int());
+        }
+        if (fragments[k].is_object() && !fragments[k].has("parent")) top.push_back(k);
+    }
+    const Json* fr = get(p, "fragments");
+    if (fr && fr->is_array() && top.size() < 2)
+        bad("fragments has " + std::to_string(top.size()) +
+            " interacting fragment(s) (no parent); a decomposition needs at least two");
+    std::map<int64_t, size_t> owner;
+    for (size_t k : top)
+        for (int64_t a : atoms_of[k]) {
+            auto it = owner.find(a);
+            if (it != owner.end())
+                bad("fragments[" + std::to_string(k) + "] and fragments[" + std::to_string(it->second) +
+                    "] both contain atom " + std::to_string(a) + "; interacting fragments are disjoint");
+            else
+                owner.emplace(a, k);
+        }
+    for (size_t k = 0; k < fragments.size(); ++k) {
+        if (!fragments[k].is_object()) continue;
+        if (have_atoms)
+            for (int64_t a : atoms_of[k])
+                if (a < 0 || a >= n_atoms)
+                    bad("fragments[" + std::to_string(k) + "].atoms names atom " + std::to_string(a) +
+                        ", but the structure has " + std::to_string(n_atoms) + " atoms");
+        if (const Json* par = get(fragments[k], "parent")) {
+            if (!is_int(par) || par->as_int() < 0 || par->as_int() >= n_frag ||
+                par->as_int() == static_cast<int64_t>(k)) {
+                bad("fragments[" + std::to_string(k) + "].parent " + show(*par) +
+                    " is not the index of another fragment");
+            } else {
+                const size_t pk = static_cast<size_t>(par->as_int());
+                if (std::find(top.begin(), top.end(), pk) == top.end()) {
+                    bad("fragments[" + std::to_string(k) + "].parent " + std::to_string(pk) +
+                        " is itself a sub-fragment; a sub-fragment subdivides an interacting fragment");
+                } else if (has_atoms[k] && has_atoms[pk]) {
+                    std::vector<int64_t> extra;
+                    for (int64_t a : atoms_of[k])
+                        if (!atoms_of[pk].count(a)) extra.push_back(a);
+                    if (!extra.empty())
+                        bad("fragments[" + std::to_string(k) + "] has atoms [" + eda_join(extra) +
+                            "] that its parent fragments[" + std::to_string(pk) + "] does not contain");
+                }
+            }
+        }
+    }
+
+    // --- terms
+    const auto& terms = eda_list(get(p, "terms"));
+    const int64_t n_terms = static_cast<int64_t>(terms.size());
+    std::map<std::string, size_t> keys;
+    size_t interactions = 0;
+    for (size_t k = 0; k < terms.size(); ++k) {
+        const Json& t = terms[k];
+        if (!t.is_object()) continue;
+        const Json* directed = get(t, "directed");
+        const bool is_directed = directed && directed->is_bool() && directed->as_bool();
+        std::string scope = "null";
+        if (const Json* frs = get(t, "fragments"); frs && frs->is_array()) {
+            std::vector<int64_t> ints;
+            for (const Json& f : frs->elements())
+                if (is_int(&f)) {
+                    ints.push_back(f.as_int());
+                    if (f.as_int() < 0 || f.as_int() >= n_frag)
+                        bad("terms[" + std::to_string(k) + "].fragments names fragment " +
+                            std::to_string(f.as_int()) + ", but there are " + std::to_string(n_frag) +
+                            " fragments");
+                }
+            if (is_directed && frs->size() != 2)
+                bad("terms[" + std::to_string(k) + "] is directed but names " + std::to_string(frs->size()) +
+                    " fragments; a directed term names [donor, acceptor]");
+            if (!is_directed) std::sort(ints.begin(), ints.end());
+            scope = "[" + eda_join(ints) + "]";
+        }
+        const Json* par = get(t, "parent");
+        if (par && (!is_int(par) || par->as_int() < 0 || par->as_int() >= n_terms ||
+                    par->as_int() == static_cast<int64_t>(k)))
+            bad("terms[" + std::to_string(k) + "].parent " + show(*par) + " is not the index of another term");
+        const Json* name = get(t, "name");
+        const Json* spin = get(t, "spin");
+        const std::string key = (name ? show(*name) : "") + "|" + scope + "|" + (spin ? show(*spin) : "") +
+                                "|" + (par ? show(*par) : "");
+        auto it = keys.find(key);
+        if (it != keys.end())
+            bad("terms[" + std::to_string(k) + "] repeats terms[" + std::to_string(it->second) +
+                "] (same name, fragments, spin and parent)");
+        else
+            keys.emplace(key, k);
+        if (name && name->is_string() && name->as_string() == "interaction" && !t.has("fragments") &&
+            !t.has("spin") && !t.has("parent"))
+            ++interactions;
+    }
+    for (size_t k = 0; k < terms.size(); ++k) {
+        std::set<int64_t> seen{static_cast<int64_t>(k)};
+        const Json* node = get(terms[k], "parent");
+        while (is_int(node) && node->as_int() >= 0 && node->as_int() < n_terms) {
+            if (!seen.insert(node->as_int()).second) {
+                bad("terms[" + std::to_string(k) + "] is its own ancestor through parent");
+                break;
+            }
+            node = get(terms[static_cast<size_t>(node->as_int())], "parent");
+        }
+    }
+    const Json* tr = get(p, "terms");
+    if (tr && tr->is_array() && interactions != 1)
+        bad("terms has " + std::to_string(interactions) +
+            " interaction terms (name 'interaction' without fragments, spin or parent); exactly one is required");
+
+    // --- units
+    std::vector<std::pair<std::string, const Json*>> energies;
+    for (size_t k = 0; k < fragments.size(); ++k)
+        if (const Json* e = get(fragments[k], "energy"))
+            energies.emplace_back("fragments[" + std::to_string(k) + "].energy", e);
+    if (const Json* en = get(p, "energies"))
+        if (const Json* e = get(*en, "system")) energies.emplace_back("energies.system", e);
+    for (size_t k = 0; k < terms.size(); ++k)
+        if (const Json* e = get(terms[k], "energy"))
+            energies.emplace_back("terms[" + std::to_string(k) + "].energy", e);
+    const auto& rules = eda_list(get(p, "sum_rules"));
+    for (size_t k = 0; k < rules.size(); ++k)
+        if (const Json* e = get(rules[k], "tolerance"))
+            energies.emplace_back("sum_rules[" + std::to_string(k) + "].tolerance", e);
+    const Json* pairs = get(p, "orbital_pairs");
+    if (pairs && pairs->is_object()) {
+        if (const Json* e = get(*pairs, "total")) energies.emplace_back("orbital_pairs.total", e);
+        const auto& pl = eda_list(get(*pairs, "pairs"));
+        for (size_t k = 0; k < pl.size(); ++k)
+            if (const Json* e = get(pl[k], "energy"))
+                energies.emplace_back("orbital_pairs.pairs[" + std::to_string(k) + "].energy", e);
+    }
+    for (const auto& w : energies) {
+        const Json* u = get(*w.second, "units");
+        double factor = 0.0;
+        if (u && u->is_string() && !eda_hartree_per_unit(u->as_string(), factor))
+            errs.push_back({"E_UNIT_CONTRADICTED", "",
+                            sec + w.first + " is in '" + u->as_string() +
+                                "', which is not an energy unit (hartree, ev, kcal_per_mol, kj_per_mol)" + tail});
+    }
+
+    // --- sum rules
+    for (size_t k = 0; k < rules.size(); ++k) {
+        const Json& r = rules[k];
+        if (!r.is_object()) continue;
+        const Json* total = get(r, "total");
+        const Json* parts = get(r, "parts");
+        std::vector<int64_t> all, part_ix, out_of_range;
+        if (is_int(total)) all.push_back(total->as_int());
+        for (const Json& x : eda_list(parts))
+            if (is_int(&x)) {
+                all.push_back(x.as_int());
+                part_ix.push_back(x.as_int());
+            }
+        for (int64_t i : all)
+            if (i < 0 || i >= n_terms) out_of_range.push_back(i);
+        if (!out_of_range.empty()) {
+            bad("sum_rules[" + std::to_string(k) + "] names term(s) [" + eda_join(out_of_range) +
+                "], but there are " + std::to_string(n_terms) + " terms");
+            continue;
+        }
+        if (!is_int(total) || !parts || !parts->is_array()) continue;
+        if (std::find(part_ix.begin(), part_ix.end(), total->as_int()) != part_ix.end()) {
+            bad("sum_rules[" + std::to_string(k) + "] lists its total terms[" +
+                std::to_string(total->as_int()) + "] among its parts");
+            continue;
+        }
+        double tol = 1e-6;
+        if (r.has("tolerance") && !eda_energy_eh(get(r, "tolerance"), tol)) continue;
+        double t_eh = 0.0, sum = 0.0;
+        if (!eda_energy_eh(get(terms[static_cast<size_t>(total->as_int())], "energy"), t_eh)) continue;
+        bool ok = true;
+        for (int64_t i : part_ix) {
+            double v = 0.0;
+            if (!eda_energy_eh(get(terms[static_cast<size_t>(i)], "energy"), v)) {
+                ok = false;
+                break;
+            }
+            sum += v;
+        }
+        if (!ok) continue;
+        const double residual = t_eh - sum;
+        if (std::fabs(residual) > tol)
+            errs.push_back({"E_SUM_RULE", "",
+                            sec + "sum_rules[" + std::to_string(k) + "]: terms[" +
+                                std::to_string(total->as_int()) + "] is " + format_number(t_eh) +
+                                " hartree but its parts [" + eda_join(part_ix) + "] add up to " +
+                                format_number(sum) + " hartree (residual " + format_number(residual) +
+                                ", tolerance " + format_number(tol) + ")" + tail});
+    }
+
+    // --- orbital pairs
+    bool have_k = false;
+    size_t n_k = 0;
+    if (const Json* per = get(p, "periodic"))
+        if (const Json* kp = get(*per, "kpoints"))
+            if (const Json* kps = get(*kp, "kpoints"); kps && kps->is_array()) {
+                have_k = true;
+                n_k = kps->size();
+                if (const Json* w = get(*kp, "weights"); w && w->is_array() && w->size() != n_k)
+                    bad("periodic.kpoints has " + std::to_string(n_k) + " k-points but " +
+                        std::to_string(w->size()) + " weights");
+            }
+    if (pairs && pairs->is_object()) {
+        const Json* type = get(*pairs, "type");
+        if (type && type->is_string() && type->as_string() == "nocv" &&
+            !pairs->has("eigenvalue_convention"))
+            bad("orbital_pairs of type 'nocv' must state eigenvalue_convention");
+        std::map<std::string, size_t> seen;
+        const auto& pl = eda_list(get(*pairs, "pairs"));
+        for (size_t k = 0; k < pl.size(); ++k) {
+            const Json& q = pl[k];
+            if (!q.is_object()) continue;
+            const Json* spin = get(q, "spin");
+            const std::string s = spin && spin->is_string() ? spin->as_string() : "restricted";
+            const Json* index = get(q, "index");
+            const std::string key = (index ? show(*index) : "") + "/" + s;
+            auto it = seen.find(key);
+            if (it != seen.end())
+                bad("orbital_pairs.pairs[" + std::to_string(k) + "] repeats index " +
+                    (index ? show(*index) : "") + " of spin '" + s + "' (pairs[" + std::to_string(it->second) + "])");
+            else
+                seen.emplace(key, k);
+            for (const char* field : {"donor", "acceptor"}) {
+                const Json* fx = get(q, field);
+                if (is_int(fx) && (fx->as_int() < 0 || fx->as_int() >= n_frag))
+                    bad("orbital_pairs.pairs[" + std::to_string(k) + "]." + field + " names fragment " +
+                        std::to_string(fx->as_int()) + ", but there are " + std::to_string(n_frag) + " fragments");
+            }
+            for (const char* field : {"kpoint_eigenvalues", "kpoint_energies"}) {
+                const Json* arr = get(q, field);
+                if (!arr) continue;
+                if (!have_k)
+                    bad("orbital_pairs.pairs[" + std::to_string(k) + "]." + field + " needs periodic.kpoints");
+                else if (arr->is_array() && arr->size() != n_k)
+                    bad("orbital_pairs.pairs[" + std::to_string(k) + "]." + field + " has " +
+                        std::to_string(arr->size()) + " entries for " + std::to_string(n_k) + " k-points");
+            }
+            if (const Json* dref = get(q, "density_ref"); dref && kind_of(dref) != "volume.difference")
+                errs.push_back({"E_REF_UNRESOLVED", "",
+                                sec + "orbital_pairs.pairs[" + std::to_string(k) + "].density_ref " +
+                                    show(*dref) + " does not name a volume.difference section" + tail});
+        }
+    }
+    return errs;
+}
+
+// A volume.difference section's eda_ref names an eda section, and for eda_role
+// orbital_pair its pair_index and pair_spin name one of that section's orbital
+// pairs (spec § 5.2). Returns (field, message) pairs.
+inline std::vector<std::pair<std::string, std::string>> eda_density_errors(
+    const std::string& sid, const Json& section,
+    const std::map<std::string, std::string>& kinds_by_id,
+    const std::map<std::string, EdaPairs>& pairs_of) {
+    std::vector<std::pair<std::string, std::string>> errs;
+    const Json* ref = get(section, "eda_ref");
+    if (!ref) return errs;
+    const std::string sec = "section " + quote_str(sid) + ": ";
+    auto it = ref->is_string() ? kinds_by_id.find(ref->as_string()) : kinds_by_id.end();
+    if (it == kinds_by_id.end() || it->second != "eda") {
+        errs.emplace_back("eda_ref", sec + "eda_ref " + show(*ref) + " does not name an eda section (spec § 5.2)");
+        return errs;
+    }
+    const Json* index = get(section, "pair_index");
+    const Json* role = get(section, "eda_role");
+    if (role && role->is_string() && role->as_string() == "orbital_pair" && !index) {
+        errs.emplace_back("eda_role", sec + "eda_role 'orbital_pair' needs pair_index (spec § 5.2)");
+        return errs;
+    }
+    if (!is_int(index)) return errs;
+    const Json* spin = get(section, "pair_spin");
+    const std::string s = spin && spin->is_string() ? spin->as_string() : "restricted";
+    auto px = pairs_of.find(ref->as_string());
+    if (px == pairs_of.end() || !px->second.known ||
+        !px->second.keys.count(std::to_string(index->as_int()) + "/" + s))
+        errs.emplace_back("pair_index", sec + "pair_index " + std::to_string(index->as_int()) +
+                                            " with pair_spin '" + s + "' names no orbital pair of eda section " +
+                                            quote_str(ref->as_string()) + " (spec § 5.2)");
+    return errs;
+}
+
 // Volume kinds that may name the wavefunction they were computed from
 // (spec § 5.2, Volumes of a wavefunction).
 inline bool is_wavefunction_volume_kind(const std::string& kind) {
@@ -24207,6 +24597,9 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
     std::vector<DeferredSection> nto_sections;
     std::vector<DeferredSection> excited_sections, states_ref_spectra,
         transition_densities, wavefunction_volumes;
+    // Energy decompositions (spec § 5.16) and the difference densities that name them.
+    std::vector<DeferredSection> eda_sections, eda_densities;
+    std::map<std::string, EdaPairs> eda_pairs_of;
     std::map<std::string, Json> cells;          // structure id -> payload
     std::vector<GridMember> grid_members;       // grid payloads, checked last
     std::vector<PropertySection> property_sections;      // checked last
@@ -24586,6 +24979,17 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         }
         if (kind == "volume.transition_density")
             transition_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
+        if (kind == "eda") {
+            auto it = docs.find("decomposition");
+            const bool has_doc = it != docs.end();
+            if (!eda_pairs_of.count(sid))
+                eda_pairs_of.emplace(sid, eda_pair_keys(has_doc ? &it->second : nullptr));
+            eda_sections.push_back(DeferredSection{i, sid, &s, has_doc, has_doc ? it->second : Json()});
+        }
+        if (kind == "volume.difference" &&
+            (s.contains("eda_ref") || s.contains("eda_role") || s.contains("pair_index") ||
+             s.contains("pair_spin")))
+            eda_densities.push_back(DeferredSection{i, sid, &s, false, Json()});
         if (is_wavefunction_volume_kind(kind) && s.contains("wavefunction_ref"))
             wavefunction_volumes.push_back(DeferredSection{i, sid, &s, false, Json()});
         for (const auto& e : volume_errors(sid, kind, members, docs, kinds_by_id))
@@ -24692,6 +25096,17 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
     for (const auto& d : transition_densities)
         for (const auto& e : transition_density_errors(d.sid, *d.section, kinds_by_id,
                                                        state_indices_of))
+            f.error("E_REF_UNRESOLVED", section_pointer(d.index) + "/" + e.first, e.second);
+    // Energy decompositions and their difference densities (spec § 5.2, § 5.16).
+    for (const auto& d : eda_sections)
+        for (const auto& e : eda_errors(d.sid, *d.section, d.has_doc ? &d.doc : nullptr, kinds_by_id,
+                                        n_atoms_of, structure_ids.empty() ? nullptr : &structure_ids[0]))
+            f.error(e.code,
+                    e.field.empty() ? member_pointer(d.index, "decomposition")
+                                    : section_pointer(d.index) + "/" + e.field,
+                    e.message);
+    for (const auto& d : eda_densities)
+        for (const auto& e : eda_density_errors(d.sid, *d.section, kinds_by_id, eda_pairs_of))
             f.error("E_REF_UNRESOLVED", section_pointer(d.index) + "/" + e.first, e.second);
     // Volumes that name their wavefunction and orbital (spec § 5.2).
     for (const auto& d : wavefunction_volumes) {

@@ -497,7 +497,7 @@ Difference density (or any difference scalar field). Structurally identical to v
 | `operand_a` |  | string | Section id of the minuend (the 'a' in a - b). Must reference a section that exists in this archive. |
 | `operand_b` |  | string | Section id of the subtrahend (the 'b' in a - b). Must reference a section that exists in this archive. |
 | `description` |  | string | Optional human-readable description, e.g. 'ρ(product) - ρ(reactant)'. |
-| `eda_ref` |  | string | Id of the `eda` section (§ 5.16) whose decomposition this difference density belongs to. It must name a section of kind `eda` in this archive. |
+| `eda_ref` |  | string | Id of the `eda` section whose decomposition this difference density belongs to. It must name a section of kind `eda` in this archive; see QVF spec § 5.16 (eda — energy decomposition analysis). |
 | `eda_role` |  | one of `"orbital_pair"` \| `"orbital_relaxation"` \| `"interaction"` \| `"polarization"` \| `"charge_transfer"` or string | What the density is within that decomposition: `orbital_pair` (the deformation density of one NOCV or COVP pair, named by `pair_index` and `pair_spin`), `orbital_relaxation` (relaxed minus frozen state), `interaction` (complete system minus the sum of the fragments), `polarization`, `charge_transfer`, or an `x_` name. Requires `eda_ref`. |
 | `pair_index` |  | integer | The `index` of the orbital pair in the `eda` section's `orbital_pairs`. Required when `eda_role` is `orbital_pair` (checked by validators); requires `eda_ref`. |
 | `pair_spin` |  | one of `"restricted"` \| `"alpha"` \| `"beta"` | The `spin` of that orbital pair; absent means `restricted`. Requires `pair_index`. |
@@ -3738,6 +3738,91 @@ An energy decomposition analysis (EDA): the partition of the interaction energy 
 |---|---|---|---|
 | `wavefunction_ref` |  | string | Id of the `wavefunction.gto` or `wavefunction.bloch` section of the complete system, the relaxed state the decomposition ends in. It must name a section of one of these kinds in this archive. See QVF spec § 5.16 (eda — energy decomposition analysis). |
 
+**Example** (from `conformance/corpus/eda_periodic_peda.qvf`, long arrays shortened)
+
+Manifest section:
+
+```json
+{
+  "id": "eda",
+  "kind": "eda",
+  "members": {
+    "decomposition": {
+      "path": "eda/decomposition.json",
+      "format": "json",
+      "sha256": "7038c451f18f8d6fdda1cb8c4c4a5dbaee35db1e6cedfb5238bf3f1c6ea9841b",
+      "size": 2209
+    }
+  }
+}
+```
+
+`decomposition` payload (`eda/decomposition.json`):
+
+```json
+{
+  "scheme": "ziegler-rauk",
+  "variant": "peda",
+  "method": {"method": "rks", "functional": "pbe", "basis": "def2-svp", "dispersion": "d3bj"},
+  "fragments": [
+    {
+      "label": "h-BN",
+      "atoms": [0, 1, 2, 3, 4, 5, 6, 7],
+      "basis": "own"
+    },
+    {
+      "label": "H2O",
+      "atoms": [8, 9, 10],
+      "basis": "own"
+    }
+  ],
+  "terms": [
+    {
+      "name": "interaction",
+      "energy": {"value": -0.0073305666, "units": "hartree"}
+    },
+    {
+      "name": "electrostatic",
+      "energy": {"value": -0.0062150456, "units": "hartree"}
+    },
+    {
+      "name": "pauli",
+      "energy": {"value": 0.0089241681, "units": "hartree"}
+    },
+    "… 2 more"
+  ],
+  "sum_rules": [
+    {
+      "total": 0,
+      "parts": [1, 2, 3, 4]
+    }
+  ],
+  "orbital_pairs": {
+    "type": "nocv",
+    "eigenvalue_convention": "per_spin",
+    "pairs": [
+      {
+        "index": 1,
+        "eigenvalue": 0.031,
+        "energy": {"…": "2 keys"},
+        "kpoint_eigenvalues": ["… 4 items"],
+        "kpoint_energies": ["… 4 items"]
+      }
+    ]
+  },
+  "periodic": {
+    "kpoints": {
+      "kpoints": [
+        ["… 3 items"],
+        ["… 3 items"],
+        ["… 3 items"],
+        "… 1 more"
+      ],
+      "weights": [0.25, 0.25, 0.25, 0.25]
+    },
+… 3 more lines
+```
+
 ## Payload definitions
 
 The JSON payload definitions named in the member tables, in alphabetical order.
@@ -4690,8 +4775,8 @@ One energy term of an `EdaPayload`, named elsewhere by its 0-based index in `ter
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `name` | yes | one of 19 values or string | What the term is: one of the names of § 5.16 (`interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference`, `coupling`), or an `x_` name for a term of the producer's own. |
-| `energy` | yes | [`ValueWithUnits`](#def-valuewithunits) | The energy of the term. Producers SHOULD write it in `hartree`; validators accept the energy units of § 4.3 (`hartree`, `ev`, `kcal_per_mol`, `kj_per_mol`). |
+| `name` | yes | one of 19 values or string | What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference` or `coupling`, as QVF spec § 5.16 (eda — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own. |
+| `energy` | yes | [`ValueWithUnits`](#def-valuewithunits) | The energy of the term. Producers SHOULD write it in `hartree`; validators accept the energy units `hartree`, `ev`, `kcal_per_mol` and `kj_per_mol` of QVF spec § 4.3 (Units and numeric conventions). |
 | `fragments` |  | array[1..] of integer | Indices in `fragments` the term belongs to: absent for a term of the whole interaction, one index for a term of one fragment (e.g. `preparation`), two for a pair term (e.g. the pair electrostatics of a local energy decomposition) and more for an n-body term. Without `directed` the order carries no meaning. |
 | `directed` |  | boolean | True when `fragments` is an ordered [donor, acceptor] pair, as for the charge transfer from one fragment to another. Absent means false. |
 | `spin` |  | one of `"alpha"` \| `"beta"` | Spin channel of a term that the producer resolves by spin; absent for a spin-summed term. |
