@@ -48,6 +48,7 @@ import zipfile
 from collections import Counter
 from typing import Any, Optional
 
+from . import _eda
 from . import _kinds as qvf_kinds
 
 
@@ -1224,6 +1225,70 @@ def _transition_density_errors(sid: str, section: dict,
         return [("state_index",
                  sec + f"state_index {state} names no state of excited_states "
                        f"section {ref!r} (spec § 5.2)")]
+    return []
+
+
+def _eda_errors(sid: str, section: dict, payload: Any,
+                kinds_by_id: dict[str, str], n_atoms_of: dict[str, int],
+                first_structure: Optional[str]) -> list[tuple[str, str, str]]:
+    """Rules of an ``eda`` section that JSON Schema cannot express (spec
+    § 5.16): the payload rules of :func:`qvf._eda.payload_errors`, the
+    section's ``wavefunction_ref`` and every pair's ``density_ref``. Returns
+    ``(code, field, message)`` triples; ``field`` is the section field a
+    finding is about, or ``""`` for the ``decomposition`` member."""
+    sec = f"section {sid!r}: "
+    errors: list[tuple[str, str, str]] = []
+    if "wavefunction_ref" in section:
+        ref = section["wavefunction_ref"]
+        if not isinstance(ref, str) or kinds_by_id.get(ref) not in (
+                "wavefunction.gto", "wavefunction.bloch"):
+            errors.append(("E_REF_UNRESOLVED", "wavefunction_ref",
+                           sec + f"wavefunction_ref {ref!r} does not name a "
+                                 f"wavefunction.gto or wavefunction.bloch section "
+                                 f"(spec § 5.16)"))
+    ref = section.get("structure_ref", first_structure)
+    n_atoms = n_atoms_of.get(ref) if isinstance(ref, str) else None
+    for code, msg in _eda.payload_errors(payload, n_atoms):
+        errors.append((code, "", sec + msg))
+    pairs = payload.get("orbital_pairs") if isinstance(payload, dict) else None
+    if isinstance(pairs, dict) and isinstance(pairs.get("pairs"), list):
+        for k, pair in enumerate(pairs["pairs"]):
+            if isinstance(pair, dict) and "density_ref" in pair:
+                dref = pair["density_ref"]
+                if not isinstance(dref, str) or kinds_by_id.get(dref) != "volume.difference":
+                    errors.append(("E_REF_UNRESOLVED", "",
+                                   sec + f"orbital_pairs.pairs[{k}].density_ref "
+                                         f"{dref!r} does not name a volume.difference "
+                                         f"section (spec § 5.16)"))
+    return errors
+
+
+def _eda_density_errors(sid: str, section: dict, kinds_by_id: dict[str, str],
+                        pairs_of: dict[str, Optional[set[tuple[int, str]]]]
+                        ) -> list[tuple[str, str]]:
+    """A ``volume.difference`` section's ``eda_ref`` names an ``eda`` section,
+    and for ``eda_role`` ``orbital_pair`` its ``pair_index`` and ``pair_spin``
+    name one of that section's orbital pairs (spec § 5.2, § 5.16). Returns
+    ``(field, message)`` pairs."""
+    sec = f"section {sid!r}: "
+    if "eda_ref" not in section:
+        return []  # the schema requires eda_ref with the other fields
+    ref = section["eda_ref"]
+    if not isinstance(ref, str) or kinds_by_id.get(ref) != "eda":
+        return [("eda_ref", sec + f"eda_ref {ref!r} does not name an eda section "
+                                  f"(spec § 5.2)")]
+    index = section.get("pair_index")
+    if section.get("eda_role") == "orbital_pair" and index is None:
+        return [("eda_role", sec + "eda_role 'orbital_pair' needs pair_index "
+                                   "(spec § 5.2)")]
+    if index is None:
+        return []
+    spin = section.get("pair_spin", "restricted")
+    keys = pairs_of.get(ref)
+    if _is_int(index) and (keys is None or (index, spin) not in keys):
+        return [("pair_index", sec + f"pair_index {index} with pair_spin {spin!r} "
+                                     f"names no orbital pair of eda section {ref!r} "
+                                     f"(spec § 5.2)")]
     return []
 
 
@@ -2597,6 +2662,11 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
     property_sections: list[tuple] = []     # properties.*, checked last
     periodic_of: dict[str, bool] = {}  # structure id -> any(pbc)
     bloch_sections: list[tuple] = []        # wavefunction.bloch, checked last
+    # Energy decompositions (spec § 5.16) and the difference densities that
+    # name them, checked once every payload has been read.
+    eda_sections: list[tuple] = []
+    eda_densities: list[tuple] = []
+    eda_pairs_of: dict[str, Optional[set[tuple[int, str]]]] = {}
     # Section id -> kind, for reference resolution (spec § 4.1, § 5.5). With
     # duplicate ids (an error of its own) the first section with the id wins.
     section_kinds: dict[str, Any] = {}
@@ -2863,6 +2933,13 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             states_ref_spectra.append((i, sid, docs["spectrum"]))
         if kind == "volume.transition_density":
             transition_densities.append((i, sid, s))
+        if kind == "eda":
+            eda_sections.append((i, sid, s, docs.get("decomposition")))
+            if sid not in eda_pairs_of:
+                eda_pairs_of[sid] = _eda.pair_keys(docs.get("decomposition"))
+        if kind == "volume.difference" and any(
+                f in s for f in ("eda_ref", "eda_role", "pair_index", "pair_spin")):
+            eda_densities.append((i, sid, s))
         if kind in _WAVEFUNCTION_VOLUME_KINDS and "wavefunction_ref" in s:
             wavefunction_volumes.append((i, sid, kind, s))
         for code, role, msg in _volume_errors(sid, kind, members, docs,
@@ -2950,6 +3027,18 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
         for i, sid, s in transition_densities:
             for field, msg in _transition_density_errors(sid, s, kinds_by_id,
                                                          state_indices_of):
+                out.error("E_REF_UNRESOLVED", _pointer("sections", i, field), msg)
+        # Energy decompositions and their difference densities (spec § 5.2,
+        # § 5.16): the structure and the sections they name may come later.
+        first_structure = structure_ids[0] if structure_ids else None
+        for i, sid, s, payload in eda_sections:
+            for code, field, msg in _eda_errors(sid, s, payload, kinds_by_id,
+                                                n_atoms_of, first_structure):
+                where = (_pointer("sections", i, field) if field
+                         else _pointer("sections", i, "members", "decomposition"))
+                out.error(code, where, msg)
+        for i, sid, s in eda_densities:
+            for field, msg in _eda_density_errors(sid, s, kinds_by_id, eda_pairs_of):
                 out.error("E_REF_UNRESOLVED", _pointer("sections", i, field), msg)
         # Volumes that name their wavefunction and orbital (spec § 5.2).
         for i, sid, kind, s in wavefunction_volumes:

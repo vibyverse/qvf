@@ -1174,7 +1174,7 @@ subsections give the payload shapes that matter for interoperability.
 | `volume.vector` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data` (float32/64 [nx, ny, nz, 3], `$defs/Volume4DVectorBinary`) |
 | `volume.complex` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data` (float32/64 [nx, ny, nz, 2], last axis [re, im], `$defs/Volume4DComplexBinary`) |
 | `volume.series` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data` (float32/64 [n, nx, ny, nz]) + `axis` (JSON, `$defs/VolumeSeriesAxisPayload`) |
-| `volume.difference` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data`; optional section fields `operand_a`, `operand_b`, `description` |
+| `volume.difference` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data`; optional section fields `operand_a`, `operand_b`, `description`, and `eda_ref`, `eda_role`, `pair_index`, `pair_spin` (§ 5.16) |
 | `volume.transition_density` | `grid` (JSON, `$defs/VolumeGridPayload`) + `data`; optional section fields `excited_states_ref`, `state_index` |
 | `wavefunction.gto` | `basis` (JSON, `$defs/BasisPayload`) + `mo_metadata` (JSON, `$defs/MoMetadataPayload`) + `mo_coefficients` **or** (`mo_coefficients_alpha` + `mo_coefficients_beta`) (float64 binary); optional `overlap` and `density_matrix` **or** (`density_matrix_alpha` + `density_matrix_beta`) (float64 [n_ao, n_ao], `$defs/WavefunctionAoMatrix`) |
 | `wavefunction.bloch` (provisional) | `basis` (JSON, `$defs/BasisPayload`) + `kpoints` (JSON, `$defs/BlochKpointsPayload`) + `mo_metadata` (JSON, `$defs/BlochMoMetadataPayload`) + `mo_coefficients` (float64 [n_k, n_spin, n_mo, n_ao, 2]) + `energies` + `occupations` (float64 [n_k, n_spin, n_mo]) |
@@ -1208,6 +1208,7 @@ subsections give the payload shapes that matter for interoperability.
 | `properties.elastic` | `properties` (JSON, `$defs/ElasticPropertiesPayload`) |
 | `properties.dielectric` | `properties` (JSON, `$defs/DielectricPropertiesPayload`) |
 | `preview` | `thumbnail` (opaque binary, `image/png` or `image/jpeg`); optional `image` (opaque binary, `image/svg+xml`, `image/png` or `image/jpeg`); both with `media_type` (§ 5.15) |
+| `eda` | `decomposition` (JSON, `$defs/EdaPayload`); optional section field `wavefunction_ref` (§ 5.16) |
 | `x_<vendor>.*` | any mix of valid JSON/binary members |
 
 **Payload definitions.** A JSON member whose section kind and role have a
@@ -1645,6 +1646,19 @@ that names no `structure` section is an unresolved reference.
 
 `volume.difference` may add `operand_a` and `operand_b` (section ids); if one is
 present both **MUST** be. Sign convention: `data = operand_a − operand_b`.
+
+A `volume.difference` that belongs to an energy decomposition (§ 5.16) names
+it with four more optional section fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `eda_ref` | string | `id` of the `eda` section. |
+| `eda_role` | string | What the density is in that decomposition: `orbital_pair` (the deformation density of one NOCV or COVP pair), `orbital_relaxation` (the relaxed state minus the frozen state), `interaction` (the complete system minus the sum of the fragments), `polarization`, `charge_transfer`, or an `x_` name. Requires `eda_ref`. |
+| `pair_index` | integer ≥ 1 | The `index` of the pair in the decomposition's `orbital_pairs`. Required when `eda_role` is `orbital_pair`; requires `eda_ref`. |
+| `pair_spin` | string | `restricted` (absent means this), `alpha` or `beta`: the `spin` of that pair. Requires `pair_index`. |
+
+A validator checks that `eda_ref` names an `eda` section and that
+`pair_index` and `pair_spin` name one of its pairs (§ 6).
 
 `volume.transition_density` holds the transition density of one electronic
 excitation, ρ₀ₙ(**r**): the one-particle transition density between the
@@ -3908,6 +3922,228 @@ raster `media_type`, and that an `image/svg+xml` member decodes as UTF-8 and
 contains an `<svg` element (§ 6). The `media_type` values themselves are
 checked by the JSON Schema.
 
+### 5.16 `eda` — energy decomposition analysis
+
+An `eda` section carries one energy decomposition analysis: the partition of
+the interaction energy of two or more **fragments** into named **terms**. The
+kind is general across schemes:
+- Ziegler–Rauk EDA and the extended transition state (ETS), including the periodic EDA of slabs and crystals;
+- LMO-EDA, GKS-EDA and Kitaura–Morokuma;
+- ALMO-EDA;
+- symmetry-adapted perturbation theory (SAPT, including functional-group partitions such as F-SAPT);
+- the local energy decomposition of coupled-cluster energies (LED);
+- many-body expansions.
+
+Every scheme writes the same three things: the fragments, the terms with what
+each belongs to, and the additivities the scheme guarantees. A
+decomposition into NOCV or COVP orbital pairs adds a table of pairs, whose
+deformation densities are `volume.difference` sections (§ 5.2). The kind is
+provisional (§ 7.5): it was promoted from the first-party `x_vibeqc.peda`
+section by maintainer decision. The orbitals of the pairs are not part of the
+kind yet; a later revision may add them as an optional member.
+
+The section has one member:
+
+| Member | Format | Required | Meaning |
+|---|---|:--:|---|
+| `decomposition` | JSON, `$defs/EdaPayload` (strict) | **yes** | The decomposition (tables below). |
+
+Besides the generic fields of § 4.1, whose `structure_ref` names the structure
+the fragments' atom indices address (else the first structure, § 4.1), the
+section may carry one field of its own, a peer of `members`:
+
+| Section field | Type | Meaning |
+|---|---|---|
+| `wavefunction_ref` | string | `id` of the `wavefunction.gto` or `wavefunction.bloch` section of the complete system in its relaxed state. |
+
+Energies are `{value, units}` objects (`$defs/ValueWithUnits`) in one of the
+energy units of § 4.3 (`hartree`, `ev`, `kcal_per_mol`, `kj_per_mol`).
+Producers **SHOULD** write `hartree`, and **MAY** use the unit they print,
+so that a decomposition reads as the program reported it. A consumer
+converts units before comparing or adding energies.
+
+Payload `decomposition` (`$defs/EdaPayload`, strict):
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `scheme` | string | **yes** | The partition family: `ziegler-rauk`, `lmo-eda`, `gks-eda`, `kitaura-morokuma`, `almo-eda`, `sapt`, `led`, `many-body`, or an `x_` name. |
+| `variant` | string | no | The producer's name of the flavour, e.g. `eda-nocv`, `peda`, `sapt0`, `fisapt0`, `almo-eda2`. |
+| `method` | object (`$defs/EdaMethod`) | no | `method`, `functional`, `basis`, `dispersion`: strings, lowercase as in `provenance`. |
+| `fragments` | object[] (`$defs/EdaFragment`) | **yes** | At least two interacting fragments, then any sub-fragments (below). Other fields name a fragment by its 0-based index in this array. |
+| `energies` | object | no | `system`: the energy of the complete system. The energies of the fragments are on the fragments. |
+| `terms` | object[] (`$defs/EdaTerm`) | **yes** | The energy terms (below). Other fields name a term by its 0-based index in this array. |
+| `sum_rules` | object[] (`$defs/EdaSumRule`) | no | The additivities that hold between the terms (below). |
+| `orbital_pairs` | object (`$defs/EdaOrbitalPairs`) | no | The NOCV or COVP pairs (below). |
+| `periodic` | object (`$defs/EdaPeriodic`) | no | The k-point sampling of a periodic decomposition (below). |
+| `notes` | string | no | Free text for people. |
+
+**Fragments** (`$defs/EdaFragment`, strict). An **interacting fragment** has
+no `parent`. The interacting fragments are disjoint, and there are at least
+two of them. They need not cover every atom: atoms in none of them are an
+environment that the decomposition does not split. A **sub-fragment** names
+the interacting fragment it subdivides in `parent`, and its atoms are a
+subset of the parent's. Sub-fragments express a partition finer than the
+interacting fragments, such as the functional groups of an F-SAPT analysis.
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `label` | string | **yes** | Display name, e.g. `"H2O"`. |
+| `atoms` | integer[] | **yes** | 0-based indices into the atoms of the section's structure, unique. |
+| `parent` | integer | no | Index of the fragment this one subdivides. |
+| `charge` | integer | no | Net charge, in units of e. |
+| `multiplicity` | integer ≥ 1 | no | Spin multiplicity 2S + 1. |
+| `spin_flip` | boolean | no | True when the fragment enters the decomposition with the spins of its unpaired electrons reversed, as for one radical of an electron-sharing bond. |
+| `basis` | string | no | `own` (the fragment's own functions), `supersystem` (the functions of the complete system on ghost atoms: counterpoise), or an `x_` name. |
+| `state` | string | no | Free-text description of the fragment state used, e.g. a prepared occupation. |
+| `energy` | `{value, units}` | no | Energy of the fragment in the state the decomposition starts from. |
+
+**Terms** (`$defs/EdaTerm`, strict). Each term has a `name` and an `energy`.
+Three optional fields say what the term belongs to: the whole interaction,
+one fragment, a pair of fragments, or a part of another term.
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `name` | string | **yes** | A term name of the table below, or an `x_` name for a term of the producer's own. |
+| `energy` | `{value, units}` | **yes** | The energy of the term. |
+| `fragments` | integer[] | no | Absent: a term of the whole interaction. One index: a term of one fragment, such as its `preparation`. Two: a pair term, such as the pair electrostatics of a local energy decomposition. More: an n-body term. |
+| `directed` | boolean | no | True when `fragments` is an ordered [donor, acceptor] pair, as for the charge transfer from one fragment to another. Without it the order of `fragments` carries no meaning. |
+| `spin` | string | no | `alpha` or `beta`, for a term the producer resolves by spin. |
+| `parent` | integer | no | Index of the term this one is a part of, e.g. a SAPT order within `electrostatic`. |
+| `order` | string | no | The perturbation order or level as the producer writes it, e.g. `"(10)"` or `"(20),r"`. |
+| `label` | string | no | The producer's own name of the term, for display, e.g. `"Pauli Repulsion"`. |
+
+The combination of `name`, `fragments` (compared as a set unless `directed`),
+`spin` and `parent` is unique within a payload. Exactly one term is the
+**interaction**: `name` `interaction`, without `fragments`, `spin` or
+`parent`. It is the energy being decomposed, the energy of the complete
+system minus the energies of the interacting fragments, with or without
+their preparation, as the scheme defines it.
+
+| Term name | Meaning |
+|---|---|
+| `interaction` | The interaction energy being decomposed. |
+| `electrostatic` | Classical electrostatic interaction of the unperturbed fragment charge densities. |
+| `pauli` | Pauli (exchange) repulsion of the antisymmetrised fragment product, as Ziegler–Rauk schemes define it: in Kohn–Sham schemes it includes the exchange–correlation change of the frozen state. |
+| `exchange` | Exchange energy: the LMO-EDA exchange, or the first-order exchange of SAPT. |
+| `repulsion` | The repulsion part of LMO-EDA (`exchange` + `repulsion` corresponds to a Ziegler–Rauk `pauli`). |
+| `orbital` | Orbital interaction (relaxation from the frozen to the final state): Ziegler–Rauk and ETS. |
+| `polarization` | Intra-fragment relaxation in the field of the other fragments (ALMO-EDA, Kitaura–Morokuma, LMO-EDA). |
+| `charge_transfer` | Inter-fragment orbital relaxation; with `directed`, from `fragments[0]` to `fragments[1]`. |
+| `induction` | SAPT induction. |
+| `dispersion` | Dispersion: an empirical correction (D3, D4), SAPT dispersion, or the dispersion part of a correlated decomposition. |
+| `exchange_induction` | SAPT exchange–induction. |
+| `exchange_dispersion` | SAPT exchange–dispersion. |
+| `delta_hf` | The SAPT δHF correction of higher-order induction. |
+| `preparation` | Energy to bring a fragment from its ground state into the state it enters the decomposition in (geometric strain plus electronic preparation). |
+| `frozen` | Frozen-density interaction, as one term (ALMO-EDA). |
+| `exchange_correlation` | Exchange–correlation part of a term, e.g. ORCA's ΔE⁰(XC). |
+| `correlation` | Correlation contribution of a correlated decomposition (LED, double hybrids). |
+| `reference` | Contribution of the reference determinant of a correlated decomposition (LED). |
+| `coupling` | A coupling or remainder term, e.g. the Kitaura–Morokuma mixing term. |
+
+**Sum rules** (`$defs/EdaSumRule`, strict). Schemes differ in what adds up
+to what: a Ziegler–Rauk interaction is `electrostatic` + `pauli` + `orbital`
++ `dispersion`, a SAPT order is the sum of its corrections, and the pair
+terms of a local energy decomposition add up to its interaction. Consumers
+**MUST NOT** assume an additivity that the payload does not declare. A
+producer states each one it guarantees:
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `total` | integer | **yes** | Index of the term the parts add up to. |
+| `parts` | integer[] | **yes** | Indices of the terms whose energies add up to the energy of `total`. |
+| `tolerance` | `{value, units}` | no | Largest allowed \|total − Σ parts\|. Absent: 1e-6 hartree, enough for energies printed to six decimals. |
+
+**Orbital pairs** (`$defs/EdaOrbitalPairs`, strict). The table of an ETS-NOCV
+or ALMO-COVP analysis:
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `type` | string | **yes** | `nocv` (natural orbitals for chemical valence, the eigenvectors of the deformation density), `covp` (complementary occupied–virtual pairs), or an `x_` name. |
+| `eigenvalue_convention` | string | **yes** for `nocv` | `per_spin`: the eigenvalue of one spin channel's deformation density, as ADF and BAND print it (a restricted pair moves 2ν electrons); `spin_summed`: the eigenvalue of the total deformation density. |
+| `threshold` | number ≥ 0 | no | The smallest eigenvalue listed. |
+| `total` | `{value, units}` | no | The sum of the energies of all pairs, listed or below `threshold`: for NOCVs, the ETS estimate of the `orbital` term. |
+| `pairs` | object[] | **yes** | The listed pairs (`$defs/EdaOrbitalPair`, below). |
+
+| Pair field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `index` | integer ≥ 1 | **yes** | Number of the pair within its spin channel, unique per spin, usually in order of descending eigenvalue. |
+| `spin` | string | no | `restricted` (absent means this: the energy covers both spins), `alpha` or `beta`. |
+| `eigenvalue` | number ≥ 0 | **yes** | The magnitude \|ν\| of the ±ν eigenvalue pair, in electrons, by `eigenvalue_convention`. |
+| `energy` | `{value, units}` | **yes** | Orbital-interaction energy of the pair, negative when it stabilises. |
+| `donor`, `acceptor` | integer | no | Fragment indices, for pairs that have a direction (COVP). |
+| `kpoint_eigenvalues` | number[] | no | Per k-point of `periodic.kpoints`, in its order: the eigenvalue of the pair at that k-point. |
+| `kpoint_energies` | number[] | no | Per k-point: the weighted energy contribution, in the units of `energy`, summing to `energy`. |
+| `density_ref` | string | no | `id` of the `volume.difference` section holding the deformation density of the pair. |
+| `label` | string | no | Display label, e.g. `"σ donation"`. |
+
+The deformation density Δρₖ of a NOCV pair is −νₖ|ψ₋ₖ|² + νₖ|ψ₊ₖ|²,
+positive where the pair accumulates charge. A `volume.difference` section
+holding it names its decomposition with `eda_ref`, `eda_role: "orbital_pair"`,
+`pair_index` and `pair_spin` (§ 5.2).
+
+**Periodic decompositions** (`$defs/EdaPeriodic`, strict). The section's structure is periodic.
+
+| Field | Type | Required | Meaning |
+|---|---|:--:|---|
+| `kpoints` | object (`$defs/BlochKpointsPayload`) | **yes** | The k-points and weights, as in `wavefunction.bloch` (§ 5.3.1). |
+| `mesh` | integer[3] | no | Monkhorst–Pack mesh dimensions, when the k-points are one. |
+| `orbital_pairs_gamma_only` | boolean | no | True when the orbital pairs were computed at Γ only while the energies use all k-points. |
+
+A Ziegler–Rauk decomposition with NOCV pairs (water dimer, PBE-D3(BJ), two
+pairs listed):
+
+```json
+{
+  "scheme": "ziegler-rauk",
+  "variant": "eda-nocv",
+  "method": {"method": "rks", "functional": "pbe", "basis": "tz2p", "dispersion": "d3bj"},
+  "fragments": [
+    {"label": "H2O donor", "atoms": [0, 1, 2], "charge": 0, "multiplicity": 1, "basis": "own"},
+    {"label": "H2O acceptor", "atoms": [3, 4, 5], "charge": 0, "multiplicity": 1, "basis": "own"}
+  ],
+  "terms": [
+    {"name": "interaction", "energy": {"value": -0.008043, "units": "hartree"}},
+    {"name": "electrostatic", "energy": {"value": -0.012541, "units": "hartree"}},
+    {"name": "pauli", "energy": {"value": 0.013198, "units": "hartree"}},
+    {"name": "orbital", "energy": {"value": -0.007343, "units": "hartree"}},
+    {"name": "dispersion", "energy": {"value": -0.001357, "units": "hartree"}}
+  ],
+  "sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}],
+  "orbital_pairs": {
+    "type": "nocv", "eigenvalue_convention": "per_spin",
+    "total": {"value": -0.007301, "units": "hartree"},
+    "pairs": [
+      {"index": 1, "eigenvalue": 0.0451, "energy": {"value": -0.004902, "units": "hartree"},
+       "density_ref": "nocv_1"},
+      {"index": 2, "eigenvalue": 0.0168, "energy": {"value": -0.001093, "units": "hartree"}}
+    ]
+  }
+}
+```
+
+A SAPT0 decomposition names the corrections of each order as parts of the
+four SAPT terms:
+
+```json
+"terms": [
+  {"name": "interaction", "energy": {"value": -0.007830, "units": "hartree"}},
+  {"name": "electrostatic", "energy": {"value": -0.013370, "units": "hartree"}},
+  {"name": "exchange", "energy": {"value": 0.013610, "units": "hartree"}},
+  {"name": "induction", "energy": {"value": -0.003900, "units": "hartree"}},
+  {"name": "dispersion", "energy": {"value": -0.004170, "units": "hartree"}},
+  {"name": "x_ind20r", "parent": 3, "order": "(20),r", "label": "Ind20,r", "energy": {"value": -0.004500, "units": "hartree"}},
+  {"name": "exchange_induction", "parent": 3, "order": "(20),r", "energy": {"value": 0.002400, "units": "hartree"}},
+  {"name": "delta_hf", "parent": 3, "energy": {"value": -0.001800, "units": "hartree"}}
+],
+"sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}, {"total": 3, "parts": [5, 6, 7]}]
+```
+
+A local energy decomposition of three fragments lists pair terms
+(`"fragments": [0, 1]`, …) and the `preparation` of each fragment
+(`"fragments": [0]`, …), with a sum rule from those terms to the
+interaction.
+
 ---
 
 ## 6. Validation semantics
@@ -4133,6 +4369,32 @@ Members and kind-specific rules:
 * A one-dimensional spectrum's `frequencies`, `intensities` and, when
   present, `x` have the same length — a part of `SpectrumPayload` that JSON
   Schema cannot express (§ 5.4).
+* `eda` (§ 5.16): there are at least two interacting fragments (no
+  `parent`), their atom sets are disjoint, every atom index addresses an atom
+  of the section's structure when that resolves (the section-level
+  `structure_ref`, else the first structure), and a sub-fragment's `parent`
+  is an interacting fragment whose atoms include the sub-fragment's. Every
+  term's `fragments` and `parent` index is in range, no term is its own
+  ancestor, and the key of § 5.16 (`name`, `fragments`, `spin`, `parent`) is
+  unique. Exactly one term is the interaction (`interaction` without
+  `fragments`, `spin` or `parent`). The indices of every sum rule are in
+  range, and the pair `index` values are unique per `spin`, `donor` and
+  `acceptor` are in range, and a `nocv` table states its
+  `eigenvalue_convention`. Each violation is `E_MEMBER_MALFORMED`. When
+  `periodic` is present, every `kpoint_eigenvalues` and `kpoint_energies`
+  array has one entry per k-point (`E_MEMBER_MALFORMED`). Every energy is in
+  an energy unit (`hartree`, `ev`, `kcal_per_mol`, `kj_per_mol`, or a legacy
+  spelling of `hartree` or `ev`), or the finding is `E_UNIT_CONTRADICTED`.
+  Every declared sum rule holds: the energies of `parts`, converted to
+  hartree, add up to that of `total` within `tolerance` (default 1e-6
+  hartree), or the finding is `E_SUM_RULE`. The section's `wavefunction_ref`
+  names a `wavefunction.gto` or `wavefunction.bloch` section, and every pair's
+  `density_ref` a `volume.difference` section, or the finding is
+  `E_REF_UNRESOLVED`.
+* A `volume.difference` section's `eda_ref`, when present, names an `eda`
+  section; when `eda_role` is `orbital_pair` the section has a `pair_index`,
+  and `pair_index` with `pair_spin` (absent: `restricted`) names a pair of
+  that section's `orbital_pairs`. A violation is `E_REF_UNRESOLVED`.
 * **Warning:** every declared unit is a unit name of § 4.3 (*Declared
   units*): each value of the `units` object of a JSON member of a canonical
   kind, and of the `meta.units` object of an `excited_states` payload; a
@@ -4698,7 +4960,7 @@ finding about a member's payload points at the member spec that declares it.
 | `E_RESERVED_ID` | error | § 3.1, § 3.4 | A section `id` is `auto_open`, `bookmarks`, `camera` or `crossfade`. |
 | `E_KIND_UNKNOWN` | error | § 7.3 | A `kind` is neither canonical nor `x_<vendor>.*`. |
 | `E_CRITICAL_UNDECLARED` | error | § 7.4 | A `critical: true` vendor section's namespace is not declared in root `extensions`. |
-| `E_MEMBER_MALFORMED` | error | § 4.2, § 5.1, § 5.2, § 5.3, § 5.3.1, § 5.5, § 5.6, § 5.7, § 5.10, § 5.11, § 5.12, § 5.13, § 5.14, § 5.15 | A member spec is not an object or has no string `path`; a binary member's `shape` is not a list of non-negative integers; a pair of a standalone `bonds` section names an atom index `i` or `j` that is not an atom of the structure its `structure_ref` names; a `wavefunction.gto` coefficient member's rank disagrees with `complex`, a `symmetry_labels` array differs in length from its `energies`, an `overlap` or density member is not `[n_ao, n_ao]` or does not pair with the coefficient members, or `basis.n_electrons` differs from the sum of the occupations; a per-frame member of a `trajectory` or `reaction.path` disagrees in shape with its `coords`, its `coords` are float32 without `metadata.precision` `"float32"` (or `precision` names the other dtype), its binary `energies` disagree with `metadata.energies`, or a trajectory carries `lattice` without `metadata.pbc` or a `true` `pbc` entry without `lattice`; the `projections` or `occupations` of a `bands` section disagree in shape with its `eigenvalues`; a `custom.<name>` member of an `atom_properties` section has no entry in the section's `meta` member; a `forces` `gradient` or `stress`, a `hessian` `matrix` or its `meta.atom_masses_amu` has the wrong shape or disagrees with the atom count of the section's structure; the `states` of an `excited_states` section repeat an `index` or list it out of order, disagree in number with `meta.n_states`, or have a contribution whose `from_mo` or `to_mo` is not a row of the reference wavefunction; the `data` of a `volume.laplacian`, `volume.vector`, `volume.complex` or `volume.series` section has the wrong rank or trailing axis, or a `volume.series` `axis` has not one `values` (or `labels`) entry per slab; a periodic grid axis is aperiodic in the grid's structure or does not span its lattice vector; a `properties.elastic` `stiffness` or `compliance` is not symmetric; a `properties.dielectric` `static` is not `electronic` + `ionic`, or its `born_charges` do not number the atoms of the section's structure; the members of a `wavefunction.bloch` section disagree in shape, its k-point weights do not sum to 1, or its structure has no periodic axis; two steps of a `reaction.scheme` share an `id`, or a `structure_ref` occurs twice within one role of a step; a `preview` member does not begin with the signature of its raster `media_type`, or an `image/svg+xml` member has no `<svg` element; or a member's `size` is not a non-negative integer. |
+| `E_MEMBER_MALFORMED` | error | § 4.2, § 5.1, § 5.2, § 5.3, § 5.3.1, § 5.5, § 5.6, § 5.7, § 5.10, § 5.11, § 5.12, § 5.13, § 5.14, § 5.15, § 5.16 | A member spec is not an object or has no string `path`; a binary member's `shape` is not a list of non-negative integers; a pair of a standalone `bonds` section names an atom index `i` or `j` that is not an atom of the structure its `structure_ref` names; a `wavefunction.gto` coefficient member's rank disagrees with `complex`, a `symmetry_labels` array differs in length from its `energies`, an `overlap` or density member is not `[n_ao, n_ao]` or does not pair with the coefficient members, or `basis.n_electrons` differs from the sum of the occupations; a per-frame member of a `trajectory` or `reaction.path` disagrees in shape with its `coords`, its `coords` are float32 without `metadata.precision` `"float32"` (or `precision` names the other dtype), its binary `energies` disagree with `metadata.energies`, or a trajectory carries `lattice` without `metadata.pbc` or a `true` `pbc` entry without `lattice`; the `projections` or `occupations` of a `bands` section disagree in shape with its `eigenvalues`; a `custom.<name>` member of an `atom_properties` section has no entry in the section's `meta` member; a `forces` `gradient` or `stress`, a `hessian` `matrix` or its `meta.atom_masses_amu` has the wrong shape or disagrees with the atom count of the section's structure; the `states` of an `excited_states` section repeat an `index` or list it out of order, disagree in number with `meta.n_states`, or have a contribution whose `from_mo` or `to_mo` is not a row of the reference wavefunction; the `data` of a `volume.laplacian`, `volume.vector`, `volume.complex` or `volume.series` section has the wrong rank or trailing axis, or a `volume.series` `axis` has not one `values` (or `labels`) entry per slab; a periodic grid axis is aperiodic in the grid's structure or does not span its lattice vector; a `properties.elastic` `stiffness` or `compliance` is not symmetric; a `properties.dielectric` `static` is not `electronic` + `ionic`, or its `born_charges` do not number the atoms of the section's structure; the members of a `wavefunction.bloch` section disagree in shape, its k-point weights do not sum to 1, or its structure has no periodic axis; two steps of a `reaction.scheme` share an `id`, or a `structure_ref` occurs twice within one role of a step; a `preview` member does not begin with the signature of its raster `media_type`, or an `image/svg+xml` member has no `<svg` element; an `eda` payload has fewer than two interacting fragments, overlapping interacting fragments, an atom index outside its structure, a sub-fragment that is not a subset of its parent, a term or sum-rule index out of range, a cyclic or repeated term, not exactly one interaction term, repeated pair indices within a spin, a `nocv` table without `eigenvalue_convention`, or a per-k array without one entry per k-point; or a member's `size` is not a non-negative integer. |
 | `E_MEMBER_MISSING` | error | § 4.2 | A declared member `path` is not in the archive. |
 | `E_SHA256_MISMATCH` | error | § 4.2 | A member's bytes do not match its `sha256`. |
 | `E_JSON_INVALID` | error | § 4.2 | A JSON member is not UTF-8 JSON. |
@@ -4708,9 +4970,10 @@ finding about a member's payload points at the member spec that declares it.
 | `E_PAYLOAD_SCHEMA` | error | § 6 | A JSON member violates the payload definition (§ 5) of its section kind and role (one finding per schema error), or a one-dimensional spectrum's arrays differ in length (§ 5.4). |
 | `E_STRUCTURE_PERIODICITY` | error | § 5.1 | A `structure` payload breaks the periodicity contract, or is not a JSON object. |
 | `E_CHARGE_MULTIPLICITY` | error | § 5.1 | A `structure` section's `charge` and `multiplicity` are impossible for the atoms of its payload: the electron count Σ `atomic_number` − `charge` is negative, or `multiplicity` − 1 exceeds it or differs from it in parity. |
-| `E_REF_UNRESOLVED` | error | § 4.1, § 5.2, § 5.3.1, § 5.4, § 5.5, § 5.8, § 5.9, § 5.10, § 5.11, § 5.12, § 5.14 | A `volume.difference` operand does not name a section in the archive; a `reaction.waypoints` `trajectory_ref` does not name a `trajectory` section; a section's `structure_ref` or `run_ref` does not name a section of kind `structure` or `run.record` respectively; a `job.spec` payload's `structure_ref` or a `forces` or `hessian` `meta.structure_ref` does not name a `structure` section; a `wavefunction.bloch` `basis.structure_ref`, in a section without a section-level `structure_ref`, does not name a `structure` section; a `vibrations` `hessian_ref` does not name a `hessian` section; an `excited_states` `wavefunction_ref` or `nto_ref` does not name a `wavefunction.gto` section, or a `density_ref` a `volume.transition_density` or `volume.difference` section; a grid `structure_ref` does not name a `structure` section; a `volume.series` axis `trajectory_ref` does not name a `trajectory` or `reaction.path` section; or a spectrum's `states_ref` or a `volume.transition_density` `excited_states_ref` does not name an `excited_states` section, or a `state_index` it qualifies names no state of that section; a `volume.density`, `volume.spin` or `volume.orbital` `wavefunction_ref` does not name a `wavefunction.gto` section, or a `volume.orbital` has a `mo_index` that names no row of the coefficient member it selects, a `spin` although the referenced section has no α and β coefficients, or a `mo_index` without the `spin` that α and β coefficients need; a `reaction.scheme` participant's `structure_ref` does not name a `structure` section; or a `run.record` `job_ref` does not name a `job.spec` section. |
+| `E_REF_UNRESOLVED` | error | § 4.1, § 5.2, § 5.3.1, § 5.4, § 5.5, § 5.8, § 5.9, § 5.10, § 5.11, § 5.12, § 5.14, § 5.16 | A `volume.difference` operand does not name a section in the archive; a `reaction.waypoints` `trajectory_ref` does not name a `trajectory` section; a section's `structure_ref` or `run_ref` does not name a section of kind `structure` or `run.record` respectively; a `job.spec` payload's `structure_ref` or a `forces` or `hessian` `meta.structure_ref` does not name a `structure` section; a `wavefunction.bloch` `basis.structure_ref`, in a section without a section-level `structure_ref`, does not name a `structure` section; a `vibrations` `hessian_ref` does not name a `hessian` section; an `excited_states` `wavefunction_ref` or `nto_ref` does not name a `wavefunction.gto` section, or a `density_ref` a `volume.transition_density` or `volume.difference` section; a grid `structure_ref` does not name a `structure` section; a `volume.series` axis `trajectory_ref` does not name a `trajectory` or `reaction.path` section; or a spectrum's `states_ref` or a `volume.transition_density` `excited_states_ref` does not name an `excited_states` section, or a `state_index` it qualifies names no state of that section; a `volume.density`, `volume.spin` or `volume.orbital` `wavefunction_ref` does not name a `wavefunction.gto` section, or a `volume.orbital` has a `mo_index` that names no row of the coefficient member it selects, a `spin` although the referenced section has no α and β coefficients, or a `mo_index` without the `spin` that α and β coefficients need; a `reaction.scheme` participant's `structure_ref` does not name a `structure` section; a `run.record` `job_ref` does not name a `job.spec` section; an `eda` `wavefunction_ref` does not name a `wavefunction.gto` or `wavefunction.bloch` section, or an orbital pair's `density_ref` a `volume.difference` section; or a `volume.difference` `eda_ref` does not name an `eda` section, or its `pair_index` and `pair_spin` (or their absence for `eda_role` `orbital_pair`) name no orbital pair of that section. |
 | `E_FILES_INDEX` | error | § 5.8 | A `run.record` `files` index names a role with no member in the section. |
 | `W_UNIT_UNKNOWN` | warning | § 4.3 | A declared unit is not a unit name: a value of a payload's `units` object (of an `excited_states` payload's `meta.units`), a one-dimensional spectrum's `x_units`, `y_units` or `broadening.units`, the `units` of a `volume.series` `axis`, or the `units` of a `{value, units}` object in `provenance` that is not a legacy spelling either. A validator with a JSON Schema engine also reports `E_SCHEMA` or `E_PAYLOAD_SCHEMA` for it. |
 | `E_ROOT_INCONSISTENT` | error | § 3.6, § 5.1, § 5.3, § 5.13 | Two statements of the same quantity differ: an energy of `energies` stated for the method `provenance.method` names differs from `provenance.scf_energy`, or `energies.components.zpve` from `thermochemistry.zpve_eh`, by more than 1e-8 hartree; a `wavefunction.gto` `basis.n_electrons` differs from `provenance.n_electrons`; the `dipole` of a `properties.electric` section differs from the root `dipole_moment` by more than 1e-6 debye; or, in an archive with one `structure` section, its `charge` or `multiplicity` differs from `provenance.charge` or `provenance.multiplicity`. |
 | `E_NORMALIZATION` | error | § 5.3, Appendix A.1 | The diagonal of a `wavefunction.gto` `overlap` member disagrees with the self-overlaps Appendix A.1 gives for its `basis` payload: `basis.json` coefficients are not on `N_i`-normalized primitives, or the AO order disagrees with Appendix A.2. |
-| `E_UNIT_CONTRADICTED` | error | § 4.3, § 5.2 | A grid `units.data` is a unit name other than the one § 4.3 fixes for the section's volume kind: `e_per_bohr3` for `volume.density` and `volume.transition_density`, `hartree_per_e` for `volume.potential`, `dimensionless` for `volume.rdg`, `e_per_bohr5` for `volume.laplacian`. The schema cannot fix this per kind, so the finding does not depend on the JSON Schema check. |
+| `E_UNIT_CONTRADICTED` | error | § 4.3, § 5.2, § 5.16 | A grid `units.data` is a unit name other than the one § 4.3 fixes for the section's volume kind: `e_per_bohr3` for `volume.density` and `volume.transition_density`, `hartree_per_e` for `volume.potential`, `dimensionless` for `volume.rdg`, `e_per_bohr5` for `volume.laplacian`; or an energy of an `eda` payload is not in an energy unit (`hartree`, `ev`, `kcal_per_mol`, `kj_per_mol`). The schema cannot fix this per kind, so the finding does not depend on the JSON Schema check. |
+| `E_SUM_RULE` | error | § 5.16 | A sum rule of an `eda` payload does not hold: the energies of its `parts`, converted to hartree, differ from the energy of its `total` by more than its `tolerance` (default 1e-6 hartree). |

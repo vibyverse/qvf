@@ -660,4 +660,5 @@ FINDING_CODES: Mapping[str, str] = MappingProxyType({
     "E_ROOT_INCONSISTENT": "error",
     "E_NORMALIZATION": "error",
     "E_UNIT_CONTRADICTED": "error",
+    "E_SUM_RULE": "error",
 })

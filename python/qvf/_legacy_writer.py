@@ -77,6 +77,8 @@ _ALLOWED_DTYPES = frozenset(
 
 _ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _VENDOR_RE = re.compile(r"^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$")
+#: An ``x_`` name of a vocabulary field (spec § 5.16 term names, roles).
+_VENDOR_KEY_RE = re.compile(r"^x_[A-Za-z0-9_.-]+$")
 # viewer_defaults keys that are not section ids (spec § 3.1, § 3.4).
 _RESERVED_IDS = frozenset({"auto_open", "bookmarks", "camera", "crossfade"})
 _DRIVE_RE = re.compile(r"^[A-Za-z]:")
@@ -1405,6 +1407,98 @@ def _check_residue_insertion_codes(section_id: str, residues: Any,
                     f"{code!r} but atom {index} has {atom['insertion_code']!r} "
                     f"(spec § 5.1)")
 
+
+_EDA_ROLES = ("orbital_pair", "orbital_relaxation", "interaction", "polarization",
+              "charge_transfer")
+_PAIR_SPINS = ("restricted", "alpha", "beta")
+
+
+def _eda_volume_fields(kind: str, eda_ref: Any, eda_role: Any, pair_index: Any,
+                       pair_spin: Any) -> dict[str, Any]:
+    """The ``eda_ref``, ``eda_role``, ``pair_index`` and ``pair_spin`` section
+    fields of a ``volume.difference`` (spec § 5.2, § 5.16)."""
+    if eda_ref is None and eda_role is None and pair_index is None and pair_spin is None:
+        return {}
+    if kind != "volume.difference":
+        raise ValueError(f"{kind}: eda_ref, eda_role, pair_index and pair_spin apply "
+                         f"to volume.difference only")
+    if not isinstance(eda_ref, str) or not eda_ref:
+        raise ValueError("volume.difference: eda_role, pair_index and pair_spin need "
+                         "eda_ref, an eda section id (spec § 5.2)")
+    fields: dict[str, Any] = {"eda_ref": eda_ref}
+    if eda_role is not None:
+        if eda_role not in _EDA_ROLES and not (isinstance(eda_role, str)
+                                               and _VENDOR_KEY_RE.fullmatch(eda_role)):
+            raise ValueError(f"volume.difference: eda_role {eda_role!r} is not one of "
+                             f"{', '.join(_EDA_ROLES)} or an x_ name (spec § 5.2)")
+        fields["eda_role"] = eda_role
+    if eda_role == "orbital_pair" and pair_index is None:
+        raise ValueError("volume.difference: eda_role 'orbital_pair' needs pair_index "
+                         "(spec § 5.2)")
+    if pair_spin is not None and pair_index is None:
+        raise ValueError("volume.difference: pair_spin needs pair_index (spec § 5.2)")
+    if pair_index is not None:
+        fields["pair_index"] = _positive_int(pair_index, "volume.difference pair_index")
+    if pair_spin is not None:
+        if pair_spin not in _PAIR_SPINS:
+            raise ValueError(f"volume.difference: pair_spin {pair_spin!r} is not one of "
+                             f"{', '.join(_PAIR_SPINS)} (spec § 5.2)")
+        fields["pair_spin"] = pair_spin
+    return fields
+
+
+def _eda_energy(value: Any, where: str) -> dict[str, Any]:
+    """A decomposition energy: a number (hartree) or a ``{value, units}``."""
+    if isinstance(value, Mapping):
+        out = dict(value)
+        if set(out) != {"value", "units"}:
+            raise ValueError(f"eda: {where} must be a number or {{value, units}}")
+        num = out["value"]
+    else:
+        out, num = {"value": value, "units": "hartree"}, value
+    if hasattr(num, "item") and not isinstance(num, numbers.Number):
+        num = num.item()
+    if (isinstance(num, bool) or not isinstance(num, numbers.Real)
+            or not math.isfinite(num)):
+        raise ValueError(f"eda: {where} must be a finite number, got {num!r}")
+    out["value"] = float(num)
+    return out
+
+
+def _eda_plain(value: Any) -> Any:
+    """NumPy arrays and scalars as JSON values."""
+    if hasattr(value, "tolist") and not isinstance(value, (str, bytes)):
+        return value.tolist()  # NumPy arrays and scalars, without importing NumPy
+    if isinstance(value, Mapping):
+        return {k: _eda_plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_eda_plain(v) for v in value]
+    return value
+
+
+def _eda_normalised(decomposition: Mapping[str, Any]) -> dict[str, Any]:
+    """The payload with every energy as ``{value, units}`` (spec § 5.16)."""
+    p = _eda_plain(dict(decomposition))
+    for k, frag in enumerate(p.get("fragments") or []):
+        if isinstance(frag, dict) and "energy" in frag:
+            frag["energy"] = _eda_energy(frag["energy"], f"fragments[{k}].energy")
+    if isinstance(p.get("energies"), dict) and "system" in p["energies"]:
+        p["energies"]["system"] = _eda_energy(p["energies"]["system"], "energies.system")
+    for k, term in enumerate(p.get("terms") or []):
+        if isinstance(term, dict) and "energy" in term:
+            term["energy"] = _eda_energy(term["energy"], f"terms[{k}].energy")
+    for k, rule in enumerate(p.get("sum_rules") or []):
+        if isinstance(rule, dict) and "tolerance" in rule:
+            rule["tolerance"] = _eda_energy(rule["tolerance"], f"sum_rules[{k}].tolerance")
+    pairs = p.get("orbital_pairs")
+    if isinstance(pairs, dict):
+        if "total" in pairs:
+            pairs["total"] = _eda_energy(pairs["total"], "orbital_pairs.total")
+        for k, pair in enumerate(pairs.get("pairs") or []):
+            if isinstance(pair, dict) and "energy" in pair:
+                pair["energy"] = _eda_energy(pair["energy"], f"orbital_pairs.pairs[{k}].energy")
+    return p
+
 class QvfWriter:
     """Accumulate sections and root metadata, then write a ``.qvf`` archive.
 
@@ -1986,7 +2080,11 @@ class QvfWriter:
                   state_index: int | None = None,
                   wavefunction_ref: str | None = None,
                   mo_index: int | None = None,
-                  spin: str | None = None) -> str:
+                  spin: str | None = None,
+                  eda_ref: str | None = None,
+                  eda_role: str | None = None,
+                  pair_index: int | None = None,
+                  pair_spin: str | None = None) -> str:
         """Add any ``volume.*`` section; ``origin`` and ``voxel_vectors`` are
         in bohr (spec § 5.2). For ``volume.difference`` you may pass
         ``operand_a``/``operand_b`` section ids.
@@ -2034,7 +2132,16 @@ class QvfWriter:
         lattice vector a of its structure in bohr: ``voxel_vectors[a]`` times
         ``shape[a] - 1`` when ``includes_endpoint`` is true (the default,
         cube style) or times ``shape[a]`` when it is false (CHGCAR style).
-        The validator checks the span; this writer does not."""
+        The validator checks the span; this writer does not.
+
+        For a ``volume.difference`` of an energy decomposition (spec § 5.2,
+        § 5.16) ``eda_ref`` names the ``eda`` section, ``eda_role`` says what
+        the density is (``"orbital_pair"``, ``"orbital_relaxation"``,
+        ``"interaction"``, ``"polarization"``, ``"charge_transfer"`` or an
+        ``x_`` name), and ``pair_index`` with ``pair_spin`` (``"restricted"``,
+        ``"alpha"`` or ``"beta"``) the orbital pair, which ``"orbital_pair"``
+        requires. The ``eda`` section is usually added after its densities, so
+        the references are resolved by the validators, not here."""
         if section_id is not None:
             self._check_new_id(section_id)
         trailing_form = self._VOLUME_4D_KINDS.get(kind)
@@ -2078,6 +2185,8 @@ class QvfWriter:
                     state_index, "volume.transition_density state_index")
         state_fields.update(self._wavefunction_volume_fields(
             kind, wavefunction_ref, mo_index, spin))
+        state_fields.update(_eda_volume_fields(kind, eda_ref, eda_role,
+                                               pair_index, pair_spin))
         sid = section_id or (kind.replace(".", "_") + f"_{len(self._sections)}")
         self._check_new_id(sid)
         stem = sid
@@ -3287,6 +3396,75 @@ class QvfWriter:
             section["wavefunction_ref"] = wavefunction_ref
         section["members"] = {"states": self._json_member(f"{sid}/states.json",
                                                           payload)}
+        return self._push(section, label=label)
+
+    # -- energy decomposition analysis (spec § 5.16) ---------------------
+
+    def add_eda(self, decomposition: Mapping[str, Any], *,
+                structure_ref: str | None = None,
+                wavefunction_ref: str | None = None,
+                label: str | None = None,
+                section_id: str = "eda") -> str:
+        """Add an ``eda`` section (spec § 5.16): one energy decomposition.
+
+        ``decomposition`` is the ``$defs/EdaPayload`` mapping: ``scheme``
+        (``"ziegler-rauk"``, ``"lmo-eda"``, ``"gks-eda"``,
+        ``"kitaura-morokuma"``, ``"almo-eda"``, ``"sapt"``, ``"led"``,
+        ``"many-body"`` or an ``x_`` name), ``fragments`` (at least two
+        interacting fragments, each ``{label, atoms, parent?, charge?,
+        multiplicity?, spin_flip?, basis?, state?, energy?}``) and ``terms``
+        (each ``{name, energy, fragments?, directed?, spin?, parent?, order?,
+        label?}``, exactly one of them the whole-system ``interaction``) are
+        required; ``variant``, ``method``, ``energies``, ``sum_rules``,
+        ``orbital_pairs``, ``periodic`` and ``notes`` are optional. Every
+        energy is an ``{value, units}`` object with an energy unit
+        (``hartree``, ``ev``, ``kcal_per_mol``, ``kj_per_mol``), or a number,
+        which is written in ``hartree``. Arrays may be NumPy arrays.
+
+        ``structure_ref`` names the ``structure`` section the fragments' atom
+        indices address (else the first structure) and ``wavefunction_ref``
+        the ``wavefunction.gto`` or ``wavefunction.bloch`` section of the
+        complete system; both must already have been added, and so must every
+        orbital pair's ``density_ref`` (a ``volume.difference`` section). The
+        rules of § 5.16 are checked before anything is written (fragments,
+        term references, the declared sum rules, pair indices, per-k array
+        lengths); a violation raises ``ValueError``.
+        """
+        from . import _eda
+
+        self._check_new_id(section_id)
+        if not isinstance(decomposition, Mapping):
+            raise ValueError("eda: decomposition must be a mapping")
+        payload = _eda_normalised(decomposition)
+        by_id = {s["id"]: s for s in self._sections}
+        if structure_ref is not None:
+            self._check_ref("eda structure_ref", structure_ref, "structure")
+        if wavefunction_ref is not None:
+            found = by_id.get(wavefunction_ref) if isinstance(wavefunction_ref, str) else None
+            if found is None or found["kind"] not in ("wavefunction.gto", "wavefunction.bloch"):
+                raise ValueError(f"eda: wavefunction_ref {wavefunction_ref!r} must name an "
+                                 f"added wavefunction.gto or wavefunction.bloch section "
+                                 f"(spec § 5.16)")
+        # atom indices against the structure are checked by the validators
+        problems = [msg for _code, msg in _eda.payload_errors(payload)]
+        pairs = payload.get("orbital_pairs")
+        if isinstance(pairs, dict):
+            for k, pair in enumerate(pairs.get("pairs", [])):
+                ref = pair.get("density_ref") if isinstance(pair, dict) else None
+                if ref is not None and (by_id.get(ref) or {}).get("kind") != "volume.difference":
+                    problems.append(f"orbital_pairs.pairs[{k}].density_ref {ref!r} must "
+                                    f"name an added volume.difference section "
+                                    f"(spec § 5.16)")
+        if problems:
+            raise ValueError("eda: " + "; ".join(problems))
+        sid = self._reserve_id(section_id)
+        section: dict[str, Any] = {"id": sid, "kind": "eda"}
+        if structure_ref is not None:
+            section["structure_ref"] = structure_ref
+        if wavefunction_ref is not None:
+            section["wavefunction_ref"] = wavefunction_ref
+        section["members"] = {"decomposition": self._json_member(
+            f"{sid}/decomposition.json", payload)}
         return self._push(section, label=label)
 
     # -- property kinds (spec § 5.13) ------------------------------------

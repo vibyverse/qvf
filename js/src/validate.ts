@@ -12,6 +12,7 @@
  */
 
 import { declaredSizeProblem, expectedByteLength, isDType, isShape } from "./binary.js";
+import { edaPayloadErrors, pairKeys, type EdaCode } from "./eda.js";
 import { Findings, type Finding } from "./findings.js";
 import { decodeUtf8, jsonDepth, isValidUtf8, parseJsonBytes } from "./json.js";
 import { CANONICAL_KINDS } from "./kinds.js";
@@ -580,6 +581,77 @@ function contributionRows(rows: Map<string, number>, spin: unknown): number | nu
   if (spin === "alpha" || spin === "beta") return rows.get(spin) ?? null;
   const known = ["alpha", "beta"].map((c) => rows.get(c)).filter((n): n is number => n !== undefined);
   return known.length > 0 ? Math.min(...known) : null;
+}
+
+/**
+ * Rules of an `eda` section that JSON Schema cannot express (spec § 5.16): the
+ * payload rules of `edaPayloadErrors`, and, when `kindsById` is given
+ * (references level), the section's `wavefunction_ref` and every pair's
+ * `density_ref`. Returns `[code, field, message]`; `field` is `""` for the
+ * `decomposition` member.
+ */
+function edaErrors(
+  sid: string,
+  section: Obj,
+  payload: unknown,
+  kindsById: ReadonlyMap<string, string> | null,
+  nAtomsOf: ReadonlyMap<string, number>,
+  firstStructure: string | null,
+): Array<[EdaCode | "E_REF_UNRESOLVED", string, string]> {
+  const sec = `section ${quote(sid)}: `;
+  const errors: Array<[EdaCode | "E_REF_UNRESOLVED", string, string]> = [];
+  if (kindsById && has(section, "wavefunction_ref")) {
+    const ref = section.wavefunction_ref;
+    const kind = typeof ref === "string" ? kindsById.get(ref) : undefined;
+    if (kind !== "wavefunction.gto" && kind !== "wavefunction.bloch") {
+      errors.push(["E_REF_UNRESOLVED", "wavefunction_ref",
+        `${sec}wavefunction_ref ${show(ref)} does not name a wavefunction.gto or wavefunction.bloch section (spec § 5.16)`]);
+    }
+  }
+  const ref = has(section, "structure_ref") ? section.structure_ref : firstStructure;
+  const nAtoms = typeof ref === "string" ? nAtomsOf.get(ref) ?? null : null;
+  for (const [code, msg] of edaPayloadErrors(payload, nAtoms)) errors.push([code, "", sec + msg]);
+  if (kindsById && isObject(payload) && isObject(payload.orbital_pairs) && Array.isArray(payload.orbital_pairs.pairs)) {
+    payload.orbital_pairs.pairs.forEach((p, k) => {
+      if (!isObject(p) || !has(p, "density_ref")) return;
+      const dref = p.density_ref;
+      if (typeof dref !== "string" || kindsById.get(dref) !== "volume.difference") {
+        errors.push(["E_REF_UNRESOLVED", "",
+          `${sec}orbital_pairs.pairs[${k}].density_ref ${show(dref)} does not name a volume.difference section (spec § 5.16)`]);
+      }
+    });
+  }
+  return errors;
+}
+
+/**
+ * A `volume.difference` section's `eda_ref` names an `eda` section, and for
+ * `eda_role` `orbital_pair` its `pair_index` and `pair_spin` name one of that
+ * section's orbital pairs (spec § 5.2, § 5.16). Returns `[field, message]`.
+ */
+function edaDensityErrors(
+  sid: string,
+  section: Obj,
+  kindsById: ReadonlyMap<string, string>,
+  pairsOf: ReadonlyMap<string, Set<string> | null>,
+): Array<[string, string]> {
+  const sec = `section ${quote(sid)}: `;
+  if (!has(section, "eda_ref")) return [];
+  const ref = section.eda_ref;
+  if (typeof ref !== "string" || kindsById.get(ref) !== "eda") {
+    return [["eda_ref", `${sec}eda_ref ${show(ref)} does not name an eda section (spec § 5.2)`]];
+  }
+  const index = section.pair_index;
+  if (section.eda_role === "orbital_pair" && index === undefined) {
+    return [["eda_role", `${sec}eda_role 'orbital_pair' needs pair_index (spec § 5.2)`]];
+  }
+  if (index === undefined) return [];
+  const spin = typeof section.pair_spin === "string" ? section.pair_spin : "restricted";
+  const keys = pairsOf.get(ref);
+  if (isInt(index) && (keys == null || !keys.has(`${index}/${spin}`))) {
+    return [["pair_index", `${sec}pair_index ${index} with pair_spin '${spin}' names no orbital pair of eda section ${quote(ref)} (spec § 5.2)`]];
+  }
+  return [];
 }
 
 /** The `index` values of an `excited_states` payload's states, or null without a `states` array. */
@@ -2153,6 +2225,10 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
   const excitedSections: Array<{ i: number; sid: string; s: Obj; payload: unknown }> = [];
   const statesRefSpectra: Array<{ i: number; sid: string; payload: Obj }> = [];
   const transitionDensities: Array<{ i: number; sid: string; s: Obj }> = [];
+  // Energy decompositions (spec § 5.16) and the difference densities that name them.
+  const edaSections: Array<{ i: number; sid: string; s: Obj; payload: unknown }> = [];
+  const edaDensities: Array<{ i: number; sid: string; s: Obj }> = [];
+  const edaPairsOf = new Map<string, Set<string> | null>();
   const wavefunctionVolumes: Array<{ i: number; sid: string; kind: string; s: Obj }> = [];
   const cellsOf = new Map<string, Obj>(); // structure id -> structure payload
   const periodicOf = new Map<string, boolean>(); // structure id -> any(pbc)
@@ -2320,6 +2396,14 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
       if (isObject(spectrum) && has(spectrum, "states_ref")) statesRefSpectra.push({ i, sid, payload: spectrum });
     }
     if (rank >= AT_REFERENCES && kind === "volume.transition_density") transitionDensities.push({ i, sid, s });
+    if (kind === "eda") {
+      if (!edaPairsOf.has(sid)) edaPairsOf.set(sid, pairKeys(docs.get("decomposition")));
+      if (rank >= AT_SEMANTICS) edaSections.push({ i, sid, s, payload: docs.get("decomposition") });
+    }
+    if (rank >= AT_REFERENCES && kind === "volume.difference" &&
+        ["eda_ref", "eda_role", "pair_index", "pair_spin"].some((f) => has(s, f))) {
+      edaDensities.push({ i, sid, s });
+    }
     if (rank >= AT_REFERENCES && WAVEFUNCTION_VOLUME_KINDS.has(kind) && has(s, "wavefunction_ref")) {
       wavefunctionVolumes.push({ i, sid, kind, s });
     }
@@ -2489,6 +2573,18 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
   }
   for (const d of transitionDensities) {
     for (const [field, msg] of transitionDensityErrors(d.sid, d.s, kindsById, stateIndicesOf)) {
+      out.error("E_REF_UNRESOLVED", `${sectionPointer(d.i)}/${field}`, msg);
+    }
+  }
+  // Energy decompositions and their difference densities (spec § 5.2, § 5.16).
+  for (const d of edaSections) {
+    for (const [code, field, msg] of edaErrors(d.sid, d.s, d.payload, rank >= AT_REFERENCES ? kindsById : null,
+      nAtomsOf, structureIds.length > 0 ? (structureIds[0] as string) : null)) {
+      out.error(code, field ? `${sectionPointer(d.i)}/${field}` : memberPointer(d.i, "decomposition"), msg);
+    }
+  }
+  for (const d of edaDensities) {
+    for (const [field, msg] of edaDensityErrors(d.sid, d.s, kindsById, edaPairsOf)) {
       out.error("E_REF_UNRESOLVED", `${sectionPointer(d.i)}/${field}`, msg);
     }
   }

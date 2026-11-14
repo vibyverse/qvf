@@ -63,6 +63,7 @@ export const CANONICAL_KINDS: readonly string[] = [
   "spectra.xas",
   "spectra.xes",
   "spectra.mossbauer",
+  "eda",
 ];
 
 /** The `qvf_version` values a consumer opens (registry `readable_versions`). */

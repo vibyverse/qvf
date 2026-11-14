@@ -1619,4 +1619,5 @@ pub static FINDING_CODES: &[(&str, &str)] = &[
     ("E_ROOT_INCONSISTENT", "error"),
     ("E_NORMALIZATION", "error"),
     ("E_UNIT_CONTRADICTED", "error"),
+    ("E_SUM_RULE", "error"),
 ];
