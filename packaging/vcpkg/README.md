@@ -9,7 +9,8 @@ development verification used the vcpkg tool `2026-10-29` with a vcpkg
 checkout from 2026-11-04 on x86_64 Linux and GCC.
 
 The port still builds the `v0.6.0` tag archive, with its SHA512 pinned in
-`portfile.cmake`, and moves to `v0.7.0` once that tag's archive exists.
+`portfile.cmake`. Moving it to a later tag archive (`v0.7.0`, `v0.8.0`)
+needs that archive's SHA512 and the port's install checks.
 
 The port version in `ports/qvf/vcpkg.json` matches `VERSION`. It builds
 from one of two sources:

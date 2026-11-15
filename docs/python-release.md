@@ -1,10 +1,11 @@
 # Python package release
 
-The first PyPI release candidate is `qvf-writer==0.7.0`, the same version as
-toolkit 0.7.0. It includes the optional PySCF adapter. It does not modify
+The first PyPI release candidate is `qvf-writer==0.8.0`, the same version as
+toolkit 0.8.0. It includes the optional PySCF adapter. It does not modify
 format version 1 or frozen consumers' v0.6.0 pins. Python package metadata,
 `qvf.__version__`, `VERSION` and the other language packages all identify
-0.7.0. The candidate has not yet been uploaded. Do not advertise an index install
+0.8.0. No version has been uploaded yet (toolkit 0.7.0 was released without
+a PyPI upload). Do not advertise an index install
 as available until anonymous installation succeeds.
 
 ## Prepare and verify
@@ -119,16 +120,16 @@ workflow change.
 2. Land the clean candidate source on the canonical GitHub repository.
    Verify that the candidate includes this workflow and the exact qualified
    source. Do not push private pre-migration ancestry to the public repository.
-3. Create the immutable public package tag `python-v0.7.0` at that verified
+3. Create the immutable public package tag `python-v0.8.0` at that verified
    snapshot. This is a Python distribution tag, not a replacement toolkit tag.
 4. Manually run **Python package release** from the trusted default branch,
-   with `release_tag=python-v0.7.0` and `publish=false` to build/check it.
+   with `release_tag=python-v0.8.0` and `publish=false` to build/check it.
    The workflow verifies the tag matches the package version.
 5. After the maintainer authorizes upload, run with the same tag and
    `publish=true`, and approve the `pypi` environment. The workflow rebuilds
    and checks the exact tagged source before uploading those artifacts.
 6. In another clean environment install
-   `qvf-writer[pyscf,validate]==0.7.0` from PyPI, rerun the tutorial, and
+   `qvf-writer[pyscf,validate]==0.8.0` from PyPI, rerun the tutorial, and
    verify the index files and hashes. Then update installation documentation
    from “prepared candidate” to “published candidate”.
 

@@ -9,6 +9,61 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-15
+
+This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).
+It adds one provisional canonical kind, `energy_decomposition`, for energy
+decomposition analyses, contributed by Franz Thiemann (vibyverse/qvf#32) and
+accepted by the maintainer on 2026-11-14 (see `GOVERNANCE.md`). It adds a
+kind and optional fields of `volume.difference`; archives written by earlier
+toolkits keep their meaning, and readers that do not know the kind list it
+as unsupported. Frozen family consumers stay on their v0.6.0 pins until they
+adopt this release.
+
+**Release qualification.** As for 0.7.0, GitHub Actions does not start the
+release-candidate workflow for this repository, so the maintainer accepted
+local qualification of the candidate commit. On Linux x86_64 it covered the
+Python suite on Python 3.9, 3.13 and 3.14 (with PySCF 2.14.0 on 3.13 and
+3.14), the JavaScript suite on Node 20, 22 and 24 with the type check, the
+Rust crate on stable (format, Clippy with warnings denied, tests) and on its
+minimum supported Rust version 1.74, the C++ build with gcc and clang under
+`-Wall -Wextra -Werror` with CTest and the conformance runner,
+AddressSanitizer and UndefinedBehaviorSanitizer (clang) over CTest and every
+corpus archive, schema-checker parity with no skipped checker, both
+libFuzzer targets for 180 s each without a finding, the s390x big-endian
+CTest under QEMU with the cross-host round trip, the generated-file checks,
+source archives that contain exactly the committed files, and installed
+Python, C/C++ (CMake and pkg-config), npm and Rust package checks. On macOS
+arm64 it covered the C++ build with Apple clang under
+`-Wall -Wextra -Werror` with CTest and the conformance runner. The candidate
+workflow's Windows (MSVC) C++ job was not run for this release.
+
+### Added
+
+- The canonical kind `energy_decomposition` (provisional, promoted from
+  `x_vibeqc.peda`; spec § 5.16) for energy decomposition analyses of any
+  scheme: Ziegler–Rauk/ETS and periodic EDA, LMO-EDA, GKS-EDA,
+  Kitaura–Morokuma, ALMO-EDA, SAPT, local energy decomposition and
+  many-body expansions. Its strict `decomposition` payload holds the
+  fragments (charge, multiplicity, spin flip, basis, sub-fragments), the
+  terms (whole-system, per-fragment, pair and n-body scope, spin, a parent
+  hierarchy), declared sum rules that validators check (new finding code
+  `E_SUM_RULE`), an optional NOCV/COVP pair table with per-k values, and
+  k-point sampling. An unknown `scheme` that is not an `x_` name is a schema
+  error (`E_PAYLOAD_SCHEMA`). `volume.difference` gains `decomposition_ref`,
+  `decomposition_role`, `pair_index` and `pair_spin` for deformation
+  densities. The Python writer gains `add_energy_decomposition` and the
+  energy_decomposition fields of `add_volume`, the JavaScript writer
+  `addEnergyDecomposition`; the C++, C, Fortran and Rust typed kinds are
+  generated. The corpus gains six positive and ten negative archives.
+  Contributed by Franz Thiemann (vibyverse/qvf#32).
+
+### Changed
+
+- All language packages, CMake and the citation metadata share the toolkit
+  version 0.8.0. The vcpkg overlay port and its version stay on the v0.6.0
+  tag archive.
+
 ## [0.7.0] - 2026-11-05
 
 This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).

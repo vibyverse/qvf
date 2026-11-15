@@ -7,19 +7,19 @@ to use the toolkit.
 
 ## Install a known toolkit
 
-The latest release is **QVF toolkit v0.7.0**, using **format version 1**.
+The latest release is **QVF toolkit v0.8.0**, using **format version 1**.
 Install its tagged source with Python 3.9 or later and Git:
 
 ```sh
 python -m venv .venv
 # POSIX shells; on Windows use .venv\Scripts\Activate.ps1 in PowerShell.
 . .venv/bin/activate
-python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyverse/qvf.git@v0.7.0#subdirectory=python"
+python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyverse/qvf.git@v0.8.0#subdirectory=python"
 python -m qvf --version
 ```
 
 The released baseline for QC 0.18, Sketch 0.6, View 3.0 and Queue 1.0 remains
-**v0.6.0**. To match it, use `@v0.6.0` in the same command. Adopting 0.7.0 in
+**v0.6.0**. To match it, use `@v0.6.0` in the same command. Adopting 0.8.0 in
 those consumers is a separate step.
 
 PyPI publication is still planned. The distribution name is `qvf-writer`,
@@ -43,7 +43,8 @@ see [validator identity](cli.md#choose-and-record-the-validator).
 | Need | Use |
 |---|---|
 | Frozen family interchange, job preparation, standard readers/writers | The consumer's pinned v0.6.0 toolkit |
-| PySCF adapter, broader Molden conversion, new reaction-energy or biomolecular fields | Toolkit v0.7.0 and its [release notes](../CHANGELOG.md#070---2026-11-05); adopt in consumers only after they pin a compatible release |
+| PySCF adapter, broader Molden conversion, new reaction-energy or biomolecular fields | Toolkit v0.7.0 or later and its [release notes](../CHANGELOG.md#070---2026-11-05); adopt in consumers only after they pin a compatible release |
+| Energy decomposition analyses (`energy_decomposition`, provisional) | Toolkit v0.8.0 and its [release notes](../CHANGELOG.md#080---2026-11-15); adopt in consumers only after they pin a compatible release |
 | Build or embed C++, C or Fortran | [Library guide](library_guide.md), [C ABI](c_api.md), [Fortran](fortran.md) |
 | Inspect an archive in a browser or JavaScript application | [JavaScript reader](library_guide.md#javascript-reader) |
 

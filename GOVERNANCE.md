@@ -94,10 +94,14 @@ open. Recording a mistake is part of the process working, not evidence against i
 
 ### 2026-11-14: Energy decomposition analysis (`energy_decomposition`)
 
-**Status.** Proposed for maintainer decision under "Change process" (a new
-canonical kind added directly when a clear ecosystem need exists and a
-reference consumer will render it), promoted provisionally from the
-first-party `x_vibeqc.peda` section (§ 7.5). Energy decomposition analyses
+**Status.** Accepted by the maintainer on 2026-11-14 as a provisional
+canonical kind under "Change process" (vibyverse/qvf#32), which adds a new
+canonical kind directly when a clear ecosystem need exists and a reference
+consumer will render it. It is promoted provisionally from the first-party
+`x_vibeqc.peda` section (§ 7.5). Readings (a) to (c) at the end of this
+record are settled as proposed, and the maintainer decided reading (d). It
+is a public contract change, released in toolkit 0.8.0; producers may write
+the kind with a toolkit release that carries it. Energy decomposition analyses
 are produced by ADF, BAND, ORCA, Q-Chem, Psi4, CP2K, GAMESS and vibe-qc, and
 had no canonical carrier: vibe-qc wrote them as a vendor section that no
 other program could read. vibe-viewer is the reference consumer. The kind
@@ -171,10 +175,11 @@ payload: their size is pairs × k-points numbers, small next to any volume.
 charge-transfer analysis, QM/MM regions and viewers could also name) was
 considered and deferred: the fragments stay inside the payload. If such a
 model is added later, each decomposition fragment can gain an optional
-reference to a shared group, which is an additive change. (d) For maintainer decision: an unknown `scheme` is
-currently a schema error (`E_PAYLOAD_SCHEMA`); the proposer would accept a
-warning instead, so that a producer with a new partition need not wait for a
-registry change.
+reference to a shared group, which is an additive change. (d) An unknown
+`scheme` that is not an `x_` name stays a schema error (`E_PAYLOAD_SCHEMA`),
+by maintainer decision of 2026-11-14. A producer with a new partition writes
+an `x_` name until the vocabulary gains it, so it need not wait for a
+registry change. The proposer's alternative, a warning, was not adopted.
 
 **Compatibility.** Additive: a new kind and four new optional section
 fields of an existing kind. No `qvf_version` change; consumers that do not

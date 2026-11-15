@@ -76,7 +76,7 @@ packaging, Fortran/platform qualification and fuzzing remain in the
 | Bond orders, QTAIM, NCI | ✅ | QTAIM positions in Å, declared (D05, WP-11) |
 | NMR, EPR | ✅ | typed payloads (P13, WP-11) |
 | Mössbauer, XAS/XES | ✅ | `spectra.xas`, `spectra.xes`, `spectra.mossbauer` (P13, #19, 0.7.0) |
-| Energy decomposition (EDA, ETS-NOCV, periodic EDA, SAPT, LED, ALMO-EDA) | ✅ | `energy_decomposition`, provisional; NOCV/COVP densities as `volume.difference` (proposed 2026-11-14) |
+| Energy decomposition (EDA, ETS-NOCV, periodic EDA, SAPT, LED, ALMO-EDA) | ✅ | `energy_decomposition`, provisional; NOCV/COVP densities as `volume.difference` (0.8.0, accepted 2026-11-14) |
 | Other spectroscopies | ❌ | `spectra.generic` or vendor; P13 adds typed kinds on demand |
 | **Periodic analysis** | | |
 | Bands, DOS, PDOS, COOP/COHP | ✅ | spin axis on projections, `occupations` (D04, WP-12) |
