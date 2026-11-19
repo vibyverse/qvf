@@ -11227,7 +11227,7 @@ inline constexpr double kNumbers[9] = {
     0.0, 3.0, 1.0, 180.0, 10.0, 100.0, 7.0, 2.0, 230.0,
 };
 // JSON literals of const / enum, as JSON text.
-inline constexpr const char* kValues[254] = {
+inline constexpr const char* kValues[257] = {
     "1", "\"little\"", "\"pending\"", "\"running\"", "\"converged\"", "\"failed\"",
     "\"angstrom\"", "\"bohr\"", "\"hartree\"", "\"ev\"", "\"kcal_per_mol\"", "\"kj_per_mol\"",
     "\"cm-1\"", "\"nm\"", "\"debye\"", "\"mhz\"", "\"hz\"", "\"ppm\"", "\"km_per_mol\"",
@@ -11278,11 +11278,12 @@ inline constexpr const char* kValues[254] = {
     "\"supersystem\"", "\"electrostatic\"", "\"pauli\"", "\"exchange\"", "\"repulsion\"",
     "\"orbital\"", "\"induction\"", "\"dispersion\"", "\"exchange_induction\"",
     "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"", "\"frozen\"",
-    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"", "\"nocv\"",
-    "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
+    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"",
+    "\"kinetic\"", "\"coulomb\"", "\"residual\"", "\"nocv\"", "\"covp\"", "\"per_spin\"",
+    "\"spin_summed\"",
 };
 // Node lists, string lists and value lists (see the opcodes).
-inline constexpr std::int32_t kLists[899] = {
+inline constexpr std::int32_t kLists[902] = {
     0, 1, 2, 5, 6, 7, 2, 3, 4, 5, 41, 42, 245, 246, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 47, 48, 49, 50, 51, 51, 50, 258, 260,
@@ -11328,9 +11329,9 @@ inline constexpr std::int32_t kLists[899] = {
     216, 217, 496, 101, 102, 501, 502, 61, 62, 63, 54, 55, 58, 60, 220, 221, 54, 55, 58, 60,
     222, 220, 221, 504, 61, 62, 63, 181, 505, 192, 224, 225, 226, 227, 228, 229, 230, 231,
     1804, 1805, 64, 77, 232, 233, 1834, 1835, 52, 197, 84, 234, 235, 236, 237, 238, 85, 86,
-    239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 1840, 1841, 76, 77, 485, 514, 83,
-    357, 250, 251, 1857, 1858, 252, 253, 461, 518, 197, 87, 76, 77, 324, 1885, 1886, 1887, 52,
-    52, 1922, 1923, 77, 543, 485, 9, 485, 6,
+    239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 1840, 1841, 76, 77,
+    485, 514, 83, 357, 253, 254, 1857, 1858, 255, 256, 461, 518, 197, 87, 76, 77, 324, 1885,
+    1886, 1887, 52, 52, 1922, 1923, 77, 543, 485, 9, 485, 6,
 };
 // (key, node) pairs: Properties, PatternProperties, DependentSchemas.
 inline constexpr std::int32_t kPairs[2584] = {
@@ -12228,22 +12229,22 @@ inline constexpr Op kOps[3133] = {
     {kType, 4, 0, 0},  // n182 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2408, 1, 0},  // patternProperties
-    {kRequired, 869, 2, 0},  // required: total, parts
+    {kRequired, 872, 2, 0},  // required: total, parts
     {kProperties, 2410, 3, 0},  // properties: total, parts, tolerance
     {kType, 4, 0, 0},  // n183 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2416, 1, 0},  // patternProperties
-    {kRequired, 871, 2, 0},  // required: type, pairs
+    {kRequired, 874, 2, 0},  // required: type, pairs
     {kProperties, 2418, 5, 0},  // properties: type, eigenvalue_convention, threshold, total, pairs
     {kType, 4, 0, 0},  // n184 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2428, 1, 0},  // patternProperties
-    {kRequired, 879, 3, 0},  // required: index, eigenvalue, energy
+    {kRequired, 882, 3, 0},  // required: index, eigenvalue, energy
     {kProperties, 2430, 10, 0},  // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
     {kType, 4, 0, 0},  // n185 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2450, 1, 0},  // patternProperties
-    {kRequired, 885, 1, 0},  // required: kpoints
+    {kRequired, 888, 1, 0},  // required: kpoints
     {kProperties, 2452, 3, 0},  // properties: kpoints, mesh, orbital_pairs_gamma_only
     {kProperties, 2458, 2, 0},  // n186 properties: kind, members
     {kType, 4, 0, 0},  // n187 type
@@ -12253,12 +12254,12 @@ inline constexpr Op kOps[3133] = {
     {kType, 4, 0, 0},  // n188 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2486, 1, 0},  // patternProperties
-    {kRequired, 889, 1, 0},  // required: name
+    {kRequired, 892, 1, 0},  // required: name
     {kProperties, 2488, 4, 0},  // properties: name, orcid, affiliation, email
     {kType, 4, 0, 0},  // n189 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2496, 1, 0},  // patternProperties
-    {kRequired, 890, 1, 0},  // required: name
+    {kRequired, 893, 1, 0},  // required: name
     {kProperties, 2498, 3, 0},  // properties: name, version, url
     {kType, 4, 0, 0},  // n190 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -12272,7 +12273,7 @@ inline constexpr Op kOps[3133] = {
     {kType, 4, 0, 0},  // n193 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2530, 1, 0},  // patternProperties
-    {kRequired, 895, 1, 0},  // required: total
+    {kRequired, 898, 1, 0},  // required: total
     {kProperties, 2532, 5, 0},  // properties: total, method, components, by_method, units_note
     {kType, 4, 0, 0},  // n194 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -12281,7 +12282,7 @@ inline constexpr Op kOps[3133] = {
     {kType, 4, 0, 0},  // n195 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2568, 1, 0},  // patternProperties
-    {kRequired, 896, 2, 0},  // required: method, total
+    {kRequired, 899, 2, 0},  // required: method, total
     {kProperties, 2570, 3, 0},  // properties: method, total, components
     {kType, 4, 0, 0},  // n196 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -14694,8 +14695,8 @@ inline constexpr Op kOps[3133] = {
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kType, 32, 0, 0},  // n1836 type
     {kRef, 1, 0, 0},  // n1837 $ref #/$defs/ValueWithUnits
-    {kOneOf, 865, 2, 0},  // n1839 oneOf
-    {kEnum, 846, 19, 0},  // n1840 enum
+    {kOneOf, 868, 2, 0},  // n1839 oneOf
+    {kEnum, 846, 22, 0},  // n1840 enum
     {kType, 32, 0, 0},  // n1841 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kRef, 1, 0, 0},  // n1842 $ref #/$defs/ValueWithUnits
@@ -14705,7 +14706,7 @@ inline constexpr Op kOps[3133] = {
     {kType, 64, 0, 0},  // n1844 type
     {kMinimum, 0, 0, 0},  // minimum
     {kType, 2, 0, 0},  // n1845 type
-    {kEnum, 867, 2, 0},  // n1846 enum
+    {kEnum, 870, 2, 0},  // n1846 enum
     {kType, 64, 0, 0},  // n1847 type
     {kMinimum, 0, 0, 0},  // minimum
     {kType, 32, 0, 0},  // n1848 type
@@ -14719,11 +14720,11 @@ inline constexpr Op kOps[3133] = {
     {kType, 64, 0, 0},  // n1853 type
     {kMinimum, 0, 0, 0},  // minimum
     {kRef, 1, 0, 0},  // n1854 $ref #/$defs/ValueWithUnits
-    {kOneOf, 875, 2, 0},  // n1856 oneOf
-    {kEnum, 873, 2, 0},  // n1857 enum
+    {kOneOf, 878, 2, 0},  // n1856 oneOf
+    {kEnum, 876, 2, 0},  // n1857 enum
     {kType, 32, 0, 0},  // n1858 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kEnum, 877, 2, 0},  // n1859 enum
+    {kEnum, 880, 2, 0},  // n1859 enum
     {kType, 16, 0, 0},  // n1860 type
     {kMinimum, 0, 0, 0},  // minimum
     {kRef, 1, 0, 0},  // n1861 $ref #/$defs/ValueWithUnits
@@ -14732,7 +14733,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 184, 0, 0},  // n1863 $ref #/$defs/DecompositionOrbitalPair
     {kType, 64, 0, 0},  // n1865 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 882, 3, 0},  // n1866 enum
+    {kEnum, 885, 3, 0},  // n1866 enum
     {kType, 16, 0, 0},  // n1867 type
     {kMinimum, 0, 0, 0},  // minimum
     {kRef, 1, 0, 0},  // n1868 $ref #/$defs/ValueWithUnits
@@ -14761,7 +14762,7 @@ inline constexpr Op kOps[3133] = {
     {kPattern, 22, 0, 0},  // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
     {kType, 4, 0, 0},  // n1883 type
     {kAdditionalProperties, 1884, 0, 0},  // additionalProperties
-    {kOneOf, 886, 3, 0},  // n1884 oneOf
+    {kOneOf, 889, 3, 0},  // n1884 oneOf
     {kRef, 14, 0, 0},  // n1885 $ref #/$defs/JsonMember
     {kRef, 13, 0, 0},  // n1886 $ref #/$defs/BinaryMember
     {kRef, 130, 0, 0},  // n1887 $ref #/$defs/OpaqueBinaryMember
@@ -14808,7 +14809,7 @@ inline constexpr Op kOps[3133] = {
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kType, 16, 0, 0},  // n1919 type
     {kRef, 5, 0, 0},  // n1920 $ref #/$defs/Vec3
-    {kOneOf, 891, 2, 0},  // n1921 oneOf
+    {kOneOf, 894, 2, 0},  // n1921 oneOf
     {kType, 32, 0, 0},  // n1922 type
     {kRef, 5, 0, 0},  // n1923 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1924 type
@@ -14819,7 +14820,7 @@ inline constexpr Op kOps[3133] = {
     {kItems, 1927, 0, 0},  // items
     {kType, 4, 0, 0},  // n1927 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 893, 2, 0},  // required: atoms, target_angstrom
+    {kRequired, 896, 2, 0},  // required: atoms, target_angstrom
     {kProperties, 2522, 2, 0},  // properties: atoms, target_angstrom
     {kType, 8, 0, 0},  // n1928 type
     {kItems, 1929, 0, 0},  // items
@@ -14856,7 +14857,7 @@ inline constexpr Op kOps[3133] = {
     {kRef, 194, 0, 0},  // n1954 $ref #/$defs/EnergyComponents
     {kType, 4, 0, 0},  // n1955 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 898, 1, 0},  // required: version
+    {kRequired, 901, 1, 0},  // required: version
     {kProperties, 2576, 3, 0},  // properties: version, schema_uri, critical
     {kType, 32, 0, 0},  // n1956 type
     {kMinLength, 1, 0, 0},  // minLength

@@ -263,3 +263,18 @@ def test_volume_fields_checked_by_writer():
         w.add_volume("volume.difference", *grid, decomposition_ref="energy_decomposition", decomposition_role="orbital_pair")
     with pytest.raises(ValueError, match="need"):
         w.add_volume("volume.difference", *grid, pair_index=1)
+
+
+def test_vocabulary_kinetic_coulomb_residual(tmp_path):
+    """ADF/BAND parts of Pauli and orbital terms and ADF's remainder (spec § 5.16)."""
+    payload = copy.deepcopy(ZR)
+    del payload["orbital_pairs"]
+    payload["terms"] = payload["terms"] + [
+        {"name": "kinetic", "parent": 2, "energy": 0.0900},
+        {"name": "coulomb", "parent": 2, "energy": -0.0768},
+        {"name": "residual", "energy": 0.0}]
+    payload["sum_rules"] = [{"total": 0, "parts": [1, 2, 3, 4, 7]},
+                            {"total": 2, "parts": [5, 6]}]
+    pytest.importorskip("jsonschema")
+    report = validate_qvf(str(_archive(tmp_path, payload, densities=False)))
+    assert report["ok"], report["findings"]

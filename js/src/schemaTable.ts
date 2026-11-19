@@ -252,7 +252,8 @@ export const VALUES: readonly string[] = [
   "\"exchange\"", "\"repulsion\"", "\"orbital\"", "\"induction\"", "\"dispersion\"",
   "\"exchange_induction\"", "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"",
   "\"frozen\"", "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"",
-  "\"nocv\"", "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
+  "\"kinetic\"", "\"coulomb\"", "\"residual\"", "\"nocv\"", "\"covp\"", "\"per_spin\"",
+  "\"spin_summed\"",
 ];
 
 /** Node lists, string lists and value lists. */
@@ -301,9 +302,9 @@ export const LISTS: readonly number[] = [
   214, 182, 263, 254, 489, 215, 216, 217, 496, 101, 102, 501, 502, 61, 62, 63, 54, 55, 58, 60,
   220, 221, 54, 55, 58, 60, 222, 220, 221, 504, 61, 62, 63, 181, 505, 192, 224, 225, 226, 227,
   228, 229, 230, 231, 1804, 1805, 64, 77, 232, 233, 1834, 1835, 52, 197, 84, 234, 235, 236,
-  237, 238, 85, 86, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 1840, 1841, 76, 77,
-  485, 514, 83, 357, 250, 251, 1857, 1858, 252, 253, 461, 518, 197, 87, 76, 77, 324, 1885,
-  1886, 1887, 52, 52, 1922, 1923, 77, 543, 485, 9, 485, 6,
+  237, 238, 85, 86, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 1840,
+  1841, 76, 77, 485, 514, 83, 357, 253, 254, 1857, 1858, 255, 256, 461, 518, 197, 87, 76, 77,
+  324, 1885, 1886, 1887, 52, 52, 1922, 1923, 77, 543, 485, 9, 485, 6,
 ];
 
 /** (key, node) pairs: Properties, PatternProperties, DependentSchemas. */
@@ -1153,22 +1154,22 @@ export const OPS: readonly number[] = [
   1, 4, 0, 0, // n182 type
   12, -1, 0, 0, // additionalProperties
   11, 2408, 1, 0, // patternProperties
-  13, 869, 2, 0, // required: total, parts
+  13, 872, 2, 0, // required: total, parts
   10, 2410, 3, 0, // properties: total, parts, tolerance
   1, 4, 0, 0, // n183 type
   12, -1, 0, 0, // additionalProperties
   11, 2416, 1, 0, // patternProperties
-  13, 871, 2, 0, // required: type, pairs
+  13, 874, 2, 0, // required: type, pairs
   10, 2418, 5, 0, // properties: type, eigenvalue_convention, threshold, total, pairs
   1, 4, 0, 0, // n184 type
   12, -1, 0, 0, // additionalProperties
   11, 2428, 1, 0, // patternProperties
-  13, 879, 3, 0, // required: index, eigenvalue, energy
+  13, 882, 3, 0, // required: index, eigenvalue, energy
   10, 2430, 10, 0, // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
   1, 4, 0, 0, // n185 type
   12, -1, 0, 0, // additionalProperties
   11, 2450, 1, 0, // patternProperties
-  13, 885, 1, 0, // required: kpoints
+  13, 888, 1, 0, // required: kpoints
   10, 2452, 3, 0, // properties: kpoints, mesh, orbital_pairs_gamma_only
   10, 2458, 2, 0, // n186 properties: kind, members
   1, 4, 0, 0, // n187 type
@@ -1178,12 +1179,12 @@ export const OPS: readonly number[] = [
   1, 4, 0, 0, // n188 type
   12, -1, 0, 0, // additionalProperties
   11, 2486, 1, 0, // patternProperties
-  13, 889, 1, 0, // required: name
+  13, 892, 1, 0, // required: name
   10, 2488, 4, 0, // properties: name, orcid, affiliation, email
   1, 4, 0, 0, // n189 type
   12, -1, 0, 0, // additionalProperties
   11, 2496, 1, 0, // patternProperties
-  13, 890, 1, 0, // required: name
+  13, 893, 1, 0, // required: name
   10, 2498, 3, 0, // properties: name, version, url
   1, 4, 0, 0, // n190 type
   12, -1, 0, 0, // additionalProperties
@@ -1197,7 +1198,7 @@ export const OPS: readonly number[] = [
   1, 4, 0, 0, // n193 type
   12, -1, 0, 0, // additionalProperties
   11, 2530, 1, 0, // patternProperties
-  13, 895, 1, 0, // required: total
+  13, 898, 1, 0, // required: total
   10, 2532, 5, 0, // properties: total, method, components, by_method, units_note
   1, 4, 0, 0, // n194 type
   12, -1, 0, 0, // additionalProperties
@@ -1206,7 +1207,7 @@ export const OPS: readonly number[] = [
   1, 4, 0, 0, // n195 type
   12, -1, 0, 0, // additionalProperties
   11, 2568, 1, 0, // patternProperties
-  13, 896, 2, 0, // required: method, total
+  13, 899, 2, 0, // required: method, total
   10, 2570, 3, 0, // properties: method, total, components
   1, 4, 0, 0, // n196 type
   12, -1, 0, 0, // additionalProperties
@@ -3619,8 +3620,8 @@ export const OPS: readonly number[] = [
   32, 11, 0, 0, // pattern ^x_[A-Za-z0-9_.-]+$
   1, 32, 0, 0, // n1836 type
   4, 1, 0, 0, // n1837 $ref #/$defs/ValueWithUnits
-  7, 865, 2, 0, // n1839 oneOf
-  3, 846, 19, 0, // n1840 enum
+  7, 868, 2, 0, // n1839 oneOf
+  3, 846, 22, 0, // n1840 enum
   1, 32, 0, 0, // n1841 type
   32, 11, 0, 0, // pattern ^x_[A-Za-z0-9_.-]+$
   4, 1, 0, 0, // n1842 $ref #/$defs/ValueWithUnits
@@ -3630,7 +3631,7 @@ export const OPS: readonly number[] = [
   1, 64, 0, 0, // n1844 type
   25, 0, 0, 0, // minimum
   1, 2, 0, 0, // n1845 type
-  3, 867, 2, 0, // n1846 enum
+  3, 870, 2, 0, // n1846 enum
   1, 64, 0, 0, // n1847 type
   25, 0, 0, 0, // minimum
   1, 32, 0, 0, // n1848 type
@@ -3644,11 +3645,11 @@ export const OPS: readonly number[] = [
   1, 64, 0, 0, // n1853 type
   25, 0, 0, 0, // minimum
   4, 1, 0, 0, // n1854 $ref #/$defs/ValueWithUnits
-  7, 875, 2, 0, // n1856 oneOf
-  3, 873, 2, 0, // n1857 enum
+  7, 878, 2, 0, // n1856 oneOf
+  3, 876, 2, 0, // n1857 enum
   1, 32, 0, 0, // n1858 type
   32, 11, 0, 0, // pattern ^x_[A-Za-z0-9_.-]+$
-  3, 877, 2, 0, // n1859 enum
+  3, 880, 2, 0, // n1859 enum
   1, 16, 0, 0, // n1860 type
   25, 0, 0, 0, // minimum
   4, 1, 0, 0, // n1861 $ref #/$defs/ValueWithUnits
@@ -3657,7 +3658,7 @@ export const OPS: readonly number[] = [
   4, 184, 0, 0, // n1863 $ref #/$defs/DecompositionOrbitalPair
   1, 64, 0, 0, // n1865 type
   25, 2, 0, 0, // minimum
-  3, 882, 3, 0, // n1866 enum
+  3, 885, 3, 0, // n1866 enum
   1, 16, 0, 0, // n1867 type
   25, 0, 0, 0, // minimum
   4, 1, 0, 0, // n1868 $ref #/$defs/ValueWithUnits
@@ -3686,7 +3687,7 @@ export const OPS: readonly number[] = [
   32, 22, 0, 0, // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
   1, 4, 0, 0, // n1883 type
   12, 1884, 0, 0, // additionalProperties
-  7, 886, 3, 0, // n1884 oneOf
+  7, 889, 3, 0, // n1884 oneOf
   4, 14, 0, 0, // n1885 $ref #/$defs/JsonMember
   4, 13, 0, 0, // n1886 $ref #/$defs/BinaryMember
   4, 130, 0, 0, // n1887 $ref #/$defs/OpaqueBinaryMember
@@ -3733,7 +3734,7 @@ export const OPS: readonly number[] = [
   27, 0, 0, 0, // exclusiveMinimum
   1, 16, 0, 0, // n1919 type
   4, 5, 0, 0, // n1920 $ref #/$defs/Vec3
-  7, 891, 2, 0, // n1921 oneOf
+  7, 894, 2, 0, // n1921 oneOf
   1, 32, 0, 0, // n1922 type
   4, 5, 0, 0, // n1923 $ref #/$defs/Vec3
   1, 8, 0, 0, // n1924 type
@@ -3744,7 +3745,7 @@ export const OPS: readonly number[] = [
   20, 1927, 0, 0, // items
   1, 4, 0, 0, // n1927 type
   12, -1, 0, 0, // additionalProperties
-  13, 893, 2, 0, // required: atoms, target_angstrom
+  13, 896, 2, 0, // required: atoms, target_angstrom
   10, 2522, 2, 0, // properties: atoms, target_angstrom
   1, 8, 0, 0, // n1928 type
   20, 1929, 0, 0, // items
@@ -3781,7 +3782,7 @@ export const OPS: readonly number[] = [
   4, 194, 0, 0, // n1954 $ref #/$defs/EnergyComponents
   1, 4, 0, 0, // n1955 type
   12, -1, 0, 0, // additionalProperties
-  13, 898, 1, 0, // required: version
+  13, 901, 1, 0, // required: version
   10, 2576, 3, 0, // properties: version, schema_uri, critical
   1, 32, 0, 0, // n1956 type
   30, 1, 0, 0, // minLength

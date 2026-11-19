@@ -66,6 +66,7 @@ nav:
       - Family workflow: family_workflow.md
       - Reaction workflow interchange: reaction_workflow.md
       - ORCA integration: orca_integration.md
+      - Energy decompositions from common programs: energy_decomposition_producers.md
   - API reference:
       - Python: api/python.md
       - C++ and C: api/cpp.md
