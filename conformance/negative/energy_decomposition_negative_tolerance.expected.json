@@ -1,0 +1,10 @@
+{
+  "archive": "energy_decomposition_negative_tolerance.qvf",
+  "description": "An energy_decomposition sum rule with a negative tolerance (spec \u00a7 5.16).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

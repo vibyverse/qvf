@@ -1568,6 +1568,7 @@ inline std::vector<FieldFinding> eda_errors(
         }
         double tol = 1e-6;
         if (r.has("tolerance") && !eda_energy_eh(get(r, "tolerance"), tol)) continue;
+        if (tol < 0) continue;  // a negative tolerance is reported by the schema check
         double t_eh = 0.0, sum = 0.0;
         if (!eda_energy_eh(get(terms[static_cast<size_t>(total->as_int())], "energy"), t_eh)) continue;
         bool ok = true;

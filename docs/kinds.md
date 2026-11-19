@@ -4740,7 +4740,7 @@ A declared additivity of an `EnergyDecompositionPayload`: the energies of `parts
 |---|---|---|---|
 | `total` | yes | integer | Index in `terms` of the term that the parts add up to. |
 | `parts` | yes | array[1..] of integer | Indices in `terms` of the terms whose energies add up to the energy of `total`. |
-| `tolerance` |  | [`ValueWithUnits`](#def-valuewithunits) | Largest allowed \|total - sum of parts\|; absent means 1e-6 hartree, enough for energies as printed to six decimals. |
+| `tolerance` |  | [`ValueWithUnits`](#def-valuewithunits) | Largest allowed \|total - sum of parts\|, not negative; absent means 1e-6 hartree, enough for energies as printed to six decimals. |
 
 <a id="def-decompositionterm"></a>
 

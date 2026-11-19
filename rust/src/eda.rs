@@ -277,7 +277,8 @@ pub fn payload_errors(payload: Option<&Value>, n_atoms: Option<usize>) -> Vec<(C
         }
         let values: Vec<Option<f64>> = all.iter().map(|&i| energy_eh(terms[i as usize].get("energy"))).collect();
         let tol = if r.contains_key("tolerance") { energy_eh(r.get("tolerance")) } else { Some(DEFAULT_SUM_TOLERANCE_EH) };
-        let (Some(tol), true) = (tol, values.iter().all(Option::is_some)) else { continue };
+        // A negative tolerance is reported by the schema check.
+        let (Some(tol), true) = (tol.filter(|t| *t >= 0.0), values.iter().all(Option::is_some)) else { continue };
         let v: Vec<f64> = values.into_iter().flatten().collect();
         let sum: f64 = v[1..].iter().sum();
         let residual = v[0] - sum;

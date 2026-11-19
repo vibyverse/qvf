@@ -4052,7 +4052,7 @@ producer states each one it guarantees:
 |---|---|:--:|---|
 | `total` | integer | **yes** | Index of the term the parts add up to. |
 | `parts` | integer[] | **yes** | Indices of the terms whose energies add up to the energy of `total`. |
-| `tolerance` | `{value, units}` | no | Largest allowed \|total − Σ parts\|. Absent: 1e-6 hartree, enough for energies printed to six decimals. |
+| `tolerance` | `{value, units}` | no | Largest allowed \|total − Σ parts\|, not negative. Absent: 1e-6 hartree, enough for energies printed to six decimals. |
 
 **Orbital pairs** (`$defs/DecompositionOrbitalPairs`, strict). The table of an ETS-NOCV
 or ALMO-COVP analysis:

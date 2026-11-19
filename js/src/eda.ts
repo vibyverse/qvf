@@ -208,7 +208,7 @@ export function edaPayloadErrors(payload: unknown, nAtoms: number | null = null)
       return isObject(term) ? energyEh(term.energy) : null;
     });
     const tol = has(r, "tolerance") ? energyEh(r.tolerance) : DEFAULT_SUM_TOLERANCE_EH;
-    if (tol === null || values.some((v) => v === null)) return;
+    if (tol === null || tol < 0 || values.some((v) => v === null)) return; // a negative tolerance is the schema's
     const nums = values as number[];
     const sum = nums.slice(1).reduce((a, b) => a + b, 0);
     const residual = (nums[0] as number) - sum;

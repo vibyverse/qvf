@@ -2460,6 +2460,16 @@ def _():
             _err("E_REF_UNRESOLVED"), None)
 
 
+@case("energy_decomposition_negative_tolerance")
+def _():
+    def edit(p):
+        p["sum_rules"][0]["tolerance"] = {"value": -1e-6, "units": "hartree"}
+    return (_eda_case(edit).to_bytes(),
+            "An energy_decomposition sum rule with a negative tolerance (spec "
+            "§ 5.16).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
 @case("energy_decomposition_scheme_unknown")
 def _():
     def edit(p):

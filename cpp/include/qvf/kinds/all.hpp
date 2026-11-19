@@ -4564,10 +4564,32 @@ struct DecompositionTerm {
     }
 };
 
+struct DecompositionSumRuleTolerance {
+    double value{};
+    std::string units{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("value")) throw std::invalid_argument("use the typed field, not extra: value");
+        codec::put(out, "value", value);
+        if (out.has("units")) throw std::invalid_argument("use the typed field, not extra: units");
+        codec::put(out, "units", units);
+        return out;
+    }
+    static DecompositionSumRuleTolerance from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        DecompositionSumRuleTolerance out;
+        out.value = codec::get<double>(j, "value");
+        out.units = codec::get<std::string>(j, "units");
+        for (const auto& kv : j.items()) if (kv.first != "value" && kv.first != "units") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct DecompositionSumRule {
     int64_t total{};
     std::vector<int64_t> parts{};
-    std::optional<ValueWithUnits> tolerance{};
+    std::optional<DecompositionSumRuleTolerance> tolerance{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -4584,7 +4606,7 @@ struct DecompositionSumRule {
         DecompositionSumRule out;
         out.total = codec::get<int64_t>(j, "total");
         out.parts = codec::get<std::vector<int64_t>>(j, "parts");
-        if (j.has("tolerance")) out.tolerance.emplace(codec::get<ValueWithUnits>(j, "tolerance"));
+        if (j.has("tolerance")) out.tolerance.emplace(codec::get<DecompositionSumRuleTolerance>(j, "tolerance"));
         for (const auto& kv : j.items()) if (kv.first != "total" && kv.first != "parts" && kv.first != "tolerance") out.extra[kv.first] = kv.second;
         return out;
     }

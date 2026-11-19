@@ -5314,8 +5314,11 @@
           "description": "Indices in `terms` of the terms whose energies add up to the energy of `total`."
         },
         "tolerance": {
-          "$ref": "#/$defs/ValueWithUnits",
-          "description": "Largest allowed |total - sum of parts|; absent means 1e-6 hartree, enough for energies as printed to six decimals."
+          "allOf": [
+            { "$ref": "#/$defs/ValueWithUnits" },
+            { "properties": { "value": { "minimum": 0 } } }
+          ],
+          "description": "Largest allowed |total - sum of parts|, not negative; absent means 1e-6 hartree, enough for energies as printed to six decimals."
         }
       }
     },

@@ -3286,11 +3286,20 @@ pub struct DecompositionTerm {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DecompositionSumRuleTolerance {
+    pub value: f64,
+    pub units: String,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DecompositionSumRule {
     pub total: i64,
     pub parts: Vec<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tolerance: Option<ValueWithUnits>,
+    pub tolerance: Option<DecompositionSumRuleTolerance>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,

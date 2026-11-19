@@ -227,8 +227,8 @@ def payload_errors(payload: Any, n_atoms: Optional[int] = None) -> list[tuple[st
         tol = DEFAULT_SUM_TOLERANCE_EH
         if "tolerance" in rule:
             tol = energy_eh(rule["tolerance"])
-        if tol is None or any(v is None for v in values):
-            continue  # an energy that is not one is reported above or by the schema
+        if tol is None or tol < 0 or any(v is None for v in values):
+            continue  # an energy that is not one, or a negative tolerance, is the schema's
         residual = values[0] - sum(values[1:])
         if abs(residual) > tol:
             errors.append(("E_SUM_RULE",

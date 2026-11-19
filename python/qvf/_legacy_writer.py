@@ -1490,6 +1490,9 @@ def _eda_normalised(decomposition: Mapping[str, Any]) -> dict[str, Any]:
     for k, rule in enumerate(p.get("sum_rules") or []):
         if isinstance(rule, dict) and "tolerance" in rule:
             rule["tolerance"] = _eda_energy(rule["tolerance"], f"sum_rules[{k}].tolerance")
+            if rule["tolerance"]["value"] < 0:
+                raise ValueError(f"energy_decomposition: sum_rules[{k}].tolerance must not be "
+                                 f"negative (spec § 5.16)")
     pairs = p.get("orbital_pairs")
     if isinstance(pairs, dict):
         if "total" in pairs:

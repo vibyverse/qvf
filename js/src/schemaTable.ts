@@ -302,8 +302,8 @@ export const LISTS: readonly number[] = [
   220, 221, 54, 55, 58, 60, 222, 220, 221, 504, 61, 62, 63, 181, 505, 192, 224, 225, 226, 227,
   228, 229, 230, 231, 1804, 1805, 64, 77, 232, 233, 1834, 1835, 52, 197, 84, 234, 235, 236,
   237, 238, 85, 86, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 1840, 1841, 76, 77,
-  485, 514, 83, 357, 250, 251, 1857, 1858, 252, 253, 461, 518, 197, 87, 76, 77, 324, 1885,
-  1886, 1887, 52, 52, 1922, 1923, 77, 543, 485, 9, 485, 6,
+  485, 514, 1855, 1856, 83, 357, 250, 251, 1860, 1861, 252, 253, 461, 518, 197, 87, 76, 77,
+  324, 1888, 1889, 1890, 52, 52, 1925, 1926, 77, 543, 485, 9, 485, 6,
 ];
 
 /** (key, node) pairs: Properties, PatternProperties, DependentSchemas. */
@@ -440,17 +440,17 @@ export const PAIRS: readonly number[] = [
   1810, 192, 1813, 508, 1815, 509, 1817, 105, 1818, 510, 1819, 10, 1820, 9, 1821, 10, 1822, 11,
   1823, 397, 1824, 10, 1825, 64, 1826, 77, 1827, 511, 1829, 12, 1830, 13, 1831, 478, 1832, 11,
   1833, 512, 1836, 197, 1837, 10, 1838, 52, 1839, 197, 1842, 505, 1843, 513, 1845, 108, 1846,
-  511, 1847, 375, 1848, 64, 1849, 10, 1850, 485, 1851, 514, 1852, 515, 1854, 10, 1855, 83,
-  1856, 516, 1859, 517, 1860, 485, 1861, 357, 1862, 10, 1864, 461, 1865, 108, 1866, 518, 1867,
-  197, 1868, 519, 1869, 520, 1870, 521, 1871, 522, 1873, 471, 1875, 64, 1876, 10, 1877, 324,
-  1878, 326, 1879, 523, 1881, 62, 1882, 63, 1883, 10, 1888, 349, 1889, 53, 1890, 524, 1891,
-  525, 1892, 526, 1893, 527, 1894, 528, 1896, 529, 1897, 530, 1898, 531, 1900, 532, 1902, 10,
-  1904, 52, 1905, 533, 1906, 534, 1907, 535, 1908, 10, 1909, 52, 1910, 6, 1911, 536, 1912, 537,
-  1913, 200, 1914, 538, 1915, 201, 1916, 195, 1917, 196, 1918, 539, 1919, 540, 1920, 103, 1921,
-  77, 1928, 543, 1930, 541, 1924, 542, 1926, 10, 1931, 485, 1932, 9, 1933, 544, 1934, 545,
-  1935, 546, 1937, 10, 1938, 547, 1939, 496, 1940, 548, 1941, 549, 1942, 550, 1943, 551, 1944,
-  552, 1945, 397, 1946, 396, 1947, 553, 1948, 554, 1949, 555, 1950, 10, 1951, 9, 1952, 485,
-  1953, 544, 1954, 6, 1956, 3, 1957, 66, 1958, 24, 1955,
+  511, 1847, 375, 1848, 64, 1849, 10, 1850, 41, 1857, 485, 1851, 514, 1852, 515, 1854, 10,
+  1858, 83, 1859, 516, 1862, 517, 1863, 485, 1864, 357, 1865, 10, 1867, 461, 1868, 108, 1869,
+  518, 1870, 197, 1871, 519, 1872, 520, 1873, 521, 1874, 522, 1876, 471, 1878, 64, 1879, 10,
+  1880, 324, 1881, 326, 1882, 523, 1884, 62, 1885, 63, 1886, 10, 1891, 349, 1892, 53, 1893,
+  524, 1894, 525, 1895, 526, 1896, 527, 1897, 528, 1899, 529, 1900, 530, 1901, 531, 1903, 532,
+  1905, 10, 1907, 52, 1908, 533, 1909, 534, 1910, 535, 1911, 10, 1912, 52, 1913, 6, 1914, 536,
+  1915, 537, 1916, 200, 1917, 538, 1918, 201, 1919, 195, 1920, 196, 1921, 539, 1922, 540, 1923,
+  103, 1924, 77, 1931, 543, 1933, 541, 1927, 542, 1929, 10, 1934, 485, 1935, 9, 1936, 544,
+  1937, 545, 1938, 546, 1940, 10, 1941, 547, 1942, 496, 1943, 548, 1944, 549, 1945, 550, 1946,
+  551, 1947, 552, 1948, 397, 1949, 396, 1950, 553, 1951, 554, 1952, 555, 1953, 10, 1954, 9,
+  1955, 485, 1956, 544, 1957, 6, 1959, 3, 1960, 66, 1961, 24, 1958,
 ];
 
 /** (name, list start, count) triples: DependentRequired. */
@@ -639,17 +639,17 @@ export const NODES: readonly number[] = [
   2943, 1, 2944, 1, 2945, 0, 2945, 2, 2947, 4, 2951, 2, 2953, 2, 2955, 1, 2956, 2, 2958, 1,
   2959, 1, 2960, 1, 2961, 2, 2963, 1, 2964, 1, 2965, 0, 2965, 1, 2966, 1, 2967, 2, 2969, 1,
   2970, 3, 2973, 2, 2975, 1, 2976, 1, 2977, 2, 2979, 1, 2980, 1, 2981, 0, 2981, 2, 2983, 4,
-  2987, 2, 2989, 1, 2990, 0, 2990, 1, 2991, 1, 2992, 2, 2994, 1, 2995, 2, 2997, 1, 2998, 2,
-  3000, 1, 3001, 0, 3001, 2, 3003, 1, 3004, 2, 3006, 1, 3007, 2, 3009, 2, 3011, 2, 3013, 2,
-  3015, 2, 3017, 1, 3018, 1, 3019, 1, 3020, 0, 3020, 1, 3021, 4, 3025, 2, 3027, 1, 3028, 2,
-  3030, 2, 3032, 1, 3033, 1, 3034, 1, 3035, 1, 3036, 0, 3036, 1, 3037, 1, 3038, 2, 3040, 2,
-  3042, 2, 3044, 2, 3046, 1, 3047, 2, 3049, 2, 3051, 2, 3053, 1, 3054, 2, 3056, 1, 3057, 2,
-  3059, 1, 3060, 0, 3060, 2, 3062, 1, 3063, 1, 3064, 1, 3065, 0, 3065, 2, 3067, 1, 3068, 1,
-  3069, 1, 3070, 1, 3071, 1, 3072, 1, 3073, 2, 3075, 2, 3077, 1, 3078, 1, 3079, 1, 3080, 1,
-  3081, 1, 3082, 2, 3084, 2, 3086, 2, 3088, 4, 3092, 4, 3096, 2, 3098, 2, 3100, 0, 3100, 1,
-  3101, 2, 3103, 1, 3104, 2, 3106, 1, 3107, 1, 3108, 1, 3109, 1, 3110, 1, 3111, 1, 3112, 1,
-  3113, 1, 3114, 1, 3115, 1, 3116, 1, 3117, 1, 3118, 1, 3119, 1, 3120, 1, 3121, 0, 3121, 2,
-  3123, 1, 3124, 1, 3125, 4, 3129, 2, 3131, 1, 3132, 1,
+  2987, 2, 2989, 1, 2990, 1, 2991, 1, 2992, 1, 2993, 0, 2993, 1, 2994, 1, 2995, 2, 2997, 1,
+  2998, 2, 3000, 1, 3001, 2, 3003, 1, 3004, 0, 3004, 2, 3006, 1, 3007, 2, 3009, 1, 3010, 2,
+  3012, 2, 3014, 2, 3016, 2, 3018, 2, 3020, 1, 3021, 1, 3022, 1, 3023, 0, 3023, 1, 3024, 4,
+  3028, 2, 3030, 1, 3031, 2, 3033, 2, 3035, 1, 3036, 1, 3037, 1, 3038, 1, 3039, 0, 3039, 1,
+  3040, 1, 3041, 2, 3043, 2, 3045, 2, 3047, 2, 3049, 1, 3050, 2, 3052, 2, 3054, 2, 3056, 1,
+  3057, 2, 3059, 1, 3060, 2, 3062, 1, 3063, 0, 3063, 2, 3065, 1, 3066, 1, 3067, 1, 3068, 0,
+  3068, 2, 3070, 1, 3071, 1, 3072, 1, 3073, 1, 3074, 1, 3075, 1, 3076, 2, 3078, 2, 3080, 1,
+  3081, 1, 3082, 1, 3083, 1, 3084, 1, 3085, 2, 3087, 2, 3089, 2, 3091, 4, 3095, 4, 3099, 2,
+  3101, 2, 3103, 0, 3103, 1, 3104, 2, 3106, 1, 3107, 2, 3109, 1, 3110, 1, 3111, 1, 3112, 1,
+  3113, 1, 3114, 1, 3115, 1, 3116, 1, 3117, 1, 3118, 1, 3119, 1, 3120, 1, 3121, 1, 3122, 1,
+  3123, 1, 3124, 0, 3124, 2, 3126, 1, 3127, 1, 3128, 4, 3132, 2, 3134, 1, 3135, 1,
 ];
 
 /** (code, a, b, c) per op. */
@@ -1154,63 +1154,63 @@ export const OPS: readonly number[] = [
   12, -1, 0, 0, // additionalProperties
   11, 2408, 1, 0, // patternProperties
   13, 869, 2, 0, // required: total, parts
-  10, 2410, 3, 0, // properties: total, parts, tolerance
+  10, 2412, 3, 0, // properties: total, parts, tolerance
   1, 4, 0, 0, // n183 type
   12, -1, 0, 0, // additionalProperties
-  11, 2416, 1, 0, // patternProperties
-  13, 871, 2, 0, // required: type, pairs
-  10, 2418, 5, 0, // properties: type, eigenvalue_convention, threshold, total, pairs
+  11, 2418, 1, 0, // patternProperties
+  13, 873, 2, 0, // required: type, pairs
+  10, 2420, 5, 0, // properties: type, eigenvalue_convention, threshold, total, pairs
   1, 4, 0, 0, // n184 type
   12, -1, 0, 0, // additionalProperties
-  11, 2428, 1, 0, // patternProperties
-  13, 879, 3, 0, // required: index, eigenvalue, energy
-  10, 2430, 10, 0, // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
+  11, 2430, 1, 0, // patternProperties
+  13, 881, 3, 0, // required: index, eigenvalue, energy
+  10, 2432, 10, 0, // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
   1, 4, 0, 0, // n185 type
   12, -1, 0, 0, // additionalProperties
-  11, 2450, 1, 0, // patternProperties
-  13, 885, 1, 0, // required: kpoints
-  10, 2452, 3, 0, // properties: kpoints, mesh, orbital_pairs_gamma_only
-  10, 2458, 2, 0, // n186 properties: kind, members
+  11, 2452, 1, 0, // patternProperties
+  13, 887, 1, 0, // required: kpoints
+  10, 2454, 3, 0, // properties: kpoints, mesh, orbital_pairs_gamma_only
+  10, 2460, 2, 0, // n186 properties: kind, members
   1, 4, 0, 0, // n187 type
   12, -1, 0, 0, // additionalProperties
-  11, 2462, 1, 0, // patternProperties
-  10, 2464, 11, 0, // properties: title, description, created_utc, modified_utc, uuid, authors...
+  11, 2464, 1, 0, // patternProperties
+  10, 2466, 11, 0, // properties: title, description, created_utc, modified_utc, uuid, authors...
   1, 4, 0, 0, // n188 type
   12, -1, 0, 0, // additionalProperties
-  11, 2486, 1, 0, // patternProperties
-  13, 889, 1, 0, // required: name
-  10, 2488, 4, 0, // properties: name, orcid, affiliation, email
+  11, 2488, 1, 0, // patternProperties
+  13, 891, 1, 0, // required: name
+  10, 2490, 4, 0, // properties: name, orcid, affiliation, email
   1, 4, 0, 0, // n189 type
   12, -1, 0, 0, // additionalProperties
-  11, 2496, 1, 0, // patternProperties
-  13, 890, 1, 0, // required: name
-  10, 2498, 3, 0, // properties: name, version, url
+  11, 2498, 1, 0, // patternProperties
+  13, 892, 1, 0, // required: name
+  10, 2500, 3, 0, // properties: name, version, url
   1, 4, 0, 0, // n190 type
   12, -1, 0, 0, // additionalProperties
-  10, 2504, 6, 0, // properties: zpve_eh, enthalpy_eh, entropy_cal_mol_k, gibbs_free_energy_e...
+  10, 2506, 6, 0, // properties: zpve_eh, enthalpy_eh, entropy_cal_mol_k, gibbs_free_energy_e...
   1, 4, 0, 0, // n191 type
   12, -1, 0, 0, // additionalProperties
-  10, 2516, 3, 0, // properties: total_debye, vector_debye, origin
+  10, 2518, 3, 0, // properties: total_debye, vector_debye, origin
   1, 4, 0, 0, // n192 type
   12, -1, 0, 0, // additionalProperties
-  10, 2526, 2, 0, // properties: frozen_atoms, distance_constraints
+  10, 2528, 2, 0, // properties: frozen_atoms, distance_constraints
   1, 4, 0, 0, // n193 type
   12, -1, 0, 0, // additionalProperties
-  11, 2530, 1, 0, // patternProperties
-  13, 895, 1, 0, // required: total
-  10, 2532, 5, 0, // properties: total, method, components, by_method, units_note
+  11, 2532, 1, 0, // patternProperties
+  13, 897, 1, 0, // required: total
+  10, 2534, 5, 0, // properties: total, method, components, by_method, units_note
   1, 4, 0, 0, // n194 type
   12, -1, 0, 0, // additionalProperties
-  11, 2542, 1, 0, // patternProperties
-  10, 2544, 12, 0, // properties: nuclear_repulsion, electronic, one_electron, two_electron, e...
+  11, 2544, 1, 0, // patternProperties
+  10, 2546, 12, 0, // properties: nuclear_repulsion, electronic, one_electron, two_electron, e...
   1, 4, 0, 0, // n195 type
   12, -1, 0, 0, // additionalProperties
-  11, 2568, 1, 0, // patternProperties
-  13, 896, 2, 0, // required: method, total
-  10, 2570, 3, 0, // properties: method, total, components
+  11, 2570, 1, 0, // patternProperties
+  13, 898, 2, 0, // required: method, total
+  10, 2572, 3, 0, // properties: method, total, components
   1, 4, 0, 0, // n196 type
   12, -1, 0, 0, // additionalProperties
-  11, 2582, 1, 0, // patternProperties
+  11, 2584, 1, 0, // patternProperties
   1, 64, 0, 0, // n197 type
   2, 0, 0, 0, // const 1
   1, 32, 0, 0, // n198 type
@@ -3643,128 +3643,128 @@ export const OPS: readonly number[] = [
   20, 1853, 0, 0, // items
   1, 64, 0, 0, // n1853 type
   25, 0, 0, 0, // minimum
-  4, 1, 0, 0, // n1854 $ref #/$defs/ValueWithUnits
-  7, 875, 2, 0, // n1856 oneOf
-  3, 873, 2, 0, // n1857 enum
-  1, 32, 0, 0, // n1858 type
+  5, 871, 2, 0, // n1854 allOf
+  4, 1, 0, 0, // n1855 $ref #/$defs/ValueWithUnits
+  10, 2410, 1, 0, // n1856 properties: value
+  25, 0, 0, 0, // n1857 minimum
+  7, 877, 2, 0, // n1859 oneOf
+  3, 875, 2, 0, // n1860 enum
+  1, 32, 0, 0, // n1861 type
   32, 11, 0, 0, // pattern ^x_[A-Za-z0-9_.-]+$
-  3, 877, 2, 0, // n1859 enum
-  1, 16, 0, 0, // n1860 type
+  3, 879, 2, 0, // n1862 enum
+  1, 16, 0, 0, // n1863 type
   25, 0, 0, 0, // minimum
-  4, 1, 0, 0, // n1861 $ref #/$defs/ValueWithUnits
-  1, 8, 0, 0, // n1862 type
-  20, 1863, 0, 0, // items
-  4, 184, 0, 0, // n1863 $ref #/$defs/DecompositionOrbitalPair
-  1, 64, 0, 0, // n1865 type
+  4, 1, 0, 0, // n1864 $ref #/$defs/ValueWithUnits
+  1, 8, 0, 0, // n1865 type
+  20, 1866, 0, 0, // items
+  4, 184, 0, 0, // n1866 $ref #/$defs/DecompositionOrbitalPair
+  1, 64, 0, 0, // n1868 type
   25, 2, 0, 0, // minimum
-  3, 882, 3, 0, // n1866 enum
-  1, 16, 0, 0, // n1867 type
+  3, 884, 3, 0, // n1869 enum
+  1, 16, 0, 0, // n1870 type
   25, 0, 0, 0, // minimum
-  4, 1, 0, 0, // n1868 $ref #/$defs/ValueWithUnits
-  1, 64, 0, 0, // n1869 type
+  4, 1, 0, 0, // n1871 $ref #/$defs/ValueWithUnits
+  1, 64, 0, 0, // n1872 type
   25, 0, 0, 0, // minimum
-  1, 64, 0, 0, // n1870 type
+  1, 64, 0, 0, // n1873 type
   25, 0, 0, 0, // minimum
-  1, 8, 0, 0, // n1871 type
-  20, 1872, 0, 0, // items
-  1, 16, 0, 0, // n1872 type
+  1, 8, 0, 0, // n1874 type
+  20, 1875, 0, 0, // items
+  1, 16, 0, 0, // n1875 type
   25, 0, 0, 0, // minimum
-  1, 8, 0, 0, // n1873 type
-  20, 1874, 0, 0, // items
-  1, 16, 0, 0, // n1874 type
-  1, 32, 0, 0, // n1875 type
-  1, 32, 0, 0, // n1876 type
-  4, 106, 0, 0, // n1878 $ref #/$defs/BlochKpointsPayload
-  1, 8, 0, 0, // n1879 type
+  1, 8, 0, 0, // n1876 type
+  20, 1877, 0, 0, // items
+  1, 16, 0, 0, // n1877 type
+  1, 32, 0, 0, // n1878 type
+  1, 32, 0, 0, // n1879 type
+  4, 106, 0, 0, // n1881 $ref #/$defs/BlochKpointsPayload
+  1, 8, 0, 0, // n1882 type
   22, 3, 0, 0, // minItems
   23, 3, 0, 0, // maxItems
-  20, 1880, 0, 0, // items
-  1, 64, 0, 0, // n1880 type
+  20, 1883, 0, 0, // items
+  1, 64, 0, 0, // n1883 type
   25, 2, 0, 0, // minimum
-  1, 2, 0, 0, // n1881 type
-  1, 32, 0, 0, // n1882 type
+  1, 2, 0, 0, // n1884 type
+  1, 32, 0, 0, // n1885 type
   32, 22, 0, 0, // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
-  1, 4, 0, 0, // n1883 type
-  12, 1884, 0, 0, // additionalProperties
-  7, 886, 3, 0, // n1884 oneOf
-  4, 14, 0, 0, // n1885 $ref #/$defs/JsonMember
-  4, 13, 0, 0, // n1886 $ref #/$defs/BinaryMember
-  4, 130, 0, 0, // n1887 $ref #/$defs/OpaqueBinaryMember
-  1, 32, 0, 0, // n1889 type
-  1, 32, 0, 0, // n1890 type
-  1, 32, 0, 0, // n1891 type
-  32, 1, 0, 0, // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
+  1, 4, 0, 0, // n1886 type
+  12, 1887, 0, 0, // additionalProperties
+  7, 888, 3, 0, // n1887 oneOf
+  4, 14, 0, 0, // n1888 $ref #/$defs/JsonMember
+  4, 13, 0, 0, // n1889 $ref #/$defs/BinaryMember
+  4, 130, 0, 0, // n1890 $ref #/$defs/OpaqueBinaryMember
   1, 32, 0, 0, // n1892 type
-  32, 1, 0, 0, // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
   1, 32, 0, 0, // n1893 type
-  32, 23, 0, 0, // pattern ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
-  1, 8, 0, 0, // n1894 type
-  20, 1895, 0, 0, // items
-  4, 188, 0, 0, // n1895 $ref #/$defs/MetadataAuthor
+  1, 32, 0, 0, // n1894 type
+  32, 1, 0, 0, // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
+  1, 32, 0, 0, // n1895 type
+  32, 1, 0, 0, // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
   1, 32, 0, 0, // n1896 type
-  30, 1, 0, 0, // minLength
-  1, 32, 0, 0, // n1897 type
-  30, 1, 0, 0, // minLength
-  1, 8, 0, 0, // n1898 type
-  20, 1899, 0, 0, // items
+  32, 23, 0, 0, // pattern ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+  1, 8, 0, 0, // n1897 type
+  20, 1898, 0, 0, // items
+  4, 188, 0, 0, // n1898 $ref #/$defs/MetadataAuthor
   1, 32, 0, 0, // n1899 type
-  1, 8, 0, 0, // n1900 type
-  20, 1901, 0, 0, // items
-  1, 32, 0, 0, // n1901 type
-  1, 8, 0, 0, // n1902 type
-  20, 1903, 0, 0, // items
-  1, 32, 0, 0, // n1903 type
-  1, 32, 0, 0, // n1905 type
   30, 1, 0, 0, // minLength
+  1, 32, 0, 0, // n1900 type
+  30, 1, 0, 0, // minLength
+  1, 8, 0, 0, // n1901 type
+  20, 1902, 0, 0, // items
+  1, 32, 0, 0, // n1902 type
+  1, 8, 0, 0, // n1903 type
+  20, 1904, 0, 0, // items
+  1, 32, 0, 0, // n1904 type
+  1, 8, 0, 0, // n1905 type
+  20, 1906, 0, 0, // items
   1, 32, 0, 0, // n1906 type
-  1, 32, 0, 0, // n1907 type
   1, 32, 0, 0, // n1908 type
-  1, 32, 0, 0, // n1910 type
   30, 1, 0, 0, // minLength
+  1, 32, 0, 0, // n1909 type
+  1, 32, 0, 0, // n1910 type
   1, 32, 0, 0, // n1911 type
-  1, 32, 0, 0, // n1912 type
-  1, 16, 0, 0, // n1913 type
-  1, 16, 0, 0, // n1914 type
-  1, 16, 0, 0, // n1915 type
+  1, 32, 0, 0, // n1913 type
+  30, 1, 0, 0, // minLength
+  1, 32, 0, 0, // n1914 type
+  1, 32, 0, 0, // n1915 type
   1, 16, 0, 0, // n1916 type
   1, 16, 0, 0, // n1917 type
-  27, 0, 0, 0, // exclusiveMinimum
   1, 16, 0, 0, // n1918 type
-  27, 0, 0, 0, // exclusiveMinimum
   1, 16, 0, 0, // n1919 type
-  4, 5, 0, 0, // n1920 $ref #/$defs/Vec3
-  7, 891, 2, 0, // n1921 oneOf
-  1, 32, 0, 0, // n1922 type
+  1, 16, 0, 0, // n1920 type
+  27, 0, 0, 0, // exclusiveMinimum
+  1, 16, 0, 0, // n1921 type
+  27, 0, 0, 0, // exclusiveMinimum
+  1, 16, 0, 0, // n1922 type
   4, 5, 0, 0, // n1923 $ref #/$defs/Vec3
-  1, 8, 0, 0, // n1924 type
-  20, 1925, 0, 0, // items
-  1, 64, 0, 0, // n1925 type
+  7, 893, 2, 0, // n1924 oneOf
+  1, 32, 0, 0, // n1925 type
+  4, 5, 0, 0, // n1926 $ref #/$defs/Vec3
+  1, 8, 0, 0, // n1927 type
+  20, 1928, 0, 0, // items
+  1, 64, 0, 0, // n1928 type
   25, 0, 0, 0, // minimum
-  1, 8, 0, 0, // n1926 type
-  20, 1927, 0, 0, // items
-  1, 4, 0, 0, // n1927 type
+  1, 8, 0, 0, // n1929 type
+  20, 1930, 0, 0, // items
+  1, 4, 0, 0, // n1930 type
   12, -1, 0, 0, // additionalProperties
-  13, 893, 2, 0, // required: atoms, target_angstrom
-  10, 2522, 2, 0, // properties: atoms, target_angstrom
-  1, 8, 0, 0, // n1928 type
-  20, 1929, 0, 0, // items
+  13, 895, 2, 0, // required: atoms, target_angstrom
+  10, 2524, 2, 0, // properties: atoms, target_angstrom
+  1, 8, 0, 0, // n1931 type
+  20, 1932, 0, 0, // items
   22, 2, 0, 0, // minItems
   23, 2, 0, 0, // maxItems
-  1, 64, 0, 0, // n1929 type
+  1, 64, 0, 0, // n1932 type
   25, 0, 0, 0, // minimum
-  1, 16, 0, 0, // n1930 type
+  1, 16, 0, 0, // n1933 type
   27, 0, 0, 0, // exclusiveMinimum
-  4, 1, 0, 0, // n1932 $ref #/$defs/ValueWithUnits
-  1, 32, 0, 0, // n1933 type
+  4, 1, 0, 0, // n1935 $ref #/$defs/ValueWithUnits
+  1, 32, 0, 0, // n1936 type
   30, 1, 0, 0, // minLength
-  4, 194, 0, 0, // n1934 $ref #/$defs/EnergyComponents
-  1, 8, 0, 0, // n1935 type
-  20, 1936, 0, 0, // items
-  4, 195, 0, 0, // n1936 $ref #/$defs/EnergyByMethod
-  1, 32, 0, 0, // n1937 type
-  4, 1, 0, 0, // n1938 $ref #/$defs/ValueWithUnits
-  4, 1, 0, 0, // n1939 $ref #/$defs/ValueWithUnits
-  4, 1, 0, 0, // n1940 $ref #/$defs/ValueWithUnits
+  4, 194, 0, 0, // n1937 $ref #/$defs/EnergyComponents
+  1, 8, 0, 0, // n1938 type
+  20, 1939, 0, 0, // items
+  4, 195, 0, 0, // n1939 $ref #/$defs/EnergyByMethod
+  1, 32, 0, 0, // n1940 type
   4, 1, 0, 0, // n1941 $ref #/$defs/ValueWithUnits
   4, 1, 0, 0, // n1942 $ref #/$defs/ValueWithUnits
   4, 1, 0, 0, // n1943 $ref #/$defs/ValueWithUnits
@@ -3775,18 +3775,21 @@ export const OPS: readonly number[] = [
   4, 1, 0, 0, // n1948 $ref #/$defs/ValueWithUnits
   4, 1, 0, 0, // n1949 $ref #/$defs/ValueWithUnits
   4, 1, 0, 0, // n1950 $ref #/$defs/ValueWithUnits
-  1, 32, 0, 0, // n1952 type
-  30, 1, 0, 0, // minLength
+  4, 1, 0, 0, // n1951 $ref #/$defs/ValueWithUnits
+  4, 1, 0, 0, // n1952 $ref #/$defs/ValueWithUnits
   4, 1, 0, 0, // n1953 $ref #/$defs/ValueWithUnits
-  4, 194, 0, 0, // n1954 $ref #/$defs/EnergyComponents
-  1, 4, 0, 0, // n1955 type
-  12, -1, 0, 0, // additionalProperties
-  13, 898, 1, 0, // required: version
-  10, 2576, 3, 0, // properties: version, schema_uri, critical
-  1, 32, 0, 0, // n1956 type
+  1, 32, 0, 0, // n1955 type
   30, 1, 0, 0, // minLength
-  1, 32, 0, 0, // n1957 type
-  1, 2, 0, 0, // n1958 type
+  4, 1, 0, 0, // n1956 $ref #/$defs/ValueWithUnits
+  4, 194, 0, 0, // n1957 $ref #/$defs/EnergyComponents
+  1, 4, 0, 0, // n1958 type
+  12, -1, 0, 0, // additionalProperties
+  13, 900, 1, 0, // required: version
+  10, 2578, 3, 0, // properties: version, schema_uri, critical
+  1, 32, 0, 0, // n1959 type
+  30, 1, 0, 0, // minLength
+  1, 32, 0, 0, // n1960 type
+  1, 2, 0, 0, // n1961 type
 ];
 
 /** The $defs entries by name. */

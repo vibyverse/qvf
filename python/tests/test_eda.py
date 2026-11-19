@@ -201,6 +201,7 @@ def _bad(**changes):
                                     "energy": {"value": 1.0, "units": "angstrom"}}]),
      "not an energy unit"),
     (_bad(orbital_pairs={"type": "nocv", "pairs": []}), "eigenvalue_convention"),
+    (_bad(sum_rules=[{"total": 0, "parts": [1, 2, 3, 4], "tolerance": -1e-6}]), "negative"),
 ])
 def test_writer_refuses(payload, match):
     w = QvfWriter("test", "1.0", auto_metadata=False)
