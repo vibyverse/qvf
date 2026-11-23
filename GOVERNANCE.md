@@ -92,6 +92,57 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
+### 2026-11-17: `energy_decomposition` term vocabulary and producer mappings
+
+**Status.** Proposed for maintainer decision, as the follow-up to vibyverse/qvf#32
+that its review asked for. It is additive: three names are added to a vocabulary,
+and an informative documentation page is added.
+
+**Decision.**
+1. The term vocabulary of § 5.16 gains `kinetic`, `coulomb` and `residual`.
+   - ADF and BAND both split the Pauli, steric and orbital terms into kinetic,
+     Coulomb and exchange–correlation parts.
+   - ADF prints a numerical remainder ("Residu") that its total sum rule needs.
+   - These three were the only `x_` names that more than one program, or a
+     general scheme, needed.
+2. § 5.16 says what `interaction` is for a local energy decomposition without
+   monomer calculations: the sum of the inter-fragment energies, which excludes
+   the electronic preparation. The producer says so in `notes` or adds the
+   `preparation` terms.
+3. `docs/energy_decomposition_producers.md` (informative) maps the output of
+   ADF, BAND, ORCA (EDA-NOCV and LED), Psi4 (SAPT0 and F-SAPT), CP2K (ALMO-EDA)
+   and vibe-qc onto the kind.
+
+**Evidence.** These real outputs were converted and validated, every declared
+sum rule included:
+- ADF 2026.1: water dimer, water trimer, and ethane with a spin-flipped fragment.
+- BAND 2026.1: four systems.
+- ORCA 6.1.1:
+  - EDA-NOCV of the water dimer and ethane;
+  - DLPNO-CCSD(T) LED of the water dimer and the cyclic trimer.
+- Psi4 1.9.1: SAPT0 and F-SAPT of the water dimer.
+- CP2K 2023.1: ALMO-EDA of the water dimer and trimer.
+- vibe-qc: seven archives.
+
+The mappings found two producer details. Neither needs a format change:
+- ORCA prints its Pauli energy without ΔE⁰(XC). § 5.16's `pauli` is the sum,
+  written with the two printed values as parts.
+- In the open-shell spin-flip case, ORCA 6.1.1's printed terms miss its own
+  bond energy by 5.9·10⁻⁵ hartree. A declared sum rule with a tolerance makes
+  that visible instead of hiding it.
+
+**Readings for the maintainer.**
+- (a) F-SAPT "link" fragments are the electrons of a bond, not a set of atoms.
+  They are written as the bond's atom pair with an `x_` note. A fragment type
+  (atoms or link) would express them exactly.
+- (b) CP2K's ALMO analysis does not split frozen and polarization. The combined
+  term stays an `x_` name.
+- (c) The SAPT corrections (Elst10, Ind20,r, Disp20, …) stay `x_` names, being
+  specific to one scheme.
+
+**Compatibility.** Additive: three enumeration values and documentation. No
+`qvf_version` change.
+
 ### 2026-11-14: Energy decomposition analysis (`energy_decomposition`)
 
 **Status.** Accepted by the maintainer on 2026-11-14 as a provisional

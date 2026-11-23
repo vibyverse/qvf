@@ -5244,14 +5244,14 @@
         "name": {
           "oneOf": [
             {
-              "enum": ["interaction", "electrostatic", "pauli", "exchange", "repulsion", "orbital", "polarization", "charge_transfer", "induction", "dispersion", "exchange_induction", "exchange_dispersion", "delta_hf", "preparation", "frozen", "exchange_correlation", "correlation", "reference", "coupling"]
+              "enum": ["interaction", "electrostatic", "pauli", "exchange", "repulsion", "orbital", "polarization", "charge_transfer", "induction", "dispersion", "exchange_induction", "exchange_dispersion", "delta_hf", "preparation", "frozen", "exchange_correlation", "correlation", "reference", "coupling", "kinetic", "coulomb", "residual"]
             },
             {
               "type": "string",
               "pattern": "^x_[A-Za-z0-9_.-]+$"
             }
           ],
-          "description": "What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference` or `coupling`, as QVF spec § 5.16 (energy_decomposition — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own."
+          "description": "What the term is: `interaction`, `electrostatic`, `pauli`, `exchange`, `repulsion`, `orbital`, `polarization`, `charge_transfer`, `induction`, `dispersion`, `exchange_induction`, `exchange_dispersion`, `delta_hf`, `preparation`, `frozen`, `exchange_correlation`, `correlation`, `reference`, `coupling`, `kinetic`, `coulomb` or `residual`, as QVF spec § 5.16 (energy_decomposition — energy decomposition analysis) defines them, or an `x_` name for a term of the producer's own."
         },
         "energy": {
           "$ref": "#/$defs/ValueWithUnits",

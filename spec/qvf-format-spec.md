@@ -4017,7 +4017,10 @@ The combination of `name`, `fragments` (compared as a set unless `directed`),
 **interaction**: `name` `interaction`, without `fragments`, `spin` or
 `parent`. It is the energy being decomposed, the energy of the complete
 system minus the energies of the interacting fragments, with or without
-their preparation, as the scheme defines it.
+their preparation, as the scheme defines it. A local energy decomposition
+without monomer calculations reports the sum of the inter-fragment energies,
+which excludes the electronic preparation of the fragments; a producer says so
+in `notes` or adds the `preparation` terms.
 
 | Term name | Meaning |
 |---|---|
@@ -4040,6 +4043,9 @@ their preparation, as the scheme defines it.
 | `correlation` | Correlation contribution of a correlated decomposition (LED, double hybrids). |
 | `reference` | Contribution of the reference determinant of a correlated decomposition (LED). |
 | `coupling` | A coupling or remainder term, e.g. the Kitaura–Morokuma mixing term. |
+| `kinetic` | Kinetic-energy part of a term, e.g. ΔT⁰ of the Pauli or steric term, or the kinetic part of the orbital term (ADF, BAND). |
+| `coulomb` | Coulomb (electrostatic-potential) part of a term other than the classical `electrostatic` interaction, e.g. the Pauli Coulomb term of ADF. |
+| `residual` | A numerical remainder the producer prints so that its terms add up, e.g. ADF's "Residu". |
 
 **Sum rules** (`$defs/DecompositionSumRule`, strict). Schemes differ in what adds up
 to what: a Ziegler–Rauk interaction is `electrostatic` + `pauli` + `orbital`
@@ -4138,6 +4144,9 @@ four SAPT terms:
 ],
 "sum_rules": [{"total": 0, "parts": [1, 2, 3, 4]}, {"total": 3, "parts": [5, 6, 7]}]
 ```
+
+How the output of ADF, BAND, ORCA, Psi4, CP2K and vibe-qc maps onto this payload
+is shown, informatively, in `docs/energy_decomposition_producers.md`.
 
 A local energy decomposition of three fragments lists pair terms
 (`"fragments": [0, 1]`, …) and the `preparation` of each fragment

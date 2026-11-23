@@ -214,7 +214,7 @@ inline constexpr double kNumbers[9] = {
     0.0, 3.0, 1.0, 180.0, 10.0, 100.0, 7.0, 2.0, 230.0,
 };
 // JSON literals of const / enum, as JSON text.
-inline constexpr const char* kValues[254] = {
+inline constexpr const char* kValues[257] = {
     "1", "\"little\"", "\"pending\"", "\"running\"", "\"converged\"", "\"failed\"",
     "\"angstrom\"", "\"bohr\"", "\"hartree\"", "\"ev\"", "\"kcal_per_mol\"", "\"kj_per_mol\"",
     "\"cm-1\"", "\"nm\"", "\"debye\"", "\"mhz\"", "\"hz\"", "\"ppm\"", "\"km_per_mol\"",
@@ -265,11 +265,12 @@ inline constexpr const char* kValues[254] = {
     "\"supersystem\"", "\"electrostatic\"", "\"pauli\"", "\"exchange\"", "\"repulsion\"",
     "\"orbital\"", "\"induction\"", "\"dispersion\"", "\"exchange_induction\"",
     "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"", "\"frozen\"",
-    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"", "\"nocv\"",
-    "\"covp\"", "\"per_spin\"", "\"spin_summed\"",
+    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"",
+    "\"kinetic\"", "\"coulomb\"", "\"residual\"", "\"nocv\"", "\"covp\"", "\"per_spin\"",
+    "\"spin_summed\"",
 };
 // Node lists, string lists and value lists (see the opcodes).
-inline constexpr std::int32_t kLists[901] = {
+inline constexpr std::int32_t kLists[904] = {
     0, 1, 2, 5, 6, 7, 2, 3, 4, 5, 41, 42, 245, 246, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 47, 48, 49, 50, 51, 51, 50, 258, 260,
@@ -315,9 +316,9 @@ inline constexpr std::int32_t kLists[901] = {
     216, 217, 496, 101, 102, 501, 502, 61, 62, 63, 54, 55, 58, 60, 220, 221, 54, 55, 58, 60,
     222, 220, 221, 504, 61, 62, 63, 181, 505, 192, 224, 225, 226, 227, 228, 229, 230, 231,
     1804, 1805, 64, 77, 232, 233, 1834, 1835, 52, 197, 84, 234, 235, 236, 237, 238, 85, 86,
-    239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 1840, 1841, 76, 77, 485, 514, 1855,
-    1856, 83, 357, 250, 251, 1860, 1861, 252, 253, 461, 518, 197, 87, 76, 77, 324, 1888, 1889,
-    1890, 52, 52, 1925, 1926, 77, 543, 485, 9, 485, 6,
+    239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 1840, 1841, 76, 77,
+    485, 514, 1855, 1856, 83, 357, 253, 254, 1860, 1861, 255, 256, 461, 518, 197, 87, 76, 77,
+    324, 1888, 1889, 1890, 52, 52, 1925, 1926, 77, 543, 485, 9, 485, 6,
 };
 // (key, node) pairs: Properties, PatternProperties, DependentSchemas.
 inline constexpr std::int32_t kPairs[2586] = {
@@ -1215,22 +1216,22 @@ inline constexpr Op kOps[3136] = {
     {kType, 4, 0, 0},  // n182 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2408, 1, 0},  // patternProperties
-    {kRequired, 869, 2, 0},  // required: total, parts
+    {kRequired, 872, 2, 0},  // required: total, parts
     {kProperties, 2412, 3, 0},  // properties: total, parts, tolerance
     {kType, 4, 0, 0},  // n183 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2418, 1, 0},  // patternProperties
-    {kRequired, 873, 2, 0},  // required: type, pairs
+    {kRequired, 876, 2, 0},  // required: type, pairs
     {kProperties, 2420, 5, 0},  // properties: type, eigenvalue_convention, threshold, total, pairs
     {kType, 4, 0, 0},  // n184 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2430, 1, 0},  // patternProperties
-    {kRequired, 881, 3, 0},  // required: index, eigenvalue, energy
+    {kRequired, 884, 3, 0},  // required: index, eigenvalue, energy
     {kProperties, 2432, 10, 0},  // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
     {kType, 4, 0, 0},  // n185 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2452, 1, 0},  // patternProperties
-    {kRequired, 887, 1, 0},  // required: kpoints
+    {kRequired, 890, 1, 0},  // required: kpoints
     {kProperties, 2454, 3, 0},  // properties: kpoints, mesh, orbital_pairs_gamma_only
     {kProperties, 2460, 2, 0},  // n186 properties: kind, members
     {kType, 4, 0, 0},  // n187 type
@@ -1240,12 +1241,12 @@ inline constexpr Op kOps[3136] = {
     {kType, 4, 0, 0},  // n188 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2488, 1, 0},  // patternProperties
-    {kRequired, 891, 1, 0},  // required: name
+    {kRequired, 894, 1, 0},  // required: name
     {kProperties, 2490, 4, 0},  // properties: name, orcid, affiliation, email
     {kType, 4, 0, 0},  // n189 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2498, 1, 0},  // patternProperties
-    {kRequired, 892, 1, 0},  // required: name
+    {kRequired, 895, 1, 0},  // required: name
     {kProperties, 2500, 3, 0},  // properties: name, version, url
     {kType, 4, 0, 0},  // n190 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -1259,7 +1260,7 @@ inline constexpr Op kOps[3136] = {
     {kType, 4, 0, 0},  // n193 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2532, 1, 0},  // patternProperties
-    {kRequired, 897, 1, 0},  // required: total
+    {kRequired, 900, 1, 0},  // required: total
     {kProperties, 2534, 5, 0},  // properties: total, method, components, by_method, units_note
     {kType, 4, 0, 0},  // n194 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -1268,7 +1269,7 @@ inline constexpr Op kOps[3136] = {
     {kType, 4, 0, 0},  // n195 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2570, 1, 0},  // patternProperties
-    {kRequired, 898, 2, 0},  // required: method, total
+    {kRequired, 901, 2, 0},  // required: method, total
     {kProperties, 2572, 3, 0},  // properties: method, total, components
     {kType, 4, 0, 0},  // n196 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
@@ -3681,8 +3682,8 @@ inline constexpr Op kOps[3136] = {
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kType, 32, 0, 0},  // n1836 type
     {kRef, 1, 0, 0},  // n1837 $ref #/$defs/ValueWithUnits
-    {kOneOf, 865, 2, 0},  // n1839 oneOf
-    {kEnum, 846, 19, 0},  // n1840 enum
+    {kOneOf, 868, 2, 0},  // n1839 oneOf
+    {kEnum, 846, 22, 0},  // n1840 enum
     {kType, 32, 0, 0},  // n1841 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kRef, 1, 0, 0},  // n1842 $ref #/$defs/ValueWithUnits
@@ -3692,7 +3693,7 @@ inline constexpr Op kOps[3136] = {
     {kType, 64, 0, 0},  // n1844 type
     {kMinimum, 0, 0, 0},  // minimum
     {kType, 2, 0, 0},  // n1845 type
-    {kEnum, 867, 2, 0},  // n1846 enum
+    {kEnum, 870, 2, 0},  // n1846 enum
     {kType, 64, 0, 0},  // n1847 type
     {kMinimum, 0, 0, 0},  // minimum
     {kType, 32, 0, 0},  // n1848 type
@@ -3705,15 +3706,15 @@ inline constexpr Op kOps[3136] = {
     {kItems, 1853, 0, 0},  // items
     {kType, 64, 0, 0},  // n1853 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kAllOf, 871, 2, 0},  // n1854 allOf
+    {kAllOf, 874, 2, 0},  // n1854 allOf
     {kRef, 1, 0, 0},  // n1855 $ref #/$defs/ValueWithUnits
     {kProperties, 2410, 1, 0},  // n1856 properties: value
     {kMinimum, 0, 0, 0},  // n1857 minimum
-    {kOneOf, 877, 2, 0},  // n1859 oneOf
-    {kEnum, 875, 2, 0},  // n1860 enum
+    {kOneOf, 880, 2, 0},  // n1859 oneOf
+    {kEnum, 878, 2, 0},  // n1860 enum
     {kType, 32, 0, 0},  // n1861 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kEnum, 879, 2, 0},  // n1862 enum
+    {kEnum, 882, 2, 0},  // n1862 enum
     {kType, 16, 0, 0},  // n1863 type
     {kMinimum, 0, 0, 0},  // minimum
     {kRef, 1, 0, 0},  // n1864 $ref #/$defs/ValueWithUnits
@@ -3722,7 +3723,7 @@ inline constexpr Op kOps[3136] = {
     {kRef, 184, 0, 0},  // n1866 $ref #/$defs/DecompositionOrbitalPair
     {kType, 64, 0, 0},  // n1868 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 884, 3, 0},  // n1869 enum
+    {kEnum, 887, 3, 0},  // n1869 enum
     {kType, 16, 0, 0},  // n1870 type
     {kMinimum, 0, 0, 0},  // minimum
     {kRef, 1, 0, 0},  // n1871 $ref #/$defs/ValueWithUnits
@@ -3751,7 +3752,7 @@ inline constexpr Op kOps[3136] = {
     {kPattern, 22, 0, 0},  // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
     {kType, 4, 0, 0},  // n1886 type
     {kAdditionalProperties, 1887, 0, 0},  // additionalProperties
-    {kOneOf, 888, 3, 0},  // n1887 oneOf
+    {kOneOf, 891, 3, 0},  // n1887 oneOf
     {kRef, 14, 0, 0},  // n1888 $ref #/$defs/JsonMember
     {kRef, 13, 0, 0},  // n1889 $ref #/$defs/BinaryMember
     {kRef, 130, 0, 0},  // n1890 $ref #/$defs/OpaqueBinaryMember
@@ -3798,7 +3799,7 @@ inline constexpr Op kOps[3136] = {
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kType, 16, 0, 0},  // n1922 type
     {kRef, 5, 0, 0},  // n1923 $ref #/$defs/Vec3
-    {kOneOf, 893, 2, 0},  // n1924 oneOf
+    {kOneOf, 896, 2, 0},  // n1924 oneOf
     {kType, 32, 0, 0},  // n1925 type
     {kRef, 5, 0, 0},  // n1926 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1927 type
@@ -3809,7 +3810,7 @@ inline constexpr Op kOps[3136] = {
     {kItems, 1930, 0, 0},  // items
     {kType, 4, 0, 0},  // n1930 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 895, 2, 0},  // required: atoms, target_angstrom
+    {kRequired, 898, 2, 0},  // required: atoms, target_angstrom
     {kProperties, 2524, 2, 0},  // properties: atoms, target_angstrom
     {kType, 8, 0, 0},  // n1931 type
     {kItems, 1932, 0, 0},  // items
@@ -3846,7 +3847,7 @@ inline constexpr Op kOps[3136] = {
     {kRef, 194, 0, 0},  // n1957 $ref #/$defs/EnergyComponents
     {kType, 4, 0, 0},  // n1958 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 900, 1, 0},  // required: version
+    {kRequired, 903, 1, 0},  // required: version
     {kProperties, 2578, 3, 0},  // properties: version, schema_uri, critical
     {kType, 32, 0, 0},  // n1959 type
     {kMinLength, 1, 0, 0},  // minLength
