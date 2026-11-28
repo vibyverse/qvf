@@ -854,15 +854,15 @@ inline std::vector<RoleFinding> bloch_errors(
         structure = r->as_string();
         where = "structure_ref";
     } else if (basis) {
-        const Json* r = get(*basis, "structure_ref");
+        const Json* basis_ref = get(*basis, "structure_ref");
         where = "members/basis";
-        if (!names_structure(r)) {
+        if (!names_structure(basis_ref)) {
             err("E_REF_UNRESOLVED", where,
-                "basis.structure_ref " + (r ? show(*r) : std::string("nothing")) +
+                "basis.structure_ref " + (basis_ref ? show(*basis_ref) : std::string("nothing")) +
                     " does not name a structure section");
             return errs;
         }
-        structure = r->as_string();
+        structure = basis_ref->as_string();
     } else {
         return errs;   // no basis payload: its own finding says why
     }
@@ -3269,10 +3269,11 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
                         // The member's payload definition (spec § 5, § 6).
                         const std::string_view def = gen::payload_def(kind, role);
                         if (opts.schema_check && !def.empty())
-                            for (const schema::Error& e : schema::check_definition(def, doc))
+                            for (const schema::Error& schema_error :
+                                 schema::check_definition(def, doc))
                                 f.error("E_PAYLOAD_SCHEMA", mwhere,
-                                        "schema: " + mpath + ": " + e.location + ": " +
-                                            e.message);
+                                        "schema: " + mpath + ": " + schema_error.location +
+                                            ": " + schema_error.message);
                         if (semantics && is_canonical_kind(kind))
                             for (const auto& du : declared_units(kind, role, doc))
                                 if (!(du.second->is_string() &&
@@ -3338,8 +3339,8 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
                             "member " + quote_str(mpath) + ": run.record " + role +
                                 " must decode as UTF-8");
                 if (kind == "preview" && fmt == "binary")
-                    for (const auto& e : preview_member_errors(sid, role, m, bytes))
-                        f.error(e.code, mwhere, e.message);
+                    for (const auto& preview_error : preview_member_errors(sid, role, m, bytes))
+                        f.error(preview_error.code, mwhere, preview_error.message);
             }
         }
 

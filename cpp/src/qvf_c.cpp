@@ -158,8 +158,11 @@ int qvf_add_structure(qvf_writer* w, const char* const* symbols,
     });
 }
 
+}  // extern "C"
+
 // The shells of qvf_add_wavefunction_gto and qvf_add_wavefunction_bloch from
-// their parallel arrays (the primitive runs concatenated in shell order).
+// their parallel arrays (the primitive runs concatenated in shell order). It
+// returns a C++ type, so it stays outside the C-linkage block (MSVC C4190).
 static std::vector<qvf::Shell> shells_from_arrays(int n_shells, const int* shell_center,
                                                   const int* shell_l, const int* shell_nprim,
                                                   const double* exponents_flat,
@@ -182,6 +185,8 @@ static std::vector<qvf::Shell> shells_from_arrays(int n_shells, const int* shell
     }
     return shells;
 }
+
+extern "C" {
 
 int qvf_add_wavefunction_gto(
     qvf_writer* w, int n_shells, const int* shell_center, const int* shell_l,
