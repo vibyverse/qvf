@@ -896,12 +896,19 @@ static void test_update_validate_repack() {
     // 4. Refusals.
     CHECK(throws([&] { QvfWriter::open_for_update("wp40_missing.qvf"); }, "cannot open"),
           "open_for_update on a missing file");
-    QvfWriter bound = QvfWriter::open_for_update(path);
-    CHECK(throws([&] { bound.write("elsewhere.qvf"); }, "bound"),
-          "a bound writer refuses another path");
+    {
+        // An unfinished update keeps its archive open for lazy reads, so it is
+        // scoped: Windows cannot remove an open file.
+        QvfWriter bound = QvfWriter::open_for_update(path);
+        CHECK(throws([&] { bound.write("elsewhere.qvf"); }, "bound"),
+              "a bound writer refuses another path");
+    }
     QvfWriter plain = water();
     CHECK(throws([&] { plain.write(); }, "path"), "write() without a path needs a bound writer");
-    fs::remove(path);
+    // A finished update holds no handle: the archive can be replaced or removed.
+    std::error_code removed;
+    fs::remove(path, removed);
+    CHECK(!removed, "the archive of a finished update can be removed: " + removed.message());
     fs::remove("wp40_repacked.qvf");
 }
 

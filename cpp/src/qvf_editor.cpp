@@ -51,7 +51,8 @@ Editor Editor::open(const std::string& path, bool atomic) {
     return Editor(std::move(impl));
 }
 Writer& Editor::writer() {
-    if (!impl_ || impl_->committed) throw std::runtime_error("Editor is committed or moved from");
+    if (!impl_ || impl_->committed || !impl_->writer)
+        throw std::runtime_error("Editor is committed or moved from");
     return *impl_->writer;
 }
 Section Editor::remove_section(std::string_view id) {
@@ -76,7 +77,12 @@ void Editor::set_run_status(RunStatus status, std::string_view id) {
 void Editor::commit() {
     if (!impl_) throw std::runtime_error("Editor was moved from");
     if (impl_->committed) return;
-    impl_->writer->finish();
+    if (impl_->writer) {
+        impl_->writer->finish();
+        // Release the working copy before replacing the target with it:
+        // Windows does not rename a file that is still open.
+        impl_->writer.reset();
+    }
     if (!impl_->directory.empty()) {
         // Never remove the original first: rename either replaces it
         // atomically or fails with the original still in place.

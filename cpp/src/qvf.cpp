@@ -1505,6 +1505,15 @@ Json QvfWriter::member_json(const Json& member) const {
             const auto bytes = out_->original->read(path, container::Limits{}.max_json_bytes);
             return Json::parse(std::string(bytes.begin(), bytes.end()));
         }
+        // A finished update holds no handle on its file (see write()): read
+        // the member from the archive as written, and close it again.
+        if (out_->update && !out_->zip && !out_->sink_only) {
+            const container::ZipReader archive = container::ZipReader::open(out_->path);
+            if (archive.has(path)) {
+                const auto bytes = archive.read(path, container::Limits{}.max_json_bytes);
+                return Json::parse(std::string(bytes.begin(), bytes.end()));
+            }
+        }
     }
     throw std::runtime_error("no member file " + path);
 }
@@ -4173,6 +4182,10 @@ void QvfWriter::open_bound_archive() {
     if (out_ && out_->sink_only && out_->zip->finished())
         throw std::runtime_error("QvfWriter: output sink is already finished");
     if (!out_ || out_->zip) return;
+    // Members of the finished archive stay readable while this round appends.
+    if (out_->update && !out_->original)
+        out_->original = std::make_unique<container::ZipReader>(
+            container::ZipReader::open(out_->path));
     out_->zip.reset(new container::ZipWriter(container::ZipWriter::append(out_->path)));
     for (const auto& f : files_)
         out_->zip->write(f.first, f.second,
@@ -4270,6 +4283,9 @@ std::string QvfWriter::write() {
     // taken, and its modified_utc is the one just written.
     for (const container::EntryInfo& e : out_->zip->entries()) out_->archived.insert(e.name);
     out_->zip.reset();
+    // Close every handle on the file, so that the caller can rename, replace
+    // or remove it (Windows refuses that for an open file).
+    out_->original.reset();
     out_->update = true;
     if (written.has("metadata")) {
         root_.set("metadata", written.at("metadata"));
@@ -4506,10 +4522,9 @@ void repack(const std::string& in, const std::string& out) {
         w.write("manifest.json", manifest, container::Method::Store);
         w.finish();
     }
-    if (in_place) {
-        std::filesystem::remove(out);
-        std::filesystem::rename(target, out);
-    }
+    // rename replaces the original in one step (POSIX rename; MoveFileEx with
+    // MOVEFILE_REPLACE_EXISTING on Windows), so a failure leaves it in place.
+    if (in_place) std::filesystem::rename(target, out);
 }
 
 }  // namespace qvf
