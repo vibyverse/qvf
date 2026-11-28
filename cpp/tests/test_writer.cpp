@@ -968,19 +968,19 @@ int main() {
         iw.add_atom_property("custom.flux", {0.9, -0.9});
         iw.add_atom_property("hirshfeld_charge", {0.2, -0.2});
         iw.add_atom_vector_property("custom.axis", moments);
-        QvfReader ir = QvfReader::from_bytes(iw.to_bytes());
+        QvfReader inner_ir = QvfReader::from_bytes(iw.to_bytes());
         std::vector<std::string> ierrs;
-        CHECK(ir.validate(ierrs), "incremental custom-role archive: validate() clean");
-        CHECK(roles_of(ir.section("atom_properties")) ==
+        CHECK(inner_ir.validate(ierrs), "incremental custom-role archive: validate() clean");
+        CHECK(roles_of(inner_ir.section("atom_properties")) ==
                   (std::vector<std::string>{"mulliken_charge", "custom.flux",
                                             "hirshfeld_charge", "custom.axis", "meta"}),
               "meta is rewritten and stays the last member");
-        Json meta2 = ir.read_json_member("atom_properties", "meta");
+        Json meta2 = inner_ir.read_json_member("atom_properties", "meta");
         CHECK(meta2.size() == 2 && meta2.has("custom.flux") && meta2.has("custom.axis"),
               "the rewritten meta describes both custom roles");
         // Only the final meta file is in the archive (no orphan from the rewrite).
         bool orphan = false;
-        for (const auto& f : ir.validate_findings())
+        for (const auto& f : inner_ir.validate_findings())
             orphan = orphan || f.code == "W_ORPHAN_MEMBER";
         CHECK(!orphan, "no orphan meta.json entry after the rewrite");
 
@@ -1081,7 +1081,7 @@ int main() {
 
     // --- Spin axis on bands / dos.projected projections (spec § 5.6) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -1104,16 +1104,16 @@ int main() {
         sw.add_bands(kp, eig, nullptr, nullptr, "bands_plain");
 
         const Tensor bad_spin = tensor_f64(std::vector<double>(12, 0.5), {1, 3, 2, 2});
-        CHECK(throws([&] { sw.add_bands(kp, eig, &bad_spin, nullptr, "bad1"); }),
+        CHECK(inner_throws([&] { sw.add_bands(kp, eig, &bad_spin, nullptr, "bad1"); }),
               "add_bands: rank-4 projections with another n_spin throws");
         const Tensor bad_k = tensor_f64(std::vector<double>(8, 0.5), {2, 2, 2});
-        CHECK(throws([&] { sw.add_bands(kp1, eig1, &bad_k, "bad2"); }),
+        CHECK(inner_throws([&] { sw.add_bands(kp1, eig1, &bad_k, "bad2"); }),
               "add_bands: rank-3 projections with another n_k throws");
         const Tensor bad_occ = tensor_f64(std::vector<double>(6, 1.0), {1, 3, 2});
-        CHECK(throws([&] { sw.add_bands(kp, eig, nullptr, &bad_occ, "bad3"); }),
+        CHECK(inner_throws([&] { sw.add_bands(kp, eig, nullptr, &bad_occ, "bad3"); }),
               "add_bands: occupations with another shape throws");
         const Tensor f32 = tensor_f32(std::vector<double>(24, 0.5), {2, 3, 2, 2});
-        CHECK(throws([&] { sw.add_bands(kp, eig, &f32, nullptr, "bad4"); }),
+        CHECK(inner_throws([&] { sw.add_bands(kp, eig, &f32, nullptr, "bad4"); }),
               "add_bands: float32 projections throw");
 
         Json dm2 = Json::object();
@@ -1123,17 +1123,17 @@ int main() {
         sw.add_dos_projected(de, dp3, dm2, "pdos_spin");
         Json dm1 = Json::object();
         dm1.set("n_spin", 1);
-        CHECK(throws([&] { sw.add_dos_projected(de, dp3, dm1, "bad5"); }),
+        CHECK(inner_throws([&] { sw.add_dos_projected(de, dp3, dm1, "bad5"); }),
               "add_dos_projected: spin axis differing from n_spin throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   sw.add_dos_projected(de, tensor_f64({0, 0, 0}, {3}), dm1, "bad6");
               }),
               "add_dos_projected: rank-1 projections throw");
 
-        const std::vector<uint8_t> bytes = sw.to_bytes();
-        CHECK(!has_errors(QvfReader::validate_bytes(bytes)),
+        const std::vector<uint8_t> inner_bytes = sw.to_bytes();
+        CHECK(!has_errors(QvfReader::validate_bytes(inner_bytes)),
               "spin-axis archive validates without errors");
-        QvfReader sr = QvfReader::from_bytes(bytes);
+        QvfReader sr = QvfReader::from_bytes(inner_bytes);
         const BinaryMember bp = sr.read_binary_member("bands_spin", "projections");
         CHECK(bp.dtype == "float64" && bp.shape == std::vector<int64_t>({2, 3, 2, 2}),
               "rank-4 projections written as float64 [2, 3, 2, 2]");
@@ -1154,7 +1154,7 @@ int main() {
         auto near = [](double a, double b, double rel) {
             return std::fabs(a - b) <= rel * std::fabs(b);
         };
-        auto throws = [](auto&& fn) {
+        auto inner_throws = [](auto&& fn) {
             try {
                 fn();
             } catch (const std::exception&) {
@@ -1201,7 +1201,7 @@ int main() {
         CHECK(convert(5.0, Unit::Kelvin, Unit::Kelvin) == 5.0, "convert to itself");
         CHECK(!can_convert(Unit::Angstrom, Unit::ElectronVolt) &&
                   !can_convert(Unit::Bohr, Unit::Nanometer) &&
-                  throws([] { convert(1.0, Unit::Kelvin, Unit::Atmosphere); }),
+                  inner_throws([] { convert(1.0, Unit::Kelvin, Unit::Atmosphere); }),
               "unsupported conversions are refused");
 
         // Writers declare units and refuse names outside the vocabulary.
@@ -1224,7 +1224,7 @@ int main() {
         uw.add_spectrum("spectra.uvvis", sp, "", "uv");
         Grid bad = g;
         bad.units["origin"] = "angstrom";
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   uw.add_volume("volume.density", bad,
                                 tensor_f32(std::vector<double>(8, 0.1), {2, 2, 2}), "", "",
                                 "bad1");
@@ -1232,7 +1232,7 @@ int main() {
               "grid units.origin must restate bohr");
         Grid unknown = g;
         unknown.units["data"] = "e_per_angstrom3";
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   uw.add_volume("volume.density", unknown,
                                 tensor_f32(std::vector<double>(8, 0.1), {2, 2, 2}), "", "",
                                 "bad2");
@@ -1242,13 +1242,13 @@ int main() {
         Json bu = Json::object();
         bu.set("energies", "Eh");
         bad_meta.set("symbols", Json::from_strings({"O"})).set("units", bu);
-        CHECK(throws([&] { uw.add_trajectory(bad_meta, tensor_f64({0, 0, 0}, {1, 1, 3}), "bad3"); }),
+        CHECK(inner_throws([&] { uw.add_trajectory(bad_meta, tensor_f64({0, 0, 0}, {1, 1, 3}), "bad3"); }),
               "a legacy spelling is not a declared unit");
         Spectrum bad_sp = sp;
         bad_sp.x_units = "1/cm";
-        CHECK(throws([&] { uw.add_spectrum("spectra.ir", bad_sp, "", "bad4"); }),
+        CHECK(inner_throws([&] { uw.add_spectrum("spectra.ir", bad_sp, "", "bad4"); }),
               "an unknown spectrum x_units throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   uw.add_spectrum("spectra.ir",
                                   Json::raw(R"({"frequencies":[1],"intensities":[1],)"
                                             R"("broadening":{"type":"none","units":"x"}})"),
@@ -1259,15 +1259,15 @@ int main() {
         Json qu = Json::object();
         qu.set("position", "au");
         qt.set("points", Json::array()).set("units", qu);
-        CHECK(throws([&] { uw.add_topology_qtaim(qt, "bad6"); }),
+        CHECK(inner_throws([&] { uw.add_topology_qtaim(qt, "bad6"); }),
               "an unknown QTAIM unit throws");
 
-        const std::vector<uint8_t> bytes = uw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = uw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         bool unit_warning = false;
         for (const auto& f : fs) unit_warning = unit_warning || f.code == "W_UNIT_UNKNOWN";
         CHECK(!has_errors(fs) && !unit_warning, "declared-units archive validates cleanly");
-        QvfReader ur = QvfReader::from_bytes(bytes);
+        QvfReader ur = QvfReader::from_bytes(inner_bytes);
         CHECK(ur.read_json_member("rho", "grid").at("units").at("origin").as_string() == "bohr",
               "grid units written");
         CHECK(ur.read_json_member("uv", "spectrum").at("x_units").as_string() == "nm",
@@ -1278,7 +1278,7 @@ int main() {
 
     // --- forces, hessian and the root energies block (spec § 3.6, 5.10, 5.11) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -1319,42 +1319,42 @@ int main() {
         energies.set("total", e_total).set("method", "rhf");
         dw.set_energies(energies);
 
-        CHECK(throws([&] { dw.add_forces(tensor_f64({0, 0, 0}, {3}), nullptr, Json(), "b1"); }),
+        CHECK(inner_throws([&] { dw.add_forces(tensor_f64({0, 0, 0}, {3}), nullptr, Json(), "b1"); }),
               "add_forces: rank-1 gradient throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   dw.add_forces(tensor_f64(std::vector<double>(6, 0.0), {3, 2}), nullptr,
                                 Json(), "b2");
               }),
               "add_forces: [3, 2] gradient throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   dw.add_forces(tensor_f32(std::vector<double>(9, 0.0), {3, 3}), nullptr,
                                 Json(), "b3");
               }),
               "add_forces: float32 gradient throws");
         const Tensor bad_stress = tensor_f64(std::vector<double>(6, 0.0), {2, 3});
-        CHECK(throws([&] { dw.add_forces(grad, &bad_stress, Json(), "b4"); }),
+        CHECK(inner_throws([&] { dw.add_forces(grad, &bad_stress, Json(), "b4"); }),
               "add_forces: [2, 3] stress throws");
-        CHECK(throws([&] { dw.add_forces(grad, nullptr, Json("x"), "b5"); }),
+        CHECK(inner_throws([&] { dw.add_forces(grad, nullptr, Json("x"), "b5"); }),
               "add_forces: non-object meta throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   dw.add_hessian(tensor_f64(std::vector<double>(54, 0.0), {9, 6}), Json(),
                                  "b6");
               }),
               "add_hessian: non-square matrix throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   dw.add_hessian(tensor_f64(std::vector<double>(64, 0.0), {8, 8}), Json(),
                                  "b7");
               }),
               "add_hessian: extent not divisible by 3 throws");
         Json weighted = Json::object();
         weighted.set("mass_weighted", true);
-        CHECK(throws([&] { dw.add_hessian(hess, weighted, "b8"); }),
+        CHECK(inner_throws([&] { dw.add_hessian(hess, weighted, "b8"); }),
               "add_hessian: mass-weighted without masses throws");
         Json two_masses = Json::object();
         two_masses.set("atom_masses_amu", Json::from_doubles({1.0, 2.0}));
-        CHECK(throws([&] { dw.add_hessian(hess, two_masses, "b9"); }),
+        CHECK(inner_throws([&] { dw.add_hessian(hess, two_masses, "b9"); }),
               "add_hessian: masses not one per atom throws");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   dw.add_vibrations(vmeta,
                                     tensor_f64(std::vector<double>(27, 0.0), {3, 3, 3}),
                                     "b10", "structure");
@@ -1362,13 +1362,13 @@ int main() {
               "add_vibrations: hessian_ref naming a non-hessian throws");
         Json no_total = Json::object();
         no_total.set("method", "rhf");
-        CHECK(throws([&] { dw.set_energies(no_total); }), "set_energies without total throws");
-        CHECK(throws([&] { dw.set_energies(Json(1.0)); }), "set_energies of a number throws");
+        CHECK(inner_throws([&] { dw.set_energies(no_total); }), "set_energies without total throws");
+        CHECK(inner_throws([&] { dw.set_energies(Json(1.0)); }), "set_energies of a number throws");
 
-        const std::vector<uint8_t> bytes = dw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = dw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "derivatives archive validates without errors");
-        QvfReader dr = QvfReader::from_bytes(bytes);
+        QvfReader dr = QvfReader::from_bytes(inner_bytes);
         CHECK(dr.read_binary_member("forces", "gradient").as_doubles()[2] == 0.02,
               "gradient read back");
         CHECK(dr.read_binary_member("forces", "stress").shape ==
@@ -1451,7 +1451,7 @@ int main() {
 
     // --- excited states, NTOs and a transition density (spec § 5.2-5.4, 5.12) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -1463,13 +1463,13 @@ int main() {
         ew.add_structure({{"O", 8, {{0.0, 0.0, 0.117}}},
                           {"H", 1, {{0.0, 0.757, -0.469}}},
                           {"H", 1, {{0.0, -0.757, -0.469}}}});
-        WavefunctionGTO wf;
-        wf.shells = {{0, 0, {1.0}, {1.0}, true}, {1, 0, {1.0}, {1.0}, true}};
-        wf.mo_coefficients = {2, 2, {1, 0, 0, 1}};
-        wf.energies = {-0.5, 0.5};
-        wf.occupations = {2, 0};
-        CHECK(ew.add_wavefunction_gto(wf) == "wf", "reference wavefunction added");
-        WavefunctionGTO hole = wf;
+        WavefunctionGTO inner_wf;
+        inner_wf.shells = {{0, 0, {1.0}, {1.0}, true}, {1, 0, {1.0}, {1.0}, true}};
+        inner_wf.mo_coefficients = {2, 2, {1, 0, 0, 1}};
+        inner_wf.energies = {-0.5, 0.5};
+        inner_wf.occupations = {2, 0};
+        CHECK(ew.add_wavefunction_gto(inner_wf) == "wf", "reference wavefunction added");
+        WavefunctionGTO hole = inner_wf;
         hole.orbital_kind = "nto";
         hole.mo_coefficients = {1, 2, {1, 0}};
         hole.energies = {};
@@ -1502,7 +1502,7 @@ int main() {
             R"("units":{"excitation_energy":"ev","oscillator_strength":"dimensionless"}})");
         auto bad = [&](const std::string& states_json, const char* id,
                        const std::string& wf_ref = "wf", const Json& m = Json()) {
-            return throws([&] { ew.add_excited_states(Json::parse(states_json), m, wf_ref, id); });
+            return inner_throws([&] { ew.add_excited_states(Json::parse(states_json), m, wf_ref, id); });
         };
         const std::string e1 = R"("excitation_energy":7.4)";
         CHECK(bad(R"([{"index":1,)" + e1 + R"(},{"index":1,)" + e1 + "}]", "x1"),
@@ -1536,7 +1536,7 @@ int main() {
               "add_excited_states: a contradicted fixed unit throws");
         CHECK(bad(R"([{"index":1,"excitation_energy":{"value":7.4,"units":"eV"}}])", "x13"),
               "add_excited_states: an energy unit that is not a unit name throws");
-        CHECK(throws([&] { ew.add_excited_states(Json::object(), Json(), "", "x14"); }),
+        CHECK(inner_throws([&] { ew.add_excited_states(Json::object(), Json(), "", "x14"); }),
               "add_excited_states: states that are not an array throw");
         CHECK(ew.add_excited_states(states, meta, "wf", "es") == "es",
               "add_excited_states returns its id");
@@ -1544,7 +1544,7 @@ int main() {
             R"({"frequencies":[7.4,9.2],"intensities":[0.05,0.0],)"
             R"("peaks":[{"x":7.4,"assignment":{"state_index":1}}],"states_ref":"es"})");
         ew.add_spectrum("spectra.uvvis", uv);
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   ew.add_spectrum("spectra.uvvis",
                                   Json::parse(R"({"frequencies":[1],"intensities":[1],)"
                                               R"("states_ref":"wf"})"),
@@ -1554,20 +1554,20 @@ int main() {
         WavefunctionGTO bad_role = hole;
         bad_role.orbital_kind = "canonical";
         bad_role.section_id = "x16";
-        CHECK(throws([&] { ew.add_wavefunction_gto(bad_role); }),
+        CHECK(inner_throws([&] { ew.add_wavefunction_gto(bad_role); }),
               "add_wavefunction_gto: nto_role without orbital_kind nto throws");
         WavefunctionGTO no_ref = hole;
         no_ref.state_ref = "";
         no_ref.section_id = "x17";
-        CHECK(throws([&] { ew.add_wavefunction_gto(no_ref); }),
+        CHECK(inner_throws([&] { ew.add_wavefunction_gto(no_ref); }),
               "add_wavefunction_gto: state_index without state_ref throws");
-        CHECK(throws([&] { ew.add_volume_transition_density(g, dens, "", 1, "", "x18"); }),
+        CHECK(inner_throws([&] { ew.add_volume_transition_density(g, dens, "", 1, "", "x18"); }),
               "add_volume_transition_density: state_index without a reference throws");
 
-        const std::vector<uint8_t> bytes = ew.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = ew.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "excited-states archive validates without errors");
-        QvfReader er = QvfReader::from_bytes(bytes);
+        QvfReader er = QvfReader::from_bytes(inner_bytes);
         const Json payload = er.read_json_member("es", "states");
         CHECK(payload.at("states").at(size_t{0}).at("excitation_energy").at("units")
                       .as_string() == "ev",
@@ -1743,10 +1743,10 @@ int main() {
                   sec.at("run_ref").as_string() == "run" &&
                   sec.at("group").as_string() == "step 2",
               "a refused annotation changes nothing (atomic)");
-        const std::vector<uint8_t> bytes = mw.to_bytes();
-        CHECK(!has_errors(QvfReader::validate_bytes(bytes)),
+        const std::vector<uint8_t> inner_bytes = mw.to_bytes();
+        CHECK(!has_errors(QvfReader::validate_bytes(inner_bytes)),
               "annotated archive with metadata validates without errors");
-        QvfReader mr = QvfReader::from_bytes(bytes);
+        QvfReader mr = QvfReader::from_bytes(inner_bytes);
         CHECK(mr.manifest().at("metadata").at("uuid").as_string() ==
                   "6f1c2a4e-8b3d-4c5e-9f70-1a2b3c4d5e6f",
               "metadata round-trips");
@@ -1964,10 +1964,10 @@ int main() {
             Json prov = Json::object();
             prov.set("run_status", "pending");
             jw.set_provenance(prov);
-            const std::vector<uint8_t> bytes = jw.to_bytes();
-            CHECK(!has_errors(QvfReader::validate_bytes(bytes)),
+            const std::vector<uint8_t> inner_bytes = jw.to_bytes();
+            CHECK(!has_errors(QvfReader::validate_bytes(inner_bytes)),
                   "an archive with every new job.spec field validates");
-            QvfReader jr = QvfReader::from_bytes(bytes);
+            QvfReader jr = QvfReader::from_bytes(inner_bytes);
             const Json spec = jr.read_json_member("job_spec", "spec");
             CHECK(spec.at("structure_ref").as_string() == "structure" &&
                       spec.at("scf").at("max_iterations").as_int() == 100 &&
@@ -2156,7 +2156,7 @@ int main() {
     // --- trajectory extensions: cell, velocities, gradient, times, energies,
     //     float32 MD coords (spec § 4.3, § 5.5) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -2213,40 +2213,40 @@ int main() {
         tw.add_reaction_path(meta_with(""), coords64, nullptr, shared, "path_molecular");
 
         // Refusals, each before anything is written.
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   const Tensor lat = tensor_f64(std::vector<double>(9, 1.0), {3, 3});
                   e.lattice = &lat;
                   tw.add_trajectory(meta_with(""), coords64, e, "b1");
               }),
               "a trajectory lattice needs metadata pbc");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(meta_with(R"(,"pbc":[false,true,false])"), coords64, "b2");
               }),
               "a periodic pbc needs a lattice");
-        CHECK(throws([&] { tw.add_trajectory(meta_with(""), coords32, cells, extras, "b3"); }),
+        CHECK(inner_throws([&] { tw.add_trajectory(meta_with(""), coords32, cells, extras, "b3"); }),
               "a lattice without pbc is refused for Lattice lists too");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(md_meta, coords32,
                                     std::vector<Lattice>(cells.begin(), cells.begin() + 2),
                                     TrajectoryExtras(), "b4");
               }),
               "a per-frame lattice must have n_frames cells");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   const Tensor bad = tensor_f64(std::vector<double>(24, 0.0), {4, na, 3});
                   e.velocities = &bad;
                   tw.add_trajectory(meta_with(""), coords64, e, "b5");
               }),
               "velocities with the wrong frame count");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   const Tensor bad = tensor_f32({0.0, 0.5, 1.0}, {nf});
                   e.times = &bad;
                   tw.add_trajectory(meta_with(""), coords64, e, "b6");
               }),
               "float32 times are refused");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   const Tensor off = tensor_f64({-1.0, -1.1, -1.2 + 1e-9}, {nf});
                   e.energies = &off;
@@ -2254,35 +2254,35 @@ int main() {
                                     e, "b7");
               }),
               "binary energies must match metadata energies within 1e-10");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(meta_with(R"(,"precision":"float64")"), coords32, "b8");
               }),
               "precision float64 contradicts float32 coords");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(meta_with(R"(,"precision":"float32")"), coords64, "b9");
               }),
               "precision float32 contradicts float64 coords");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(meta_with(R"(,"units":{"lattice":"bohr"})"), coords64,
                                     "b10");
               }),
               "a trajectory lattice is declared in angstrom only");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   e.temperatures = &temps;
                   tw.add_reaction_path(meta_with(""), coords64, nullptr, e, "b11");
               }),
               "a reaction path has no temperatures");
-        CHECK(throws([&] { tw.add_reaction_path(meta_with(""), coords32, nullptr, shared, "b12"); }),
+        CHECK(inner_throws([&] { tw.add_reaction_path(meta_with(""), coords32, nullptr, shared, "b12"); }),
               "reaction path coords stay float64");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   TrajectoryExtras e;
                   e.lattice = &cols;
                   tw.add_trajectory(md_meta, coords64, Lattice::from_rows_angstrom(rows), e,
                                     "b13");
               }),
               "a lattice passed twice is refused");
-        CHECK(throws([&] {
+        CHECK(inner_throws([&] {
                   tw.add_trajectory(Json::raw("{not json"), coords64, "b14");
               }),
               "raw metadata that does not parse is refused");
@@ -2365,7 +2365,7 @@ int main() {
 
     // --- wavefunction.gto extensions (spec § 5.3, Appendix A.1) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -2392,16 +2392,16 @@ int main() {
         QvfWriter ww({"wf-test", "1.0", "wavefunction"});
         ww.add_structure({{"O", 8, {{0.0, 0.0, 0.117}}}, {"H", 1, {{0.0, 0.757, -0.469}}},
                           {"H", 1, {{0.0, -0.757, -0.469}}}});
-        WavefunctionGTO wf = base();
-        wf.ecp = Json::raw(
+        WavefunctionGTO inner_wf = base();
+        inner_wf.ecp = Json::raw(
             R"([{"center":0,"n_core_electrons":2,"label":"toy","projectors":[)"
             R"({"l":1,"exponents":[2.0],"coefficients":[-1.0],"powers":[2],"local":true},)"
             R"({"l":0,"exponents":[3.0,1.0],"coefficients":[5.0,-0.5],"powers":[0,2]}]}])");
-        wf.n_electrons = 2;
-        wf.symmetry_labels = {"a1", "b2", "a1", "b1"};
-        wf.overlap = eye(4);
-        wf.density_matrix = eye(4);
-        CHECK(ww.add_wavefunction_gto(wf) == "wf", "wavefunction with every option");
+        inner_wf.n_electrons = 2;
+        inner_wf.symmetry_labels = {"a1", "b2", "a1", "b1"};
+        inner_wf.overlap = eye(4);
+        inner_wf.density_matrix = eye(4);
+        CHECK(ww.add_wavefunction_gto(inner_wf) == "wf", "wavefunction with every option");
 
         WavefunctionGTO gw = base();     // generalized: 2 n_ao complex columns
         gw.section_id = "wf_ghf";
@@ -2433,7 +2433,7 @@ int main() {
             WavefunctionGTO bad = base();
             bad.section_id = "refused";
             edit(bad);
-            CHECK(throws([&] { ww.add_wavefunction_gto(bad); }), label);
+            CHECK(inner_throws([&] { ww.add_wavefunction_gto(bad); }), label);
         };
         refused("overlap of the wrong shape", [&](WavefunctionGTO& b) { b.overlap = eye(3); });
         refused("density_matrix with unrestricted", [&](WavefunctionGTO& b) {
@@ -2490,28 +2490,28 @@ int main() {
         WavefunctionGTO later = base();
         later.section_id = "wf_later";
         ww.add_wavefunction_gto(later);
-        CHECK(throws([&] { ww.set_wavefunction_overlap("wf_later", eye(5)); }),
+        CHECK(inner_throws([&] { ww.set_wavefunction_overlap("wf_later", eye(5)); }),
               "set_wavefunction_overlap: wrong n_ao throws");
-        CHECK(throws([&] { ww.set_wavefunction_overlap("structure", eye(4)); }),
+        CHECK(inner_throws([&] { ww.set_wavefunction_overlap("structure", eye(4)); }),
               "set_wavefunction_overlap: another kind throws");
         CHECK(ww.set_wavefunction_overlap("wf_later", eye(4)) == "wf_later",
               "set_wavefunction_overlap");
-        CHECK(throws([&] { ww.set_wavefunction_overlap("wf_later", eye(4)); }),
+        CHECK(inner_throws([&] { ww.set_wavefunction_overlap("wf_later", eye(4)); }),
               "set_wavefunction_overlap: a second overlap throws");
-        CHECK(throws([&] { ww.set_wavefunction_ecp("wf_later", Json::raw("{}")); }),
+        CHECK(inner_throws([&] { ww.set_wavefunction_ecp("wf_later", Json::raw("{}")); }),
               "set_wavefunction_ecp: a non-array throws");
         CHECK(ww.set_wavefunction_ecp("wf_later",
                                       Json::raw(R"([{"center":1,"n_core_electrons":0}])")) ==
                   "wf_later",
               "set_wavefunction_ecp");
 
-        const std::vector<uint8_t> bytes = ww.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = ww.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "wavefunction extensions archive validates");
         for (const auto& f : fs)
             if (f.severity == Finding::Severity::Error)
                 std::cerr << "  " << f.code << " " << f.where << " " << f.message << "\n";
-        QvfReader wr = QvfReader::from_bytes(bytes);
+        QvfReader wr = QvfReader::from_bytes(inner_bytes);
         CHECK(!wr.has_section("refused"), "refused wavefunctions left nothing");
         const Json basis = wr.read_json_member("wf", "basis");
         CHECK(basis.at("n_electrons").as_int() == 2 &&
@@ -2699,10 +2699,10 @@ int main() {
               }),
               "add_volume_series: rank-3 data throws");
 
-        const std::vector<uint8_t> bytes = vw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = vw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "volume archive validates without errors");
-        QvfReader vr = QvfReader::from_bytes(bytes);
+        QvfReader vr = QvfReader::from_bytes(inner_bytes);
         const Json grid = vr.read_json_member("rho", "grid");
         CHECK(grid.at("periodic").at(2).as_bool() && !grid.at("includes_endpoint").as_bool() &&
                   grid.at("structure_ref").as_string() == "structure",
@@ -2823,7 +2823,7 @@ int main() {
 
     // --- property kinds (spec § 5.13) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -2924,7 +2924,7 @@ int main() {
         };
         int n = 0;
         for (const auto& c : bad_electric)
-            CHECK(throws([&] {
+            CHECK(inner_throws([&] {
                       pw.add_electric_properties(Json::raw(c.second),
                                                  "bad_e" + std::to_string(n++));
                   }),
@@ -2946,7 +2946,7 @@ int main() {
              "{\"stiffness\":" + mat(6, 6, 1.0) + ",\"units\":{\"stiffness\":\"ev\"}}"},
         };
         for (const auto& c : bad_elastic)
-            CHECK(throws([&] {
+            CHECK(inner_throws([&] {
                       pw.add_elastic_properties(Json::raw(c.second),
                                                 "bad_c" + std::to_string(n++));
                   }),
@@ -2967,20 +2967,20 @@ int main() {
              "{\"electronic\":" + mat(3, 3, 2.0) + ",\"units\":{\"born_charges\":\"hartree\"}}"},
         };
         for (const auto& c : bad_dielectric)
-            CHECK(throws([&] {
+            CHECK(inner_throws([&] {
                       pw.add_dielectric_properties(Json::raw(c.second),
                                                    "bad_d" + std::to_string(n++));
                   }),
                   std::string("add_dielectric_properties refuses: ") + c.first);
-        CHECK(throws([&] { pw.add_elastic_properties(Json::parse(elastic), "elastic"); }),
+        CHECK(inner_throws([&] { pw.add_elastic_properties(Json::parse(elastic), "elastic"); }),
               "a duplicate section id throws");
-        CHECK(throws([&] { pw.add_elastic_properties(Json::raw("{")); }),
+        CHECK(inner_throws([&] { pw.add_elastic_properties(Json::raw("{")); }),
               "malformed raw JSON throws");
 
-        const std::vector<uint8_t> bytes = pw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = pw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "properties archive validates without errors");
-        QvfReader pr = QvfReader::from_bytes(bytes);
+        QvfReader pr = QvfReader::from_bytes(inner_bytes);
         CHECK(pr.section("electric").at("kind").as_string() == "properties.electric",
               "electric kind");
         CHECK(pr.read_json_member("electric", "properties")
@@ -3068,7 +3068,7 @@ int main() {
 
     // --- wavefunction.bloch (spec § 5.3.1, provisional) ---
     {
-        auto throws = [](auto fn) {
+        auto inner_throws = [](auto fn) {
             try {
                 fn();
             } catch (const std::runtime_error&) {
@@ -3080,31 +3080,31 @@ int main() {
         bw.add_structure({{"H", 1, {{0.0, 0.0, 0.0}}}, {"H", 1, {{0.8, 0.0, 0.0}}}},
                          {{true, false, false}},
                          {{{2.0, 0.0, 0.0}}, {{0.0, 10.0, 0.0}}, {{0.0, 0.0, 10.0}}});
-        WavefunctionBloch wf;
-        wf.shells = {Shell{0, 0, {0.4166}, {1.0}, true}, Shell{1, 0, {0.4166}, {1.0}, true}};
-        wf.spin = "unrestricted";
-        wf.kpoints = {{{0.0, 0.0, 0.0}}, {{0.5, 0.0, 0.0}}};
-        wf.weights = {0.5, 0.5};
-        wf.labels = {"G", "X"};
-        wf.mesh = {2, 1, 1};
-        wf.has_shift = true;
-        wf.has_time_reversal = true;
-        wf.n_mo = 2;
-        wf.n_mo_per_k = {2, 2};
-        wf.has_fermi_energy = true;
-        wf.fermi_energy_ev = -3.5;
-        wf.mo_coefficients.resize(2 * 2 * 2 * 2 * 2);
-        for (size_t i = 0; i < wf.mo_coefficients.size(); ++i)
-            wf.mo_coefficients[i] = 0.01 * static_cast<double>(i);
-        wf.energies = std::vector<double>(8, -0.5);
-        wf.occupations = {1, 0, 1, 0, 1, 0, 1, 0};
-        CHECK(bw.add_wavefunction_bloch(wf) == "wf_bloch", "add_wavefunction_bloch default id");
+        WavefunctionBloch inner_wf;
+        inner_wf.shells = {Shell{0, 0, {0.4166}, {1.0}, true}, Shell{1, 0, {0.4166}, {1.0}, true}};
+        inner_wf.spin = "unrestricted";
+        inner_wf.kpoints = {{{0.0, 0.0, 0.0}}, {{0.5, 0.0, 0.0}}};
+        inner_wf.weights = {0.5, 0.5};
+        inner_wf.labels = {"G", "X"};
+        inner_wf.mesh = {2, 1, 1};
+        inner_wf.has_shift = true;
+        inner_wf.has_time_reversal = true;
+        inner_wf.n_mo = 2;
+        inner_wf.n_mo_per_k = {2, 2};
+        inner_wf.has_fermi_energy = true;
+        inner_wf.fermi_energy_ev = -3.5;
+        inner_wf.mo_coefficients.resize(2 * 2 * 2 * 2 * 2);
+        for (size_t i = 0; i < inner_wf.mo_coefficients.size(); ++i)
+            inner_wf.mo_coefficients[i] = 0.01 * static_cast<double>(i);
+        inner_wf.energies = std::vector<double>(8, -0.5);
+        inner_wf.occupations = {1, 0, 1, 0, 1, 0, 1, 0};
+        CHECK(bw.add_wavefunction_bloch(inner_wf) == "wf_bloch", "add_wavefunction_bloch default id");
 
         auto refused = [&](const char* id, void (*edit)(WavefunctionBloch&)) {
-            WavefunctionBloch bad = wf;
+            WavefunctionBloch bad = inner_wf;
             bad.section_id = id;
             edit(bad);
-            return throws([&] { bw.add_wavefunction_bloch(bad); });
+            return inner_throws([&] { bw.add_wavefunction_bloch(bad); });
         };
         CHECK(refused("b1", [](WavefunctionBloch& b) { b.spin = "generalized"; }),
               "bloch: unknown spin throws");
@@ -3125,10 +3125,10 @@ int main() {
         CHECK(refused("b9", [](WavefunctionBloch& b) { b.spin = "restricted"; }),
               "bloch: restricted with two spin channels' data throws");
 
-        const std::vector<uint8_t> bytes = bw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = bw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(!has_errors(fs), "bloch archive validates without errors");
-        QvfReader br = QvfReader::from_bytes(bytes);
+        QvfReader br = QvfReader::from_bytes(inner_bytes);
         CHECK(br.read_binary_member("wf_bloch", "mo_coefficients").shape ==
                   std::vector<int64_t>({2, 2, 2, 2, 2}),
               "bloch coefficients written as [n_k, n_spin, n_mo, n_ao, 2]");
@@ -3387,10 +3387,10 @@ int main() {
                   throws([&] { sw.add_opaque_member("x_vibesketch_document", "p", png, "png"); }),
               "add_opaque_member refuses a repeated role, a canonical kind, a bad media type");
 
-        const std::vector<uint8_t> bytes = sw.to_bytes();
-        const std::vector<Finding> fs = QvfReader::validate_bytes(bytes);
+        const std::vector<uint8_t> inner_bytes = sw.to_bytes();
+        const std::vector<Finding> fs = QvfReader::validate_bytes(inner_bytes);
         CHECK(fs.empty(), "the sketch document validates without findings:" + codes_of(fs));
-        QvfReader r = QvfReader::from_bytes(bytes);
+        QvfReader r = QvfReader::from_bytes(inner_bytes);
         const Json& s1 = r.section("s1");
         CHECK(s1.at("label").as_string() == "1" && s1.at("charge").as_int() == 0 &&
                   s1.at("inchikey").as_string() == "XLYOFNOQVPJJNP-UHFFFAOYSA-N",
@@ -3431,7 +3431,7 @@ int main() {
                       "x_vibesketch_picture/png.bin",
               "opaque vendor members with their media types");
         {
-            container::ZipReader zr(bytes);
+            container::ZipReader zr(inner_bytes);
             CHECK(zr.find("preview/thumbnail.png")->method == 0 &&
                       zr.find("preview/image.svg")->method == 0 &&
                       zr.find("x_vibesketch_picture/png.bin")->method == 8,
@@ -3637,20 +3637,20 @@ int main() {
               "NTO pair weight mismatches use shared codes and locations");
         for (int bad = 0; bad < 5; ++bad) {
             QvfWriter nw({"nto-test", "1", "refusal"});
-            WavefunctionGTO wf;
-            wf.shells = {{0, 0, {1.0}, {1.0}, true}};
-            wf.unrestricted = true; wf.orbital_kind = "nto";
-            wf.mo_coefficients_alpha = {2, 1, {1, 1}};
-            wf.mo_coefficients_beta = {0, 1, {}};
-            wf.occupations_alpha = {.8, .2}; wf.state_ref = "es";
-            wf.state_index = 1; wf.nto_role = "hole";
-            if (bad == 0) wf.occupations_alpha = {.2, .8};
-            if (bad == 1) wf.occupations_alpha = {.8, -.2};
-            if (bad == 2) wf.occupations_alpha = {.8};
-            if (bad == 3) wf.energies_alpha = {0};
-            if (bad == 4) wf.state_ref.clear();
+            WavefunctionGTO inner_wf;
+            inner_wf.shells = {{0, 0, {1.0}, {1.0}, true}};
+            inner_wf.unrestricted = true; inner_wf.orbital_kind = "nto";
+            inner_wf.mo_coefficients_alpha = {2, 1, {1, 1}};
+            inner_wf.mo_coefficients_beta = {0, 1, {}};
+            inner_wf.occupations_alpha = {.8, .2}; inner_wf.state_ref = "es";
+            inner_wf.state_index = 1; inner_wf.nto_role = "hole";
+            if (bad == 0) inner_wf.occupations_alpha = {.2, .8};
+            if (bad == 1) inner_wf.occupations_alpha = {.8, -.2};
+            if (bad == 2) inner_wf.occupations_alpha = {.8};
+            if (bad == 3) inner_wf.energies_alpha = {0};
+            if (bad == 4) inner_wf.state_ref.clear();
             bool rejected = false;
-            try { nw.add_wavefunction_gto(wf); } catch (const std::runtime_error&) { rejected = true; }
+            try { nw.add_wavefunction_gto(inner_wf); } catch (const std::runtime_error&) { rejected = true; }
             CHECK(rejected, "invalid unrestricted NTO writer input rejected");
             CHECK(nw.build_manifest().at("sections").size() == 0, "NTO refusal leaves no section");
         }
@@ -3658,18 +3658,18 @@ int main() {
 
     // --- v0.3 writer fields: explicit null and reference basis ---
     {
-        QvfWriter w({"field-test", "1", "writer fields"});
+        QvfWriter inner_w({"field-test", "1", "writer fields"});
         Json job = Json::object();
         job.set("job_type", "molecular").set("basis", Json()).set("functional", Json());
-        w.add_job_spec(job, "job");
-        WavefunctionGTO wf;
-        wf.shells = {{0, 0, {1.0}, {1.0}, true}};
-        wf.mo_coefficients = {1, 1, {1}};
-        wf.orbital_kind = "iao";
-        wf.localization_reference_basis = "minao";
-        w.add_structure({{"H", 1, {{0, 0, 0}}}});
-        w.add_wavefunction_gto(wf);
-        QvfReader r = QvfReader::from_bytes(w.to_bytes());
+        inner_w.add_job_spec(job, "job");
+        WavefunctionGTO inner_wf;
+        inner_wf.shells = {{0, 0, {1.0}, {1.0}, true}};
+        inner_wf.mo_coefficients = {1, 1, {1}};
+        inner_wf.orbital_kind = "iao";
+        inner_wf.localization_reference_basis = "minao";
+        inner_w.add_structure({{"H", 1, {{0, 0, 0}}}});
+        inner_w.add_wavefunction_gto(inner_wf);
+        QvfReader r = QvfReader::from_bytes(inner_w.to_bytes());
         CHECK(r.read_json_member("job", "spec").at("basis").is_null(), "explicit basis null is preserved");
         CHECK(r.read_json_member("job", "spec").at("functional").is_null(), "explicit functional null is preserved");
         CHECK(r.read_json_member("wf", "mo_metadata").at("localization_reference_basis").as_string() == "minao",
@@ -3677,8 +3677,8 @@ int main() {
         CHECK(!has_errors(r.validate_findings()), "v0.3 writer fields validate");
         QvfWriter bad({"field-test", "1", "refusal"});
         bool rejected = false;
-        wf.localization_reference_basis = "";
-        try { bad.add_wavefunction_gto(wf); } catch (const std::runtime_error&) { rejected = true; }
+        inner_wf.localization_reference_basis = "";
+        try { bad.add_wavefunction_gto(inner_wf); } catch (const std::runtime_error&) { rejected = true; }
         CHECK(rejected && bad.build_manifest().at("sections").size() == 0, "empty localization basis rejected atomically");
         rejected = false;
         job.set("basis", 3);
@@ -3710,9 +3710,9 @@ int main() {
                 CHECK(w.build_manifest().dump() == before, "bad section id leaves manifest unchanged");
             }
         };
-        QvfWriter w({"id-test", "1", "ID validation"});
-        exercise_ids(w);
-        QvfReader r = QvfReader::from_bytes(w.to_bytes());
+        QvfWriter inner_w({"id-test", "1", "ID validation"});
+        exercise_ids(inner_w);
+        QvfReader r = QvfReader::from_bytes(inner_w.to_bytes());
         CHECK(!has_errors(r.validate_findings()), "buffered ID refusal leaves valid archive");
         for (const auto& f : r.validate_findings()) CHECK(f.code != "W_ORPHAN_MEMBER", "buffered ID refusal leaves no orphan member");
         const std::string path = "qvf-id-refusal-test.qvf";
