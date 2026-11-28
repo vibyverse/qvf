@@ -16,13 +16,15 @@ Three documents hold the detail:
 
 Status legend: ✅ done · 🔨 in progress · ⬜ planned.
 
-## Where we are (2026-11-15)
+## Where we are (2026-11-28)
 
 Phases 1 and the scheduled Phase 2 work are complete. Phase 0 still has
 schema hosting (WP-06) open; the core of Phase 3 and the JavaScript reader
-of Phase 4 have landed. Toolkit 0.8.0 (2026-11-15) is the latest release. It
-adds the provisional `energy_decomposition` kind (#32) and keeps format
-version 1. Toolkit 0.7.0 (2026-11-05) adds the Rust crate, the JavaScript
+of Phase 4 have landed. Toolkit 0.8.1 (2026-11-28) is the latest release. It
+adds the `kinetic`, `coulomb` and `residual` terms to the `energy_decomposition`
+vocabulary (#36), rejects a negative sum-rule tolerance (#34) and keeps format
+version 1. Toolkit 0.8.0 (2026-11-15) adds the provisional
+`energy_decomposition` kind (#32). Toolkit 0.7.0 (2026-11-05) adds the Rust crate, the JavaScript
 writer, the PySCF adapter, broader converters and six additive contract
 changes.
 Toolkit 0.5.0 collects WP-42, WP-43, WP-44, WP-46
@@ -40,7 +42,7 @@ vibe-qc family and merges what its programs already wrote or read.
 - ✅ Reference **writers** in Python and C++17 (zero-dependency, streaming, ZIP64, `open_for_update`, `repack`), **validators** in Python, C++ and JavaScript with the same stable finding codes; C++ and JavaScript check the schema with the checker generated from it (`scripts/gen_kinds.py`), so the three validators agree on the conformance corpus.
 - ✅ Sketch documents (2026-10-14): chemical identity on `structure` sections, `reaction.scheme`, `preview` with the member field `media_type`, job sets (`run.record` `job_ref`), one media type and macOS UTI for `.qvf`, `x_vibesketch` registered, and the withdrawn `qvf_version` 2 read as a warning.
 - ✅ Family data (2026-10-15, toolkit 0.3.0): `localization_reference_basis` and three deprecated `mo_metadata` keys, `null` for a `job.spec` `functional` or `basis`, the viewer hints `energy_window`, `camera` and `crossfade`, `structure_ref` on standalone `bonds` sections, and one rule for the withdrawn `qvf_version` 2; qvf is the single source of the format for the family.
-- ✅ **Conformance suite**: toolkit 0.8.0 has 90 golden archives (canonical kinds, edge cases and compatibility), 152 must-fail archives and one legacy archive; toolkit 0.7.0 has 84 / 142 / 1 and toolkit 0.6.0 75 / 110 / 1. Python, C++ and JavaScript runners share the corpus. The six golden and ten must-fail archives added in 0.8.0 cover `energy_decomposition`.
+- ✅ **Conformance suite**: toolkit 0.8.1 has 90 golden archives (canonical kinds, edge cases and compatibility), 153 must-fail archives and one legacy archive; toolkit 0.8.0 has 90 / 152 / 1, toolkit 0.7.0 has 84 / 142 / 1 and toolkit 0.6.0 75 / 110 / 1. Python, C++ and JavaScript runners share the corpus. The six golden and ten must-fail archives added in 0.8.0 cover `energy_decomposition`; the must-fail archive added in 0.8.1 is its negative sum-rule tolerance.
 - ✅ Typed `Manifest` / `Section` / `MemberSpec` model in C++ and Python, generated kind and unit tables, single-header amalgamation, and `@qvf/core` reader. The complete C ABI covers every canonical kind and preserves all legacy symbols.
 - ✅ Governance: every contract change has a dated record in `GOVERNANCE.md` and a `registry.json` promotion; nothing bumped `qvf_version`.
 
@@ -54,10 +56,10 @@ distinguishes reference and correlated results and the consumer limits.
 Broader format and toolkit development follows in compatible releases; it
 does not expand the scope of these frozen releases.
 
-The latest toolkit is **0.8.0** (2026-11-15), implementing **QVF v1**.
+The latest toolkit is **0.8.1** (2026-11-28), implementing **QVF v1**.
 Its release checks are the candidate CI and installed Python/C/C++ package
 acceptance. Toolkit 0.6.0 (2026-10-22) remains the pin of the frozen family
-releases; moving a consumer's main branch to 0.8.0 is that consumer's step.
+releases; moving a consumer's main branch to 0.8.1 is that consumer's step.
 These source pins do not claim that every packaged consumer has been rebuilt.
 A toolkit version increment does not require a new archive format, and the
 v2 ledger below is not a release gate for additive toolkit work.
@@ -69,8 +71,9 @@ pending single-job request; the [family workflow](docs/family_workflow.md)
 includes an executable Sketch example. These additions are included in **0.6.0**;
 they do not imply registry publication, full biomolecular PDB conversion or
 multi-species reaction scheduling. See [CHANGELOG](CHANGELOG.md) and the
-individual work packages for supported boundaries. Toolkit **0.8.0** adds the
-provisional `energy_decomposition` kind (#32). Toolkit **0.7.0** adds the
+individual work packages for supported boundaries. Toolkit **0.8.1** extends the
+`energy_decomposition` term vocabulary (#36) and fixes its sum-rule tolerance
+check (#34). Toolkit **0.8.0** adds the provisional `energy_decomposition` kind (#32). Toolkit **0.7.0** adds the
 following work:
 
 | Landed work | Compatibility and adoption boundary |
@@ -96,7 +99,8 @@ selection and acceptance of independent consumers and language bindings.
 Their acceptance issues link the existing work packages rather than replacing
 the briefs. Toolkit 0.6.0 completed source qualification, publication and family
 source-pin acceptance. Toolkit 0.7.0 (2026-11-05) is that next bounded release;
-toolkit 0.8.0 (2026-11-15) adds one provisional kind.
+toolkit 0.8.0 (2026-11-15) adds one provisional kind, and toolkit 0.8.1
+(2026-11-28) extends its vocabulary.
 These milestones do not schedule a breaking archive format or require all ecosystem proposals for
 an additive release.
 
@@ -168,6 +172,7 @@ Each item is spec + schema + registry + both writers + validator + corpus + docs
 - ✅ **0.7.0, #20:** a grid `units.data` that contradicts the unit § 4.3 fixes for its kind is the new error `E_UNIT_CONTRADICTED`, accepted 2026-11-05.
 - ✅ **0.7.0, #19:** typed `spectra.xas`, `spectra.xes` and `spectra.mossbauer` kinds (P13), accepted 2026-11-05.
 - ✅ **0.8.0, #32:** the provisional `energy_decomposition` kind for energy decomposition analyses of any scheme (fragments, terms, declared sum rules checked as `E_SUM_RULE`, NOCV/COVP pairs, k-point sampling) and the `volume.difference` decomposition fields, promoted from `x_vibeqc.peda`, accepted 2026-11-14.
+- ✅ **0.8.1, #34, #36:** the `energy_decomposition` term vocabulary gains `kinetic`, `coulomb` and `residual`, with informative producer mappings for ADF, BAND, ORCA, Psi4, CP2K and vibe-qc; a negative sum-rule `tolerance` is a schema error.
 - ⬜ Demand-driven, not scheduled: `wavefunction.nao` / `.sto` (P16)
 
 ## Phase 3 — libqvf (core and C++/C/Python facades landed)
@@ -240,7 +245,8 @@ The 2026-10-10 pause has ended. The remaining work is:
   Reuse the accepted drawing-to-job round trip and installed-consumer evidence.
   Toolkit 0.7.0 (2026-11-05) releases the Molden subset, the additive contract
   changes and the documentation tranches; toolkit 0.8.0 (2026-11-15) adds the
-  provisional `energy_decomposition` kind. Adopting them in consumers is a
+  provisional `energy_decomposition` kind, and toolkit 0.8.1 (2026-11-28)
+  extends its term vocabulary. Adopting them in consumers is a
   separate, explicit step. The frozen releases take priority.
 - After the frozen releases, Phase 3 continues with WP-45 / WP-48, then packaging and broader platform checks. WP-46 supplies the Python `qvf` package while keeping `qvf_writer`, `qvf_reader`, `qvf_kinds`, `qvf_model` and `qvf_units` as compatibility imports. `pip install <checkout>/python` preserves those imports for consumers such as vibe-sketch.
 - Parked: WP-06 (hosting the retained schema `$id`). The release-candidate CI now runs the Rust crate, the three-toolchain schema-checker parity test, both fuzz targets and the s390x job (#21). Compound unit names were accepted on 2026-11-04 (#11).

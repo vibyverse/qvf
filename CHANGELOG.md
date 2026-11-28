@@ -9,6 +9,71 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-28
+
+This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).
+It extends the term vocabulary of the provisional `energy_decomposition` kind
+(vibyverse/qvf#36), adds informative producer mappings, and makes a negative
+sum-rule tolerance a schema error (vibyverse/qvf#34). Archives written by
+earlier toolkits keep their meaning. A toolkit 0.8.0 validator reports the
+new term names as schema errors, so producers write them only after pinning
+0.8.1. Family consumers move their pins to this release separately.
+
+**Release qualification.** GitHub Actions was enabled for this repository on
+2026-11-28, so this is the first toolkit release qualified by its
+release-candidate workflow (`.github/workflows/ci.yml`) on the candidate
+commit: the Python suite on Python 3.9 and 3.14 (PySCF 2.14.0 on 3.14) with
+the privacy hook self-test, the JavaScript suite on Node 20 and 24, the C++
+build and CTest with the conformance runner on Linux (gcc with the Fortran
+checks, and clang), macOS (Apple clang) and Windows (MSVC) with warnings as
+errors, AddressSanitizer and UndefinedBehaviorSanitizer over CTest and every
+corpus archive, the single-header and generated-table checks, the Rust crate
+on stable (format, Clippy, tests) and on its minimum supported version 1.74,
+schema-checker parity with no skipped checker, both libFuzzer targets for
+180 s each, and the s390x big-endian CTest under QEMU with the cross-host
+round trip. Local checks on Linux x86_64 added the Python suite on Python
+3.13 with PySCF 2.14.0, the JavaScript suite on Node 22, source archives
+that contain exactly the committed files, installed Python, C/C++ (CMake
+and pkg-config), npm and Rust package checks, and CTest under a shim that
+refuses, as Windows does, to rename or remove a file the process holds
+open. On macOS arm64 the C++ build with Apple clang and CTest were also run
+locally.
+
+### Added
+
+- The `energy_decomposition` term vocabulary gains `kinetic`, `coulomb` and
+  `residual` (the kinetic and Coulomb parts of Pauli and orbital terms in
+  ADF and BAND, and ADF's printed remainder). The specification says what
+  `interaction` means for a local energy decomposition without monomer
+  calculations. New informative page
+  `docs/energy_decomposition_producers.md`: how ADF, BAND, ORCA (EDA-NOCV,
+  LED), Psi4 (SAPT0, F-SAPT), CP2K (ALMO-EDA) and vibe-qc output maps onto
+  the kind, each mapping checked on a real output. (vibyverse/qvf#36)
+
+### Fixed
+
+- An `energy_decomposition` sum rule's `tolerance` must not be negative
+  (`E_PAYLOAD_SCHEMA`); a negative tolerance made every rule fail with a
+  misleading `E_SUM_RULE` message. The corpus gains the negative archive
+  `energy_decomposition_negative_tolerance`. (vibyverse/qvf#34)
+- The C++ library, the single header and the C++ tests build with MSVC
+  under `/W4 /WX` again: no shadowed locals (C4456) and no C linkage for a
+  C++ helper of the C ABI (C4190). No behavior change.
+- On Windows, a finished in-place update (`QvfWriter::open_for_update`),
+  `Editor::commit` and an in-place `repack` no longer fail because the
+  library still holds the archive open: a finished update closes every handle
+  on its file, the editor releases its working copy before renaming it over
+  the target, and an in-place repack replaces the original with a single
+  rename, so a failure leaves the original in place.
+
+### Changed
+
+- All language packages, CMake and the citation metadata share the toolkit
+  version 0.8.1. The vcpkg overlay port and its version stay on the v0.6.0
+  tag archive.
+- The release-candidate workflow runs its Python 3.9 job on Ubuntu 24.04:
+  `actions/setup-python` has no Python 3.9 for `ubuntu-latest` (Ubuntu 26.04).
+
 ## [0.8.0] - 2026-11-15
 
 This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).

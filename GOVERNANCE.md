@@ -94,9 +94,13 @@ open. Recording a mistake is part of the process working, not evidence against i
 
 ### 2026-11-17: `energy_decomposition` term vocabulary and producer mappings
 
-**Status.** Proposed for maintainer decision, as the follow-up to vibyverse/qvf#32
-that its review asked for. It is additive: three names are added to a vocabulary,
-and an informative documentation page is added.
+**Status.** Released in toolkit 0.8.1 (2026-11-28), which the maintainer chose
+to release on 2026-11-28, as the follow-up to vibyverse/qvf#32 that its review
+asked for (vibyverse/qvf#36). It is additive: three names are added to a
+vocabulary, and an informative documentation page is added. Producers may write
+the three names with a toolkit release that carries them. The readings (a) to
+(c) at the end of this record remain open: the release adds no fragment type
+and no further vocabulary names, so the cases they discuss stay `x_` names.
 
 **Decision.**
 1. The term vocabulary of § 5.16 gains `kinetic`, `coulomb` and `residual`.
