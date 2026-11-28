@@ -2394,8 +2394,8 @@ fn adp_errors(sid: &str, payload: &Value) -> Vec<String> {
     let mut errors = Vec::new();
     let Some(p) = payload.as_object() else { return errors };
     let Some(atoms) = p.get("atoms").and_then(Value::as_array) else { return errors };
-    let periodic3 = is_bool3(p.get("pbc")).is_some_and(|f| f.iter().all(|x| *x))
-        && p.get("lattice_vectors").is_some_and(Value::is_array);
+    let periodic3 =
+        is_bool3(p.get("pbc")).is_some_and(|f| f.iter().all(|x| *x)) && p.get("lattice_vectors").is_some_and(Value::is_array);
     for (k, atom) in atoms.iter().enumerate() {
         let Some(adp) = atom.as_object().and_then(|a| a.get("adp")).and_then(Value::as_object) else { continue };
         let place = format!("{}atoms[{k}].adp", sec(sid));
