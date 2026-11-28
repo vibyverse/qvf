@@ -201,6 +201,13 @@
       "minItems": 3,
       "maxItems": 3
     },
+    "LatticeImage": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "Integer lattice translation [n1, n2, n3] in units of the structure's lattice vectors: the point x + n1 a1 + n2 a2 + n3 a3, with a_k row k of `lattice_vectors`. A component along an axis that is not periodic is 0. See QVF spec § 5.1 (structure and bonds)."
+    },
     "Camera": {
       "type": "object",
       "additionalProperties": false,
@@ -3484,6 +3491,58 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "Distance tolerance of the symmetry search, in Angstrom."
+        },
+        "source": {
+          "enum": ["deposited", "detected"],
+          "description": "Where `operations` come from: `deposited`, the operations a structure file records (such as a CIF symmetry-operation list), in that file's setting, which `hall` names when present; `detected`, found by a symmetry search at the tolerance `symprec`. Absent means not recorded. See QVF spec § 5.7 (Analysis kinds), `structure.symmetry`."
+        },
+        "sites": {
+          "type": "array",
+          "description": "The crystallographic sites the structure was generated from, such as the asymmetric unit of a CIF, in the coordinates `operations` act on: fractional coordinates of the structure's lattice when periodic, Cartesian Angstrom for a molecule. `atom_sites` maps every atom to one of them. See QVF spec § 5.7 (Analysis kinds), *Site map*.",
+          "items": {
+            "type": "object",
+            "required": ["position"],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Site label, e.g. CIF `_atom_site_label` 'O1'."
+              },
+              "position": {
+                "$ref": "#/$defs/Vec3",
+                "description": "Site position as recorded: fractional when the structure is periodic, Cartesian Angstrom for a molecule. It need not lie in the reference cell."
+              }
+            }
+          }
+        },
+        "atom_sites": {
+          "type": "array",
+          "description": "One entry per atom of the structure, in the order of its `atoms`: the site, operation and lattice translation that generate the atom, x_atom = R x_site + t + n, with (R, t) = operations[operation], x_site = sites[site].position and n = translation. Requires `sites` and `operations`. A validator checks the indices, the atom count and the positions (QVF spec § 5.7 (Analysis kinds), *Site map*).",
+          "items": {
+            "type": "object",
+            "required": ["site", "operation"],
+            "properties": {
+              "site": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "0-based index into `sites`."
+              },
+              "operation": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "0-based index into `operations`."
+              },
+              "translation": {
+                "$ref": "#/$defs/LatticeImage",
+                "description": "Integer lattice translation n added after the operation. Absent means [0, 0, 0]; 0 along every axis that is not periodic, and zero for a molecule."
+              }
+            }
+          }
+        },
+        "site_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Largest Cartesian distance, in Angstrom, between an atom's position and the one its `atom_sites` entry generates. Absent means 0.01 Angstrom."
         }
       }
     },
@@ -3530,6 +3589,10 @@
                 "type": "number",
                 "minimum": 0,
                 "description": "Bond order. Absent means 1."
+              },
+              "image": {
+                "$ref": "#/$defs/LatticeImage",
+                "description": "Lattice image of atom j: the bond joins atom i in the reference cell to atom j translated by this integer lattice vector. [0, 0, 0] is explicitly the same cell; absent means unspecified, and a reader may infer the image (for example the minimum image). Only on a periodic structure, with 0 along every axis that is not periodic; (i, j, n) and (j, i, -n) are the same bond, and i == j needs a nonzero image. See QVF spec § 5.1 (structure and bonds), *Periodic bond images*."
               }
             }
           }
@@ -3590,7 +3653,11 @@
                 "description": "Distance between the two atoms, in Angstrom."
               },
               "symbol_i": { "type": "string" },
-              "symbol_j": { "type": "string" }
+              "symbol_j": { "type": "string" },
+              "image": {
+                "$ref": "#/$defs/LatticeImage",
+                "description": "Lattice image of atom j, as for a `bonds` pair: absent means unspecified, [0, 0, 0] the same cell. Same rules as `BondsPayload` pairs; see QVF spec § 5.1 (structure and bonds), *Periodic bond images*."
+              }
             }
           }
         }

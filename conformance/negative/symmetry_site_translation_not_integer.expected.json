@@ -1,0 +1,10 @@
+{
+  "archive": "symmetry_site_translation_not_integer.qvf",
+  "description": "A site map translation with a non-integer component; it is a lattice translation ($defs/LatticeImage, spec \u00a7 5.7).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

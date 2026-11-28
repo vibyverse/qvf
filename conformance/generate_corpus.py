@@ -5309,6 +5309,126 @@ def build_eda():
        "charge transfer split into its two directions, and one COVP with donor and acceptor "
        "fragments (spec § 5.16).")
 
+# Periodic bond images and the symmetry site map (spec § 5.1, § 5.7).
+
+def _parse_xyz_operation(text):
+    """An operation such as '-y+1/2,x+1/2,z+1/2' as (R, t), fractional."""
+    rot, shift = [], []
+    for part in text.replace(" ", "").split(","):
+        row, t, sign, i = [0, 0, 0], 0.0, 1, 0
+        while i < len(part):
+            ch = part[i]
+            if ch in "+-":
+                sign = 1 if ch == "+" else -1
+            elif ch in "xyz":
+                row["xyz".index(ch)], sign = sign, 1
+            else:
+                j = i
+                while j < len(part) and (part[j].isdigit() or part[j] == "/"):
+                    j += 1
+                num, den = part[i:j].split("/")
+                t, sign, i = t + sign * int(num) / int(den), 1, j - 1
+            i += 1
+        rot.append(row)
+        shift.append(t)
+    return rot, shift
+
+
+def build_periodic_identity():
+    """bonds_periodic_images and structure_symmetry_site_map."""
+    import math
+    # 1) Bond images: graphene (each C bonds to the other through three
+    #    images) with the bonds as its own member, and a one-atom simple
+    #    cubic cell whose atom bonds to its own images, as a standalone
+    #    bonds section that names it.
+    a = 2.46
+    graphene = [[a, 0.0, 0.0], [-a / 2, a * math.sqrt(3) / 2, 0.0], [0.0, 0.0, 15.0]]
+    frac = ([1 / 3, 2 / 3, 0.5], [2 / 3, 1 / 3, 0.5])
+    atoms = [{"symbol": "C", "position": [sum(f[c] * graphene[c][r] for c in range(3))
+                                          for r in range(3)]} for f in frac]
+    w = QvfWriter(_PROGRAM, _VERSION, "graphene and simple cubic: periodic bond images")
+    w.add_structure(atoms, pbc=[True, True, False], lattice_vectors=graphene,
+                    bonds=[{"i": 0, "j": 1, "image": [0, 0, 0]},
+                           {"i": 0, "j": 1, "image": [-1, 0, 0]},
+                           {"i": 0, "j": 1, "image": [0, 1, 0]}],
+                    section_id="structure_graphene")
+    w.add_structure([{"symbol": "Po", "position": [0.0, 0.0, 0.0]}],
+                    pbc=[True, True, True],
+                    lattice_vectors=[[3.35, 0, 0], [0, 3.35, 0], [0, 0, 3.35]],
+                    section_id="structure_cubic")
+    w.add_bonds([{"i": 0, "j": 0, "image": [1, 0, 0]},
+                 {"i": 0, "j": 0, "image": [0, 1, 0]},
+                 {"i": 0, "j": 0, "image": [0, 0, 1]}],
+                structure_ref="structure_cubic", section_id="bonds_cubic")
+    _write("bonds_periodic_images", w, [
+        {"section": "structure_graphene", "member": "bonds",
+         "json_pointer": ["pairs", 1, "image"], "equals": [-1, 0, 0]},
+        {"section": "structure_graphene", "member": "bonds",
+         "json_pointer": ["pairs", 2, "j"], "equals": 1},
+        {"section": "bonds_cubic", "member": "bonds",
+         "json_pointer": ["pairs", 2, "image"], "equals": [0, 0, 1]},
+        {"section": "bonds_cubic", "member": "bonds",
+         "json_pointer": ["pairs", 0, "i"], "equals": 0},
+    ], "A graphene sheet (pbc [true, true, false]) whose two carbons bond "
+       "through three lattice images, written as the structure's own bonds "
+       "member, and a one-atom simple cubic cell bonded to its own images "
+       "along the three axes, as a standalone bonds section. Each bond is "
+       "written once: (i, j, n) and (j, i, -n) are one bond (spec § 5.1, "
+       "Periodic bond images).")
+
+    # 2) The site map of rutile: Ti on the special position 2a and O on 4f,
+    #    the O site deposited outside the reference cell, expanded with the
+    #    sixteen operations of P 42/m n m (No. 136).
+    ops_xyz = ["x,y,z", "-x,-y,z", "-y+1/2,x+1/2,z+1/2", "y+1/2,-x+1/2,z+1/2",
+               "-x+1/2,y+1/2,-z+1/2", "x+1/2,-y+1/2,-z+1/2", "y,x,-z", "-y,-x,-z",
+               "-x,-y,-z", "x,y,-z", "y+1/2,-x+1/2,-z+1/2", "-y+1/2,x+1/2,-z+1/2",
+               "x+1/2,-y+1/2,z+1/2", "-x+1/2,y+1/2,z+1/2", "-y,-x,z", "y,x,z"]
+    ops = [_parse_xyz_operation(o) for o in ops_xyz]
+    lattice = [[4.594, 0.0, 0.0], [0.0, 4.594, 0.0], [0.0, 0.0, 2.959]]
+    sites = [("Ti1", "Ti", [0.0, 0.0, 0.0]), ("O1", "O", [1.3049, 0.3049, 0.0])]
+    atoms, atom_sites = [], []
+    for s, (_, symbol, pos) in enumerate(sites):
+        seen = []
+        for o, (rot, shift) in enumerate(ops):
+            raw = [sum(rot[r][c] * pos[c] for c in range(3)) + shift[r] for r in range(3)]
+            n = [-math.floor(x + 1e-9) for x in raw]
+            f = [raw[r] + n[r] for r in range(3)]
+            if any(max(abs(f[r] - g[r]) for r in range(3)) < 1e-6 for g in seen):
+                continue                       # a copy on a special position
+            seen.append(f)
+            atoms.append({"symbol": symbol, "atom_name": sites[s][0],
+                          "position": [sum(f[c] * lattice[c][r] for c in range(3))
+                                       for r in range(3)]})
+            atom_sites.append({"site": s, "operation": o, "translation": n})
+    w = QvfWriter(_PROGRAM, _VERSION, "rutile TiO2: symmetry site map")
+    w.add_structure(atoms, pbc=[True, True, True], lattice_vectors=lattice)
+    w.add_structure_symmetry({
+        "source": "deposited", "spacegroup_number": 136,
+        "international": "P4_2/mnm", "hall": "-P 4n 2n",
+        "operations": [{"rotation": r, "translation": t} for r, t in ops],
+        "sites": [{"label": label, "position": pos} for label, _, pos in sites],
+        "atom_sites": atom_sites,
+    }, structure_ref="structure")
+    _write("structure_symmetry_site_map", w, [
+        {"section": "symmetry", "member": "data",
+         "json_pointer": ["source"], "equals": "deposited"},
+        {"section": "symmetry", "member": "data",
+         "json_pointer": ["sites", 1, "label"], "equals": "O1"},
+        {"section": "symmetry", "member": "data",
+         "json_pointer": ["atom_sites", 1], "equals": atom_sites[1]},
+        {"section": "symmetry", "member": "data",
+         "json_pointer": ["atom_sites", 2, "translation"], "equals": atom_sites[2]["translation"]},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 5, "position", 0],
+         "equals": atoms[5]["position"][0], "tol": 1e-9},
+    ], "Rutile TiO2 expanded from its deposited asymmetric unit with the "
+       "sixteen operations of P4_2/mnm: Ti on the special position 2a (two "
+       "atoms, not sixteen) and O on 4f, whose deposited position lies "
+       "outside the reference cell, so that its copies carry nonzero "
+       "lattice translations. atom_sites gives the site, operation and "
+       "translation of each of the six atoms (spec § 5.7, Site map).")
+
+
 if __name__ == "__main__":
     build()
     build_zero_spin()
@@ -5320,3 +5440,4 @@ if __name__ == "__main__":
     build_compound_units()
     build_xray_mossbauer()
     build_eda()
+    build_periodic_identity()

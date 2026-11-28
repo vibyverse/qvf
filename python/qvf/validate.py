@@ -1040,6 +1040,196 @@ def _bonds_errors(sid: str, section: dict, payload: Any,
     return errors
 
 
+def _bonds_structure(section: dict, kinds_by_id: dict[str, str],
+                     only_structure: Optional[str]) -> Optional[str]:
+    """The structure a standalone ``bonds`` or ``bond_orders`` section
+    describes, for the periodic-image rules (spec § 5.1): the one its
+    ``structure_ref`` names, else the archive's only structure. ``None`` when
+    neither resolves; an unresolved reference is the reference check's
+    finding."""
+    if "structure_ref" in section:
+        ref = section["structure_ref"]
+        return ref if isinstance(ref, str) and kinds_by_id.get(ref) == "structure" else None
+    return only_structure
+
+
+def _pbc_of(structure: Any) -> Optional[list[bool]]:
+    """``pbc`` of a ``structure`` payload as three booleans: ``[False] * 3``
+    when absent (a molecule), ``None`` when malformed (the periodicity check's
+    finding)."""
+    if not isinstance(structure, dict):
+        return None
+    pbc = structure.get("pbc", [False, False, False])
+    if isinstance(pbc, list) and len(pbc) == 3 and all(isinstance(x, bool) for x in pbc):
+        return pbc
+    return None
+
+
+def _int3(value: Any) -> Optional[tuple[int, int, int]]:
+    """Three integers as a tuple, else ``None`` (the schema check's finding)."""
+    if isinstance(value, list) and len(value) == 3 and all(_is_int(x) for x in value):
+        return (value[0], value[1], value[2])
+    return None
+
+
+def _bond_image_errors(sid: str, payload: Any, pbc: Optional[list[bool]]) -> list[str]:
+    """Periodic bond images of a ``bonds`` or ``bond_orders`` payload (spec
+    § 5.1, *Periodic bond images*), given the ``pbc`` of the structure the
+    bonds belong to.
+
+    Only pairs that carry ``image`` are checked: an image needs a periodic
+    structure and is 0 along every axis that is not periodic; a self-bond
+    (``i == j``) needs a nonzero image; and no two imaged pairs are the same
+    bond, ``(i, j, n)`` being the same as ``(j, i, -n)``. Pairs without an
+    image keep their earlier meaning and are not compared.
+    """
+    pairs = payload.get("pairs") if isinstance(payload, dict) else None
+    if pbc is None or not isinstance(pairs, list):
+        return []
+    errors: list[str] = []
+    seen: dict[tuple, int] = {}
+    for k, pair in enumerate(pairs):
+        if not isinstance(pair, dict) or "image" not in pair:
+            continue
+        n = _int3(pair["image"])
+        if n is None:
+            continue
+        where = f"section {sid!r}: pairs[{k}].image {list(n)}"
+        if not any(pbc):
+            errors.append(f"{where} on a structure with no periodic axis; a bond "
+                          f"image needs a periodic structure (spec § 5.1)")
+            continue
+        off = [a for a in range(3) if n[a] != 0 and not pbc[a]]
+        if off:
+            errors.append(f"{where} is nonzero along axis {off[0]}, which is not "
+                          f"periodic (pbc {pbc}) (spec § 5.1)")
+            continue
+        i, j = pair.get("i"), pair.get("j")
+        if not (_is_int(i) and _is_int(j)):
+            continue
+        if i == j and n == (0, 0, 0):
+            errors.append(f"{where} joins atom {i} to itself in the same cell; "
+                          f"a self-bond needs a nonzero image (spec § 5.1)")
+            continue
+        neg = (-n[0], -n[1], -n[2])
+        if i < j:
+            key = (i, j, n)
+        elif i > j:
+            key = (j, i, neg)
+        else:
+            key = (i, i, max(n, neg))
+        if key in seen:
+            errors.append(f"{where} is the bond of pairs[{seen[key]}] again: "
+                          f"(i, j, n) and (j, i, -n) are one bond (spec § 5.1)")
+        else:
+            seen[key] = k
+    return errors
+
+
+#: Default largest distance, in Å, between an atom and the position its
+#: ``atom_sites`` entry generates (spec § 5.7, *Site map*).
+_SITE_TOLERANCE = 0.01
+
+
+def _real_matrix(value: Any, rows: int) -> Optional[list[list[float]]]:
+    """A ``rows`` x 3 matrix of finite numbers, else ``None``."""
+    if not isinstance(value, list) or len(value) != rows:
+        return None
+    out = []
+    for row in value:
+        if (not isinstance(row, list) or len(row) != 3
+                or not all(_is_number(x) and math.isfinite(x) for x in row)):
+            return None
+        out.append([float(x) for x in row])
+    return out
+
+
+def _site_map_errors(sid: str, payload: Any, structure: Any) -> list[str]:
+    """The site map of a ``structure.symmetry`` payload (spec § 5.7, *Site
+    map*): ``atom_sites`` against ``sites``, ``operations`` and, when the
+    structure is known (``structure``, its payload, else ``None``), its atoms.
+
+    Every entry names a site and an operation that exist, its translation is
+    0 along every axis that is not periodic, there is one entry per atom, and
+    the position the entry generates, ``R x_site + t + n`` (fractional, turned
+    Cartesian with the lattice, for a periodic structure; Cartesian for a
+    molecule), lies within ``site_tolerance`` (default 0.01 Å) of the atom.
+    """
+    if not isinstance(payload, dict) or not isinstance(payload.get("atom_sites"), list):
+        return []
+    atom_sites = payload["atom_sites"]
+    sites, ops = payload.get("sites"), payload.get("operations")
+    sec = f"section {sid!r}: "
+    errors: list[str] = []
+    for name, value in (("sites", sites), ("operations", ops)):
+        if not isinstance(value, list):
+            errors.append(sec + f"atom_sites needs {name}, which is absent "
+                                f"(spec § 5.7)")
+    if errors:
+        return errors
+
+    pbc = _pbc_of(structure) if structure is not None else None
+    atoms = structure.get("atoms") if isinstance(structure, dict) else None
+    if isinstance(atoms, list) and len(atoms) != len(atom_sites):
+        errors.append(sec + f"atom_sites has {len(atom_sites)} entries but the "
+                            f"structure has {len(atoms)} atoms (spec § 5.7)")
+        atoms = None
+    if not isinstance(atoms, list) or pbc is None:
+        atoms = None
+    periodic = pbc is not None and any(pbc)
+    lattice = None
+    if atoms is not None and periodic:
+        lattice = _real_matrix(structure.get("lattice_vectors"), 3)
+        if lattice is None:
+            atoms = None    # the periodicity check's finding
+    tol = payload.get("site_tolerance")
+    if not (_is_number(tol) and tol > 0):
+        tol = _SITE_TOLERANCE
+
+    for k, entry in enumerate(atom_sites):
+        if not isinstance(entry, dict):
+            continue
+        site, op = entry.get("site"), entry.get("operation")
+        n = _int3(entry.get("translation", [0, 0, 0]))
+        where = sec + f"atom_sites[{k}]"
+        ok = _is_int(site) and _is_int(op) and n is not None
+        if _is_int(site) and not 0 <= site < len(sites):
+            errors.append(f"{where}.site {site} is not one of the {len(sites)} "
+                          f"sites (spec § 5.7)")
+            ok = False
+        if _is_int(op) and not 0 <= op < len(ops):
+            errors.append(f"{where}.operation {op} is not one of the {len(ops)} "
+                          f"operations (spec § 5.7)")
+            ok = False
+        if n is not None and pbc is not None:
+            off = [a for a in range(3) if n[a] != 0 and not pbc[a]]
+            if off:
+                errors.append(f"{where}.translation {list(n)} is nonzero along "
+                              f"axis {off[0]}, which is not periodic (spec § 5.7)")
+                ok = False
+        if not ok or atoms is None:
+            continue
+        s = sites[site].get("position") if isinstance(sites[site], dict) else None
+        o = ops[op] if isinstance(ops[op], dict) else {}
+        rot = _real_matrix(o.get("rotation"), 3)
+        shift = _real_matrix([o.get("translation", [0, 0, 0])], 1)
+        pos = _real_matrix([s], 1) if s is not None else None
+        atom = atoms[k].get("position") if isinstance(atoms[k], dict) else None
+        apos = _real_matrix([atom], 1) if atom is not None else None
+        if rot is None or shift is None or pos is None or apos is None:
+            continue
+        f = [sum(rot[r][c] * pos[0][c] for c in range(3)) + shift[0][r] + n[r]
+             for r in range(3)]
+        x = ([sum(f[c] * lattice[c][r] for c in range(3)) for r in range(3)]
+             if lattice is not None else f)
+        dist = math.sqrt(sum((x[r] - apos[0][r]) ** 2 for r in range(3)))
+        if not dist <= tol:
+            errors.append(f"{where} generates ({x[0]:.6g}, {x[1]:.6g}, {x[2]:.6g}) "
+                          f"Å, {dist:.3g} Å from atom {k}, more than the site "
+                          f"tolerance {tol:g} Å (spec § 5.7)")
+    return errors
+
+
 # --- excited states, NTOs and transition densities (spec § 5.12) -------------
 
 #: Kinds a state's ``density_ref`` may name (spec § 5.12).
@@ -2644,6 +2834,11 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
     cells_of: dict[str, tuple[Any, Any]] = {}   # structure id -> (pbc, lattice)
     derivative_sections: list[tuple] = []   # forces / hessian, checked last
     bonds_sections: list[tuple] = []        # standalone bonds, checked last
+    # Bond images and site maps (spec § 5.1, § 5.7), checked once every
+    # structure payload has been read.
+    structure_docs: dict[str, Any] = {}     # structure id -> its payload
+    image_sections: list[tuple] = []        # (index, sid, role, structure id or None, payload)
+    symmetry_sections: list[tuple] = []     # structure.symmetry, checked last
     # Excited states (spec § 5.12): orbital rows of every wavefunction.gto,
     # state indices of every excited_states payload, and the sections whose
     # references are checked once every payload has been read.
@@ -2790,6 +2985,7 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                                   else None for a in doc["atoms"]]
                             if all(_is_int(z) and z >= 0 for z in zs):
                                 sum_z_of.setdefault(sid, sum(zs))
+                        structure_docs.setdefault(sid, doc)
                         if isinstance(doc, dict):
                             cells_of.setdefault(sid, (doc.get("pbc"),
                                                       doc.get("lattice_vectors")))
@@ -2923,6 +3119,16 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                                         docs.get("meta")))
         if kind == "bonds" and "structure_ref" in s:
             bonds_sections.append((i, sid, s, docs.get("bonds")))
+        if out.references:   # they read another section's payload
+            if kind == "structure" and "bonds" in docs:
+                image_sections.append((i, sid, "bonds", sid, docs["bonds"]))
+            elif kind in ("bonds", "bond_orders") and kind in docs:
+                image_sections.append((i, sid, kind,
+                                       _bonds_structure(s, kinds_by_id, only_structure),
+                                       docs[kind]))
+            elif kind == "structure.symmetry" and "data" in docs:
+                symmetry_sections.append((i, sid, _bonds_structure(
+                    s, kinds_by_id, only_structure), docs["data"]))
         if kind == "excited_states":
             excited_sections.append((i, sid, s, docs.get("states")))
             if sid not in state_indices_of:
@@ -3006,6 +3212,21 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
             for msg in _bonds_errors(sid, s, payload, kinds_by_id, n_atoms_of):
                 out.error("E_MEMBER_MALFORMED",
                           _pointer("sections", i, "members", "bonds"), msg)
+
+        # Periodic bond images and symmetry site maps against the structure
+        # they belong to, which may come later (spec § 5.1, § 5.7).
+        for i, sid, role, structure, payload in image_sections:
+            if structure is None or structure not in structure_docs:
+                continue
+            for msg in _bond_image_errors(sid, payload,
+                                          _pbc_of(structure_docs[structure])):
+                out.error("E_MEMBER_MALFORMED",
+                          _pointer("sections", i, "members", role), msg)
+        for i, sid, structure, payload in symmetry_sections:
+            for msg in _site_map_errors(sid, payload, structure_docs.get(structure)
+                                        if structure is not None else None):
+                out.error("E_MEMBER_MALFORMED",
+                          _pointer("sections", i, "members", "data"), msg)
 
         for i, sid, meta, members in nto_sections:
             for code, msg in _nto_pair_errors(meta, members, nto_sections, kinds_by_id, state_indices_of):

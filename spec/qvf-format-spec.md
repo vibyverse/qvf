@@ -1328,6 +1328,52 @@ structure's bonds as that section's own `bonds` member.
                        "sha256": "…"}}}
 ```
 
+#### Periodic bond images
+
+In a periodic structure a bond often joins atom `i` to a copy of atom `j` in
+a neighbouring cell, and in a small cell the same pair can bond through
+several copies: each carbon of the two-atom graphene cell bonds to the other
+through three. A pair says which copy with the optional integer triple
+`image` (`$defs/LatticeImage`):
+
+```text
+the bond joins x_i  and  x_j + n1 a1 + n2 a2 + n3 a3,   image = [n1, n2, n3]
+```
+
+where `x` are the Cartesian `position`s and `a_k` is row `k` of
+`lattice_vectors`. The same field is defined on the pairs of `bonds` and of
+`bond_orders` (§ 5.7), and on a `structure` section's `bonds` member.
+
+* **Absent and zero differ.** An absent `image` means unspecified: a reader
+  may infer the copy, for example the minimum image, as before this field
+  was defined. `[0, 0, 0]` means explicitly the same cell. A payload may mix
+  the two.
+* **Only along periodic axes.** `image` is valid only when the structure the
+  bonds belong to has a periodic axis, and its component along every axis
+  with `pbc[k]` false is 0.
+* **Self-bonds.** `i == j` is a bond of an atom to its own copy, as in a
+  one-atom simple cubic cell; it needs a nonzero `image`.
+* **One bond, one record.** `(i, j, n)` and `(j, i, −n)` are the same bond,
+  so a self-bond with `n` is the same as one with `−n`. The same `i, j` may
+  appear more than once with different images, but no two pairs that carry
+  an `image` may be the same bond. Writers **SHOULD** normalise to `i < j`,
+  or for `i == j` to the image whose first nonzero component is positive.
+* **Edits.** A writer that moves atoms across a cell boundary (wraps them)
+  **MUST** update the images of their bonds, or drop them.
+
+A validator checks the four rules for every pair that carries an `image`
+(`E_MEMBER_MALFORMED`, § 6), with the structure the bonds belong to: the
+`structure` section that holds the member, or the one a standalone section's
+`structure_ref` names, else the archive's only structure. Pairs without an
+`image` are not compared, so archives written before the field keep their
+meaning and validity.
+
+```json
+{"pairs": [{"i": 0, "j": 1, "image": [0, 0, 0]},
+           {"i": 0, "j": 1, "image": [-1, 0, 0]},
+           {"i": 0, "j": 1, "image": [0, 1, 0]}]}
+```
+
 #### Biomolecule metadata
 
 The `structure` **section object** (peer to `id`/`kind`/`members`, *not* inside
@@ -2955,6 +3001,7 @@ optional `bonds` member: `$defs/BondsPayload`, **strict**.
 | `pairs` | object[] | **yes** | One entry per bond. | — |
 | `pairs[].i`, `pairs[].j` | integer ≥ 0 | **yes** | The two atoms. | — |
 | `pairs[].order` | number ≥ 0 | no | Bond order; absent means 1. | — |
+| `pairs[].image` | integer[3] | no | Lattice image of atom `j`; absent means unspecified, `[0, 0, 0]` the same cell (§ 5.1, *Periodic bond images*). | lattice vectors |
 
 #### `bond_orders`
 
@@ -2968,6 +3015,7 @@ Payload of the `bond_orders` member: `$defs/BondOrdersPayload`, **strict**.
 | `pairs[].order` | number | **yes** | Bond order under `method`; some definitions yield small negative values. | — |
 | `pairs[].distance_ang` | number ≥ 0 | no | Interatomic distance. | Å |
 | `pairs[].symbol_i`, `pairs[].symbol_j` | string | no | Element symbols of the two atoms. | — |
+| `pairs[].image` | integer[3] | no | Lattice image of atom `j`, as for `bonds` (§ 5.1, *Periodic bond images*). | lattice vectors |
 
 #### `scf_history`
 
@@ -3033,6 +3081,64 @@ Payload of the `data` member: `$defs/SymmetryPayload`, **permissive**.
 | `equivalent_atoms` | integer[] ≥ 0 | no | For each atom, the index of the representative atom of its symmetry-equivalence class. | — |
 | `symprec` | number > 0 | no | Distance tolerance of the symmetry search. | Å |
 | `space_group_number`, `space_group_symbol` | integer 1–230, string | no | The same quantities as `spacegroup_number` and `international`, under the names some producers write. When both spellings are present they **MUST** agree. | — |
+| `source` | `"deposited"` or `"detected"` | no | Where `operations` come from: `deposited`, the operations a structure file records (such as the symmetry-operation list of a CIF) in that file's setting; `detected`, found by a symmetry search at the tolerance `symprec`. Absent means not recorded. | — |
+| `sites` | object[] | no | The crystallographic sites the structure was generated from, such as a CIF's asymmetric unit: `position` (three values, required) and `label` (e.g. CIF `_atom_site_label` `"O1"`). | `position`: as `operations` |
+| `atom_sites` | object[] | no | One entry per atom: `site` and `operation` (indices into `sites` and `operations`, required) and `translation` (integer[3], absent means `[0, 0, 0]`). See *Site map*. | — |
+| `site_tolerance` | number > 0 | no | Largest distance between an atom and the position its `atom_sites` entry generates; absent means 0.01 Å. | Å |
+
+The setting of `operations` is the one `hall` names when `hall` is present.
+With `source` `deposited` it is the file's own setting, which need not be the
+standard one (`P 1 21/n 1`, an origin choice 1 group): a producer writes the
+operations as the file lists them and the Hall symbol of that setting, and
+does not transform them.
+
+##### Site map
+
+`sites` and `atom_sites` record where each atom of the structure comes from:
+which site of the asymmetric unit, which symmetry operation and which lattice
+translation generated it, so that a consumer can name the orbit of a picked
+atom, edit a site and all its copies together, and write the asymmetric unit
+back out. For atom `k` with entry `{site, operation, translation}`:
+
+```text
+x_k = R x_s + t + n,    (R, t) = operations[operation],
+                         x_s = sites[site].position,  n = translation
+```
+
+in the coordinates `operations` act on: fractional for a periodic structure
+(turned Cartesian with `lattice_vectors` to compare with the atom's
+`position`), Cartesian Å for a molecule. `n` is 0 along every axis that is not
+periodic, so a molecule's translations are zero. A site's `position` is the
+one recorded and need not lie in the reference cell; the translation brings
+each copy into place. `equivalent_atoms` names a representative atom of each
+class but neither the operation nor the translation, and with `source`
+`detected` it describes found rather than deposited symmetry; the site map is
+the carrier of deposited identity.
+
+* `atom_sites` requires `sites` and `operations`, and has one entry per atom
+  of the structure the section describes (its `structure_ref`, else the
+  archive's only structure).
+* `site` and `operation` name existing entries, and `translation` is
+  integer, 0 along every axis that is not periodic.
+* The position each entry generates is within `site_tolerance` (default
+  0.01 Å) of the atom's `position`.
+* A writer that changes atom positions, the cell or the atom count of a
+  structure **MUST** rewrite its site map or drop `atom_sites` (and `sites`
+  with it); an unchanged map that no longer agrees with the atoms is invalid.
+  Occupancy and alternate locations stay on the atoms (§ 5.1).
+
+A validator checks these rules (`E_MEMBER_MALFORMED`, § 6). A payload without
+`atom_sites` is unchanged in meaning and validity.
+
+```json
+{"source": "deposited", "spacegroup_number": 136, "international": "P4_2/mnm",
+ "operations": [{"rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "translation": [0, 0, 0]}, …],
+ "sites": [{"label": "Ti1", "position": [0, 0, 0]},
+           {"label": "O1", "position": [1.3049, 0.3049, 0]}],
+ "atom_sites": [{"site": 0, "operation": 0, "translation": [0, 0, 0]},
+                {"site": 0, "operation": 2, "translation": [0, 0, 0]},
+                {"site": 1, "operation": 0, "translation": [-1, 0, 0]}, …]}
+```
 
 #### `atom_properties`
 
@@ -4240,6 +4346,15 @@ Members and kind-specific rules:
   its atom count − 1 (§ 5.1). A `bonds` section without `structure_ref`, and
   the `bonds` member of a `structure` section, are not checked against an atom
   count.
+* Periodic bond images (§ 5.1): every `bonds` or `bond_orders` pair that
+  carries an `image` belongs to a structure with a periodic axis, has a zero
+  component along every axis that is not periodic, is not a self-bond with a
+  zero image, and is not the bond of another imaged pair, `(i, j, n)` and
+  `(j, i, −n)` being one bond.
+* `structure.symmetry` site map (§ 5.7): `atom_sites` comes with `sites` and
+  `operations`, has one entry per atom of the section's structure, names
+  existing sites and operations, has no translation along an axis that is
+  not periodic, and generates every atom's position within `site_tolerance`.
 * `bands`: a rank-4 `projections` and an `occupations` have the
   `[n_spin, n_k, n_bands]` extents of `eigenvalues`, and a rank-3
   `projections` has its `[n_k, n_bands]` (§ 5.6).
@@ -4969,7 +5084,7 @@ finding about a member's payload points at the member spec that declares it.
 | `E_RESERVED_ID` | error | § 3.1, § 3.4 | A section `id` is `auto_open`, `bookmarks`, `camera` or `crossfade`. |
 | `E_KIND_UNKNOWN` | error | § 7.3 | A `kind` is neither canonical nor `x_<vendor>.*`. |
 | `E_CRITICAL_UNDECLARED` | error | § 7.4 | A `critical: true` vendor section's namespace is not declared in root `extensions`. |
-| `E_MEMBER_MALFORMED` | error | § 4.2, § 5.1, § 5.2, § 5.3, § 5.3.1, § 5.5, § 5.6, § 5.7, § 5.10, § 5.11, § 5.12, § 5.13, § 5.14, § 5.15, § 5.16 | A member spec is not an object or has no string `path`; a binary member's `shape` is not a list of non-negative integers; a pair of a standalone `bonds` section names an atom index `i` or `j` that is not an atom of the structure its `structure_ref` names; a `wavefunction.gto` coefficient member's rank disagrees with `complex`, a `symmetry_labels` array differs in length from its `energies`, an `overlap` or density member is not `[n_ao, n_ao]` or does not pair with the coefficient members, or `basis.n_electrons` differs from the sum of the occupations; a per-frame member of a `trajectory` or `reaction.path` disagrees in shape with its `coords`, its `coords` are float32 without `metadata.precision` `"float32"` (or `precision` names the other dtype), its binary `energies` disagree with `metadata.energies`, or a trajectory carries `lattice` without `metadata.pbc` or a `true` `pbc` entry without `lattice`; the `projections` or `occupations` of a `bands` section disagree in shape with its `eigenvalues`; a `custom.<name>` member of an `atom_properties` section has no entry in the section's `meta` member; a `forces` `gradient` or `stress`, a `hessian` `matrix` or its `meta.atom_masses_amu` has the wrong shape or disagrees with the atom count of the section's structure; the `states` of an `excited_states` section repeat an `index` or list it out of order, disagree in number with `meta.n_states`, or have a contribution whose `from_mo` or `to_mo` is not a row of the reference wavefunction; the `data` of a `volume.laplacian`, `volume.vector`, `volume.complex` or `volume.series` section has the wrong rank or trailing axis, or a `volume.series` `axis` has not one `values` (or `labels`) entry per slab; a periodic grid axis is aperiodic in the grid's structure or does not span its lattice vector; a `properties.elastic` `stiffness` or `compliance` is not symmetric; a `properties.dielectric` `static` is not `electronic` + `ionic`, or its `born_charges` do not number the atoms of the section's structure; the members of a `wavefunction.bloch` section disagree in shape, its k-point weights do not sum to 1, or its structure has no periodic axis; two steps of a `reaction.scheme` share an `id`, or a `structure_ref` occurs twice within one role of a step; a `preview` member does not begin with the signature of its raster `media_type`, or an `image/svg+xml` member has no `<svg` element; an `energy_decomposition` payload has fewer than two interacting fragments, overlapping interacting fragments, an atom index outside its structure, a sub-fragment that is not a subset of its parent, a term or sum-rule index out of range, a cyclic or repeated term, not exactly one interaction term, repeated pair indices within a spin, a `nocv` table without `eigenvalue_convention`, or a per-k array without one entry per k-point; or a member's `size` is not a non-negative integer. |
+| `E_MEMBER_MALFORMED` | error | § 4.2, § 5.1, § 5.2, § 5.3, § 5.3.1, § 5.5, § 5.6, § 5.7, § 5.10, § 5.11, § 5.12, § 5.13, § 5.14, § 5.15, § 5.16 | A member spec is not an object or has no string `path`; a binary member's `shape` is not a list of non-negative integers; a pair of a standalone `bonds` section names an atom index `i` or `j` that is not an atom of the structure its `structure_ref` names; a `bonds` or `bond_orders` pair's `image` is on a structure without a periodic axis or nonzero along an axis that is not periodic, a self-bond has a zero image, or two imaged pairs are the same bond; a `structure.symmetry` `atom_sites` comes without `sites` or `operations`, differs in length from the structure's atoms, names a site or operation that does not exist, translates along an axis that is not periodic, or generates a position farther than `site_tolerance` from its atom; a `wavefunction.gto` coefficient member's rank disagrees with `complex`, a `symmetry_labels` array differs in length from its `energies`, an `overlap` or density member is not `[n_ao, n_ao]` or does not pair with the coefficient members, or `basis.n_electrons` differs from the sum of the occupations; a per-frame member of a `trajectory` or `reaction.path` disagrees in shape with its `coords`, its `coords` are float32 without `metadata.precision` `"float32"` (or `precision` names the other dtype), its binary `energies` disagree with `metadata.energies`, or a trajectory carries `lattice` without `metadata.pbc` or a `true` `pbc` entry without `lattice`; the `projections` or `occupations` of a `bands` section disagree in shape with its `eigenvalues`; a `custom.<name>` member of an `atom_properties` section has no entry in the section's `meta` member; a `forces` `gradient` or `stress`, a `hessian` `matrix` or its `meta.atom_masses_amu` has the wrong shape or disagrees with the atom count of the section's structure; the `states` of an `excited_states` section repeat an `index` or list it out of order, disagree in number with `meta.n_states`, or have a contribution whose `from_mo` or `to_mo` is not a row of the reference wavefunction; the `data` of a `volume.laplacian`, `volume.vector`, `volume.complex` or `volume.series` section has the wrong rank or trailing axis, or a `volume.series` `axis` has not one `values` (or `labels`) entry per slab; a periodic grid axis is aperiodic in the grid's structure or does not span its lattice vector; a `properties.elastic` `stiffness` or `compliance` is not symmetric; a `properties.dielectric` `static` is not `electronic` + `ionic`, or its `born_charges` do not number the atoms of the section's structure; the members of a `wavefunction.bloch` section disagree in shape, its k-point weights do not sum to 1, or its structure has no periodic axis; two steps of a `reaction.scheme` share an `id`, or a `structure_ref` occurs twice within one role of a step; a `preview` member does not begin with the signature of its raster `media_type`, or an `image/svg+xml` member has no `<svg` element; an `energy_decomposition` payload has fewer than two interacting fragments, overlapping interacting fragments, an atom index outside its structure, a sub-fragment that is not a subset of its parent, a term or sum-rule index out of range, a cyclic or repeated term, not exactly one interaction term, repeated pair indices within a spin, a `nocv` table without `eigenvalue_convention`, or a per-k array without one entry per k-point; or a member's `size` is not a non-negative integer. |
 | `E_MEMBER_MISSING` | error | § 4.2 | A declared member `path` is not in the archive. |
 | `E_SHA256_MISMATCH` | error | § 4.2 | A member's bytes do not match its `sha256`. |
 | `E_JSON_INVALID` | error | § 4.2 | A JSON member is not UTF-8 JSON. |

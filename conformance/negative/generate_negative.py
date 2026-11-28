@@ -2122,6 +2122,155 @@ def _():
             _err("E_MEMBER_MALFORMED"), None)
 
 
+# Periodic bond images (spec § 5.1, Periodic bond images).
+
+_CUBIC = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]]
+
+
+def _periodic_pair(pbc: list) -> dict:
+    """Two hydrogen atoms in a 4 Å cubic cell with periodicity ``pbc``."""
+    return {"atoms": [
+        {"symbol": "H", "position": [0.4, 0.8, 1.2], "atomic_number": 1},
+        {"symbol": "H", "position": [3.6, 3.2, 2.8], "atomic_number": 1}],
+        "pbc": pbc, "lattice_vectors": _CUBIC}
+
+
+def _imaged_bonds(pairs: list, *, pbc: Optional[list] = None,
+                  payload: Any = None) -> Archive:
+    a = Archive("bond-images")
+    a.add_structure(payload=_periodic_pair(pbc or [True, True, True])
+                    if payload is None else payload)
+    _standalone_bonds(a, pairs, "structure")
+    return a
+
+
+@case("bonds_image_self_zero")
+def _():
+    a = _imaged_bonds([{"i": 1, "j": 1, "image": [0, 0, 0]}])
+    return (a.to_bytes(),
+            "A bond of atom 1 to itself with the image [0, 0, 0]: a self-bond "
+            "joins an atom to one of its copies and needs a nonzero image "
+            "(spec § 5.1, Periodic bond images).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("bonds_image_not_integer")
+def _():
+    a = _imaged_bonds([{"i": 0, "j": 1, "image": [0, 0.5, 0]}])
+    return (a.to_bytes(),
+            "A bond image with a non-integer component; an image is three "
+            "integers ($defs/LatticeImage, spec § 5.1).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("bonds_image_molecule")
+def _():
+    a = _imaged_bonds([{"i": 0, "j": 1, "image": [0, 0, 0]}], payload=WATER)
+    return (a.to_bytes(),
+            "A bond of water, a molecule, that carries an image; a bond image "
+            "needs a structure with a periodic axis (spec § 5.1).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("bonds_image_aperiodic_axis")
+def _():
+    a = _imaged_bonds([{"i": 0, "j": 1, "image": [0, 0, -1]}],
+                      pbc=[True, True, False])
+    return (a.to_bytes(),
+            "A slab periodic along a and b whose bond image is -1 along c, "
+            "which is not periodic; an image is 0 along every aperiodic axis "
+            "(spec § 5.1).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("bonds_image_duplicate")
+def _():
+    a = _imaged_bonds([{"i": 0, "j": 1, "image": [-1, 0, 0]},
+                       {"i": 1, "j": 0, "image": [1, 0, 0]}])
+    return (a.to_bytes(),
+            "Two pairs that are one bond: (0, 1, [-1, 0, 0]) and its reversal "
+            "(1, 0, [1, 0, 0]). Each bond is written once (spec § 5.1).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+# The symmetry site map (spec § 5.7, Site map): two atoms of P-1 in a 4 Å
+# cubic cell, generated from the site (0.1, 0.2, 0.3) by the identity and by
+# the inversion followed by the translation [1, 1, 1].
+
+def _site_map(change: Optional[Callable[[dict], None]] = None,
+              n_atoms: int = 2) -> Archive:
+    data = {"source": "deposited", "spacegroup_number": 2,
+            "operations": [
+                {"rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                 "translation": [0, 0, 0]},
+                {"rotation": [[-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                 "translation": [0, 0, 0]}],
+            "sites": [{"label": "H1", "position": [0.1, 0.2, 0.3]}],
+            "atom_sites": [{"site": 0, "operation": 0, "translation": [0, 0, 0]},
+                           {"site": 0, "operation": 1, "translation": [1, 1, 1]}]}
+    if change is not None:
+        change(data)
+    payload = _periodic_pair([True, True, True])
+    payload["atoms"] = payload["atoms"][:n_atoms]
+    a = Archive("site-map")
+    a.add_structure(payload=payload)
+    raw = _json(data)
+    a.add_section({"id": "symmetry", "kind": "structure.symmetry",
+                   "structure_ref": "structure",
+                   "members": {"data": json_member("symmetry/data.json", raw)}},
+                  {"symmetry/data.json": raw})
+    return a
+
+
+@case("symmetry_site_operation_out_of_range")
+def _():
+    def change(d):
+        d["atom_sites"][1]["operation"] = 2
+    return (_site_map(change).to_bytes(),
+            "A site map entry that names operation 2 of a payload with two "
+            "operations (spec § 5.7, Site map).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("symmetry_site_translation_not_integer")
+def _():
+    def change(d):
+        d["atom_sites"][1]["translation"] = [1, 1, 0.5]
+    return (_site_map(change).to_bytes(),
+            "A site map translation with a non-integer component; it is a "
+            "lattice translation ($defs/LatticeImage, spec § 5.7).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("symmetry_site_position_mismatch")
+def _():
+    def change(d):
+        d["atom_sites"][1]["translation"] = [1, 1, 0]
+    return (_site_map(change).to_bytes(),
+            "A site map whose second entry generates (0.9, 0.8, -0.3), 4 Å "
+            "from atom 1 at (0.9, 0.8, 0.7) in fractional coordinates: the map "
+            "disagrees with the atoms (spec § 5.7, Site map).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("symmetry_site_count_mismatch")
+def _():
+    return (_site_map(n_atoms=1).to_bytes(),
+            "A site map with two entries for a structure of one atom; it has "
+            "one entry per atom (spec § 5.7, Site map).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("symmetry_site_map_without_sites")
+def _():
+    def change(d):
+        del d["sites"]
+    return (_site_map(change).to_bytes(),
+            "A site map (atom_sites) without the sites it indexes "
+            "(spec § 5.7, Site map).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
 @case("payload_localization_reference_basis_empty")
 def _():
     a = base_archive()

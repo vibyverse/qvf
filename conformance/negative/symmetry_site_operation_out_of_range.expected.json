@@ -1,0 +1,10 @@
+{
+  "archive": "symmetry_site_operation_out_of_range.qvf",
+  "description": "A site map entry that names operation 2 of a payload with two operations (spec \u00a7 5.7, Site map).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

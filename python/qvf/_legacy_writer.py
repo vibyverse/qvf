@@ -1904,8 +1904,10 @@ class QvfWriter:
 
         Each atom is ``{"symbol", "position": [x, y, z], "atomic_number"}``;
         missing ``symbol``/``atomic_number`` are inferred from each other.
-        ``bonds`` (optional) is a list of ``{i, j, order}`` written as the
-        section's ``bonds`` member. ``biomolecule`` adds ``chains`` /
+        ``bonds`` (optional) is a list of ``{i, j, order?, image?}`` written
+        as the section's ``bonds`` member; ``image`` is the lattice image of
+        atom ``j`` of a periodic structure (spec § 5.1, *Periodic bond
+        images*). ``biomolecule`` adds ``chains`` /
         ``residues`` / ``secondary_structure`` / ``b_factors`` peer fields for
         cartoon rendering (spec § 5.1). The per-atom biomolecular fields
         ``atom_name`` / ``residue_name`` / ``residue_seq`` / ``chain_id`` /
@@ -2014,7 +2016,9 @@ class QvfWriter:
                  structure_ref: str | None = None,
                  label: str | None = None, section_id: str = "bonds") -> str:
         """Add a standalone ``bonds`` connectivity section. Each pair is
-        ``{i, j, order?}`` (``$defs/BondsPayload``, spec § 5.7).
+        ``{i, j, order?, image?}`` (``$defs/BondsPayload``, spec § 5.7);
+        ``image`` is the lattice image of atom ``j`` (spec § 5.1, *Periodic
+        bond images*).
 
         ``structure_ref`` names the ``structure`` section, already added,
         whose atoms the indices address, and is written on the section
@@ -4134,14 +4138,25 @@ class QvfWriter:
 
     def add_structure_symmetry(self, data: Mapping[str, Any], *,
                               label: str | None = None,
+                              structure_ref: str | None = None,
                               section_id: str = "symmetry") -> str:
         """Add a ``structure.symmetry`` section; ``data`` is the payload
-        (``$defs/SymmetryPayload``, spec § 5.7), written as given."""
+        (``$defs/SymmetryPayload``, spec § 5.7), written as given, including
+        a site map (``sites``, ``atom_sites``). ``structure_ref`` names the
+        structure it describes, which a site map needs in an archive with
+        several structures; it must name a ``structure`` section already
+        added."""
         self._check_new_id(section_id)
+        if structure_ref is not None:
+            self._check_ref("structure.symmetry structure_ref", structure_ref,
+                            "structure")
         member = self._json_member(f"structure/symmetry.json", dict(data))
-        return self._push({"id": self._reserve_id(section_id),
-                          "kind": "structure.symmetry",
-                          "members": {"data": member}}, label=label)
+        section: dict[str, Any] = {"id": self._reserve_id(section_id),
+                                   "kind": "structure.symmetry"}
+        if structure_ref is not None:
+            section["structure_ref"] = structure_ref
+        section["members"] = {"data": member}
+        return self._push(section, label=label)
 
     def add_scf_history(self, iterations: Sequence[Mapping[str, Any]], *,
                        label: str | None = None,

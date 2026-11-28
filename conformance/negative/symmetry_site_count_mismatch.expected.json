@@ -1,0 +1,10 @@
+{
+  "archive": "symmetry_site_count_mismatch.qvf",
+  "description": "A site map with two entries for a structure of one atom; it has one entry per atom (spec \u00a7 5.7, Site map).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

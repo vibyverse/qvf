@@ -92,6 +92,58 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
+### 2026-11-28: Periodic bond images and the symmetry site map
+
+**Status.** Made at the maintainer's direction of 2026-11-28, which asked
+for the format change that vibe-viewer's crystal editing waits for to be
+made in QVF directly. The consumer request came from vibe-viewer (CIF
+symmetry expansion, image-aware picking and bond editing). Readings (a) to
+(c) below are proposed and open to the maintainer's review. It is additive.
+
+**Decision.**
+1. **Bond images** (spec § 5.1, *Periodic bond images*). The pairs of
+   `bonds` (`$defs/BondsPayload`, also a `structure` section's `bonds`
+   member) and of `bond_orders` gain the optional integer triple `image`
+   (`$defs/LatticeImage`): the bond joins atom `i` to atom `j` translated by
+   that lattice vector. Absent means unspecified, so a reader may infer the
+   image as before; `[0, 0, 0]` means the same cell. An image needs a
+   periodic structure and is 0 along aperiodic axes; `i == j` needs a
+   nonzero image; `(i, j, n)` and `(j, i, -n)` are one bond and may not both
+   be written.
+2. **Site map** (spec § 5.7, `structure.symmetry`, *Site map*). The
+   symmetry payload gains `sites` (the deposited sites: `position`, `label`),
+   `atom_sites` (per atom: `site`, `operation`, `translation`, so that
+   x_atom = R x_site + t + n), `site_tolerance` (default 0.01 Å) and
+   `source` (`deposited` or `detected`). A writer that changes positions,
+   the cell or the atom count rewrites or drops the map.
+3. Validators check both (`E_MEMBER_MALFORMED`): image periodicity,
+   self-bonds and duplicates after normalisation; the site map's indices,
+   length, translations and generated positions. No finding code is added.
+
+**Evidence.** Positive archives: a two-atom graphene cell bonded through
+three images, a one-atom simple cubic cell bonded to its own images, a
+molecule without images, a slab whose periodic axes do not lead; rutile
+TiO2 (Ti on the special position 2a, O deposited outside the reference
+cell), a P 1 21/n 1 setting in a skew monoclinic cell, and a C2v water
+molecule in Cartesian coordinates. One negative archive per rule.
+
+**Readings for the maintainer.**
+- (a) Pairs without `image` are never compared, so an archive that repeats
+  an unimaged pair stays valid, and a payload may mix imaged and unimaged
+  pairs. Requiring every pair to carry an image once one does would be
+  simpler for readers, but would tighten existing archives' writers.
+- (b) The site map lives in `structure.symmetry` rather than on each atom,
+  next to the operations it indexes, so that dropping the section drops a
+  map that an edit made stale. Labels stay on `sites`; a producer may also
+  keep them as `atom_name` on the atoms.
+- (c) Anisotropic displacement tensors and disorder assemblies/groups,
+  requested with the site map, are not part of this change; they are
+  independent per-atom fields and can follow additively.
+
+**Compatibility.** Additive: one new `$defs` entry and new optional fields
+of three payloads. No `qvf_version` change; existing archives keep their
+meaning and validity.
+
 ### 2026-11-17: `energy_decomposition` term vocabulary and producer mappings
 
 **Status.** Released in toolkit 0.8.1 (2026-11-28), which the maintainer chose

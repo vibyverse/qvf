@@ -126,7 +126,7 @@ pub fn validate_bytes(bytes: Vec<u8>, options: &ValidateOptions) -> Report {
     // and drop unresolved references below the references level.
     let level = if options.level >= Level::Semantics { Level::All } else { options.level };
     let n = match ZipArchive::open(bytes) {
-        Ok(zip) => run(&zip, &options.limits, level, options.schema_check, &mut out),
+        Ok(zip) => run(&zip, &options.limits, level, options.level >= Level::References, options.schema_check, &mut out),
         Err(e) => {
             out.push(Code::E_ZIP_UNREADABLE, "archive", format!("not a readable zip: {}", e.message));
             0
@@ -725,6 +725,243 @@ fn bonds_errors(sid: &str, section: &Obj, payload: Option<&Value>, st: &Structur
                     ));
                 }
             }
+        }
+    }
+    errors
+}
+
+/// The structure a standalone `bonds`, `bond_orders` or `structure.symmetry`
+/// section describes, for the periodic-image and site-map rules (spec § 5.1,
+/// § 5.7): the one its `structure_ref` names, else the archive's only
+/// structure. `None` when neither resolves; an unresolved reference is the
+/// reference check's finding.
+fn bonds_structure<'a>(section: &'a Obj, st: &StructureIndex<'a>) -> Option<&'a str> {
+    if section.contains_key("structure_ref") {
+        return str_of(section.get("structure_ref")).filter(|r| st.is_structure(r));
+    }
+    st.only_structure
+}
+
+/// A JSON integer (not `2.0`, not a bool), as the Python reference reads one.
+fn strict_int(v: Option<&Value>) -> Option<i128> {
+    let v = v?;
+    v.as_i64().map(i128::from).or_else(|| v.as_u64().map(i128::from))
+}
+
+/// Three JSON integers, else `None` (the schema check's finding).
+fn int3(v: Option<&Value>) -> Option<[i128; 3]> {
+    let a = v?.as_array()?;
+    if a.len() != 3 {
+        return None;
+    }
+    Some([strict_int(a.first())?, strict_int(a.get(1))?, strict_int(a.get(2))?])
+}
+
+fn show_int3(n: &[i128; 3]) -> String {
+    format!("[{}, {}, {}]", n[0], n[1], n[2])
+}
+
+fn show_bool3(p: &[bool; 3]) -> String {
+    format!("[{}, {}, {}]", p[0], p[1], p[2])
+}
+
+/// `pbc` of a `structure` payload as three booleans: all false when absent
+/// (a molecule), `None` when malformed (the periodicity check's finding).
+fn pbc_of(structure: Option<&Value>) -> Option<[bool; 3]> {
+    let o = as_obj(structure)?;
+    match o.get("pbc") {
+        None => Some([false; 3]),
+        Some(p) => is_bool3(Some(p)),
+    }
+}
+
+/// Periodic bond images of a `bonds` or `bond_orders` payload (spec § 5.1,
+/// *Periodic bond images*), given the `pbc` of the structure the bonds belong
+/// to.
+///
+/// Only pairs that carry `image` are checked: an image needs a periodic
+/// structure and is 0 along every axis that is not periodic; a self-bond
+/// (`i == j`) needs a nonzero image; and no two imaged pairs are the same
+/// bond, `(i, j, n)` being the same as `(j, i, -n)`. Pairs without an image
+/// keep their earlier meaning and are not compared.
+fn bond_image_errors(sid: &str, payload: Option<&Value>, pbc: Option<[bool; 3]>) -> Vec<String> {
+    let (Some(pbc), Some(pairs)) = (pbc, as_obj(payload).and_then(|p| p.get("pairs")).and_then(Value::as_array)) else {
+        return vec![];
+    };
+    let mut errors = Vec::new();
+    let mut seen: HashMap<(i128, i128, [i128; 3]), usize> = HashMap::new();
+    for (k, pair) in pairs.iter().enumerate() {
+        let Some(pair) = pair.as_object() else { continue };
+        let Some(image) = pair.get("image") else { continue };
+        let Some(n) = int3(Some(image)) else { continue };
+        let at = format!("section {}: pairs[{k}].image {}", quote(sid), show_int3(&n));
+        if !pbc.iter().any(|&p| p) {
+            errors
+                .push(format!("{at} on a structure with no periodic axis; a bond image needs a periodic structure (spec § 5.1)"));
+            continue;
+        }
+        if let Some(a) = (0..3).find(|&a| n[a] != 0 && !pbc[a]) {
+            errors.push(format!("{at} is nonzero along axis {a}, which is not periodic (pbc {}) (spec § 5.1)", show_bool3(&pbc)));
+            continue;
+        }
+        let (Some(i), Some(j)) = (strict_int(pair.get("i")), strict_int(pair.get("j"))) else { continue };
+        if i == j && n == [0, 0, 0] {
+            errors
+                .push(format!("{at} joins atom {i} to itself in the same cell; a self-bond needs a nonzero image (spec § 5.1)"));
+            continue;
+        }
+        let neg = [-n[0], -n[1], -n[2]];
+        let key = match i.cmp(&j) {
+            std::cmp::Ordering::Less => (i, j, n),
+            std::cmp::Ordering::Greater => (j, i, neg),
+            std::cmp::Ordering::Equal => (i, i, n.max(neg)),
+        };
+        if let Some(first) = seen.get(&key) {
+            errors.push(format!("{at} is the bond of pairs[{first}] again: (i, j, n) and (j, i, -n) are one bond (spec § 5.1)"));
+        } else {
+            seen.insert(key, k);
+        }
+    }
+    errors
+}
+
+/// Default largest distance, in Å, between an atom and the position its
+/// `atom_sites` entry generates (spec § 5.7, *Site map*).
+const SITE_TOLERANCE: f64 = 0.01;
+
+/// A `rows` x 3 matrix of finite numbers, else `None`.
+fn real_rows(v: Option<&Value>, rows: usize) -> Option<Vec<[f64; 3]>> {
+    let a = v?.as_array()?;
+    if a.len() != rows {
+        return None;
+    }
+    a.iter()
+        .map(|row| {
+            let r = row.as_array()?;
+            if r.len() != 3 {
+                return None;
+            }
+            let x = |c: usize| r[c].as_f64().filter(|x| x.is_finite());
+            Some([x(0)?, x(1)?, x(2)?])
+        })
+        .collect()
+}
+
+/// A position: three finite numbers, else `None`.
+fn real3(v: Option<&Value>) -> Option<[f64; 3]> {
+    let r = v?.as_array()?;
+    if r.len() != 3 {
+        return None;
+    }
+    let x = |c: usize| r[c].as_f64().filter(|x| x.is_finite());
+    Some([x(0)?, x(1)?, x(2)?])
+}
+
+/// The site map of a `structure.symmetry` payload (spec § 5.7, *Site map*):
+/// `atom_sites` against `sites`, `operations` and, when the structure is
+/// known (`structure`, its payload), its atoms.
+///
+/// Every entry names a site and an operation that exist, its translation is
+/// 0 along every axis that is not periodic, there is one entry per atom, and
+/// the position the entry generates, `R x_site + t + n` (fractional, turned
+/// Cartesian with the lattice, for a periodic structure; Cartesian for a
+/// molecule), lies within `site_tolerance` (default 0.01 Å) of the atom.
+fn site_map_errors(sid: &str, payload: Option<&Value>, structure: Option<&Value>) -> Vec<String> {
+    let structure = structure.filter(|v| !v.is_null());
+    let Some(p) = as_obj(payload) else { return vec![] };
+    let Some(atom_sites) = p.get("atom_sites").and_then(Value::as_array) else { return vec![] };
+    let s = sec(sid);
+    let mut errors = Vec::new();
+    let sites = p.get("sites").and_then(Value::as_array);
+    let ops = p.get("operations").and_then(Value::as_array);
+    for (name, value) in [("sites", sites.is_some()), ("operations", ops.is_some())] {
+        if !value {
+            errors.push(format!("{s}atom_sites needs {name}, which is absent (spec § 5.7)"));
+        }
+    }
+    let (Some(sites), Some(ops)) = (sites, ops) else { return errors };
+
+    let pbc = structure.and_then(|v| pbc_of(Some(v)));
+    let mut atoms = as_obj(structure).and_then(|o| o.get("atoms")).and_then(Value::as_array);
+    if let Some(a) = atoms {
+        if a.len() != atom_sites.len() {
+            errors.push(format!(
+                "{s}atom_sites has {} entries but the structure has {} atoms (spec § 5.7)",
+                atom_sites.len(),
+                a.len()
+            ));
+            atoms = None;
+        }
+    }
+    if pbc.is_none() {
+        atoms = None;
+    }
+    let periodic = pbc.is_some_and(|p| p.iter().any(|&x| x));
+    let mut lattice = None;
+    if atoms.is_some() && periodic {
+        lattice = real_rows(as_obj(structure).and_then(|o| o.get("lattice_vectors")), 3);
+        if lattice.is_none() {
+            atoms = None; // the periodicity check's finding
+        }
+    }
+    let tol = p.get("site_tolerance").and_then(Value::as_f64).filter(|t| *t > 0.0).unwrap_or(SITE_TOLERANCE);
+
+    for (k, entry) in atom_sites.iter().enumerate() {
+        let Some(entry) = entry.as_object() else { continue };
+        let site = strict_int(entry.get("site"));
+        let op = strict_int(entry.get("operation"));
+        let n = match entry.get("translation") {
+            None => Some([0, 0, 0]),
+            Some(v) => int3(Some(v)),
+        };
+        let at = format!("{s}atom_sites[{k}]");
+        let mut ok = site.is_some() && op.is_some() && n.is_some();
+        if let Some(x) = site {
+            if !(0..sites.len() as i128).contains(&x) {
+                errors.push(format!("{at}.site {x} is not one of the {} sites (spec § 5.7)", sites.len()));
+                ok = false;
+            }
+        }
+        if let Some(x) = op {
+            if !(0..ops.len() as i128).contains(&x) {
+                errors.push(format!("{at}.operation {x} is not one of the {} operations (spec § 5.7)", ops.len()));
+                ok = false;
+            }
+        }
+        if let (Some(n), Some(pbc)) = (n, pbc) {
+            if let Some(a) = (0..3).find(|&a| n[a] != 0 && !pbc[a]) {
+                errors.push(format!(
+                    "{at}.translation {} is nonzero along axis {a}, which is not periodic (spec § 5.7)",
+                    show_int3(&n)
+                ));
+                ok = false;
+            }
+        }
+        let (true, Some(atoms), Some(site), Some(op), Some(n)) = (ok, atoms, site, op, n) else { continue };
+        let pos = sites[site as usize].as_object().and_then(|o| real3(o.get("position")));
+        let o = ops[op as usize].as_object();
+        let rot = o.and_then(|o| real_rows(o.get("rotation"), 3));
+        let shift = match o.and_then(|o| o.get("translation")) {
+            None => Some([0.0; 3]),
+            Some(v) => real3(Some(v)),
+        };
+        let apos = atoms[k].as_object().and_then(|o| real3(o.get("position")));
+        let (Some(pos), Some(rot), Some(shift), Some(apos)) = (pos, rot, shift, apos) else { continue };
+        let f: Vec<f64> = (0..3).map(|r| (0..3).map(|c| rot[r][c] * pos[c]).sum::<f64>() + shift[r] + n[r] as f64).collect();
+        let x: Vec<f64> = match &lattice {
+            Some(l) => (0..3).map(|r| (0..3).map(|c| f[c] * l[c][r]).sum()).collect(),
+            None => f,
+        };
+        let dist = (0..3).map(|r| (x[r] - apos[r]).powi(2)).sum::<f64>().sqrt();
+        if dist.is_nan() || dist > tol {
+            errors.push(format!(
+                "{at} generates ({}, {}, {}) Å, {} Å from atom {k}, more than the site tolerance {} Å (spec § 5.7)",
+                gprec(x[0], 6),
+                gprec(x[1], 6),
+                gprec(x[2], 6),
+                gprec(dist, 3),
+                num(tol)
+            ));
         }
     }
     errors
@@ -2427,7 +2664,11 @@ struct Deferred<'a> {
     s: &'a Obj,
 }
 
-fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &mut Findings) -> usize {
+/// `references` is whether the caller asked for the references level: the
+/// bond-image and site-map rules run only there, as in the Python reference
+/// (which gates them on its references stage), although `level` itself is
+/// raised to `All` from the semantics level on.
+fn run(zip: &ZipArchive, lim: &Limits, level: Level, references: bool, schema_check: bool, out: &mut Findings) -> usize {
     let entries = zip.entries();
 
     // --- container: central-directory checks, before decompressing anything ---
@@ -2683,6 +2924,11 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
     let mut bloch_sections: Vec<Deferred> = Vec::new();
     let mut derivative_sections: Vec<(Deferred, &str)> = Vec::new();
     let mut bonds_sections: Vec<Deferred> = Vec::new();
+    // Bond images and site maps (spec § 5.1, § 5.7), checked once every
+    // structure payload has been read.
+    let mut structure_doc_of: HashMap<String, usize> = HashMap::new(); // structure id -> section index
+    let mut image_sections: Vec<(Deferred, &str)> = Vec::new(); // (section, member role)
+    let mut symmetry_sections: Vec<Deferred> = Vec::new();
     let mut grid_members: Vec<(Deferred, String)> = Vec::new(); // (section, role)
     let mut property_sections: Vec<(Deferred, &str)> = Vec::new();
     let declared_extensions = as_obj(manifest.get("extensions")).unwrap_or(&empty);
@@ -2829,6 +3075,9 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
                     sum_z_of.insert(sid.to_string(), z);
                 }
             }
+            if doc.is_some() {
+                structure_doc_of.entry(sid.to_string()).or_insert(i);
+            }
             if let Some(o) = as_obj(doc) {
                 cells_of_owned.entry(sid.to_string()).or_insert(i);
                 periodic_of.entry(sid.to_string()).or_insert_with(|| {
@@ -2844,6 +3093,16 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         }
         if level >= Level::References && kind == "bonds" && s.contains_key("structure_ref") {
             bonds_sections.push(d);
+        }
+        if references {
+            // They read another section's payload; references level only.
+            if kind == "structure" && docs.contains_key("bonds") {
+                image_sections.push((d, "bonds"));
+            } else if (kind == "bonds" || kind == "bond_orders") && docs.contains_key(kind) {
+                image_sections.push((d, kind));
+            } else if kind == "structure.symmetry" && docs.contains_key("data") {
+                symmetry_sections.push(d);
+            }
         }
         if level >= Level::Semantics {
             let kinds = if level >= Level::References { Some(&kinds_by_id) } else { None };
@@ -2954,6 +3213,26 @@ fn run(zip: &ZipArchive, lim: &Limits, level: Level, schema_check: bool, out: &m
         for d in &bonds_sections {
             for msg in bonds_errors(d.sid, d.s, all_docs[d.i].get("bonds"), st) {
                 out.push(Code::E_MEMBER_MALFORMED, member_pointer(d.i, "bonds"), msg);
+            }
+        }
+        // Periodic bond images and symmetry site maps against the structure
+        // they belong to, which may come later (spec § 5.1, § 5.7).
+        let structure_doc = |r: &str| structure_doc_of.get(r).and_then(|&k| all_docs[k].get("structure"));
+        for (d, role) in &image_sections {
+            let structure = if *role == "bonds" && str_of(d.s.get("kind")) == Some("structure") {
+                Some(d.sid)
+            } else {
+                bonds_structure(d.s, st)
+            };
+            let Some(doc) = structure.and_then(structure_doc) else { continue };
+            for msg in bond_image_errors(d.sid, all_docs[d.i].get(*role), pbc_of(Some(doc))) {
+                out.push(Code::E_MEMBER_MALFORMED, member_pointer(d.i, role), msg);
+            }
+        }
+        for d in &symmetry_sections {
+            let doc = bonds_structure(d.s, st).and_then(structure_doc);
+            for msg in site_map_errors(d.sid, all_docs[d.i].get("data"), doc) {
+                out.push(Code::E_MEMBER_MALFORMED, member_pointer(d.i, "data"), msg);
             }
         }
     }
@@ -3339,6 +3618,73 @@ mod tests {
         let r = validate_bytes(b"not a zip at all, definitely not".to_vec(), &ValidateOptions::default());
         assert!(!r.ok);
         assert!(r.has(Code::E_ZIP_UNREADABLE));
+    }
+
+    #[test]
+    fn bond_images_need_a_periodic_axis_and_one_record_per_bond() {
+        use serde_json::json;
+        let pbc = Some([true, true, false]);
+        let check = |pairs: Value, pbc: Option<[bool; 3]>| bond_image_errors("b", Some(&json!({ "pairs": pairs })), pbc).len();
+        // Valid: three distinct images; pairs without an image are not compared.
+        let ok = json!([{"i": 0, "j": 1, "image": [0, 0, 0]}, {"i": 0, "j": 1, "image": [-1, 0, 0]},
+                        {"i": 0, "j": 1}, {"i": 0, "j": 1}]);
+        assert_eq!(check(ok, pbc), 0);
+        // A malformed or absent pbc leaves the check to the periodicity rule.
+        assert_eq!(check(json!([{"i": 0, "j": 0, "image": [0, 0, 0]}]), None), 0);
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [0, 0, 0]}]), Some([false; 3])), 1);
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [0, 0, 1]}]), pbc), 1);
+        assert_eq!(check(json!([{"i": 2, "j": 2, "image": [0, 0, 0]}]), pbc), 1);
+        // (i, j, n) and (j, i, -n) are one bond; a self-bond's n and -n too.
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [1, 0, 0]}, {"i": 1, "j": 0, "image": [-1, 0, 0]}]), pbc), 1);
+        assert_eq!(check(json!([{"i": 3, "j": 3, "image": [0, 1, 0]}, {"i": 3, "j": 3, "image": [0, -1, 0]}]), pbc), 1);
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [1, 0, 0]}, {"i": 1, "j": 0, "image": [1, 0, 0]}]), pbc), 0);
+        // Not three integers (2.0 included) is the schema's finding.
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [0.0, 0, 1]}]), pbc), 0);
+        assert_eq!(check(json!([{"i": 0, "j": 1, "image": [0, 1]}]), Some([false; 3])), 0);
+        assert_eq!(pbc_of(Some(&json!({"atoms": []}))), Some([false; 3]));
+        assert_eq!(pbc_of(Some(&json!({"pbc": [true, 1, false]}))), None);
+    }
+
+    #[test]
+    fn site_map_against_its_structure() {
+        use serde_json::json;
+        let identity = json!({"rotation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]});
+        let inversion = json!({"rotation": [[-1, 0, 0], [0, -1, 0], [0, 0, -1]], "translation": [0.5, 0.5, 0.5]});
+        let data = |atom_sites: Value| json!({"operations": [identity, inversion], "sites": [{"position": [0.1, 0.2, 0.3]}], "atom_sites": atom_sites});
+        let cell = json!({"pbc": [true, true, true], "lattice_vectors": [[2, 0, 0], [0, 2, 0], [0, 0, 2]],
+                          "atoms": [{"position": [0.2, 0.4, 0.6]}, {"position": [0.8, 0.6, 0.4]}]});
+        let check = |d: Value, st: Option<&Value>| site_map_errors("s", Some(&d), st).len();
+        // x = (0.1, 0.2, 0.3) and -x + 1/2 + (0, 0, 0), times 2 Å.
+        let good = json!([{"site": 0, "operation": 0}, {"site": 0, "operation": 1, "translation": [0, 0, 0]}]);
+        assert_eq!(check(data(good.clone()), Some(&cell)), 0);
+        // Without the structure only the payload's own indices are checked.
+        assert_eq!(check(data(good), None), 0);
+        assert_eq!(check(data(json!([{"site": 1, "operation": 2}])), None), 2);
+        // One entry per atom; a count mismatch skips the position check.
+        assert_eq!(check(data(json!([{"site": 0, "operation": 1}])), Some(&cell)), 1);
+        // A wrong position, and a translation that moves the atom.
+        assert_eq!(check(data(json!([{"site": 0, "operation": 1}, {"site": 0, "operation": 1}])), Some(&cell)), 1);
+        let moved = json!([{"site": 0, "operation": 0}, {"site": 0, "operation": 1, "translation": [1, 0, 0]}]);
+        assert_eq!(check(data(moved.clone()), Some(&cell)), 1);
+        // A tolerance wide enough to accept it.
+        let mut wide = data(moved);
+        wide["site_tolerance"] = json!(3.0);
+        assert_eq!(check(wide, Some(&cell)), 0);
+        let mut slab = cell.clone();
+        slab["pbc"] = json!([true, true, false]);
+        let off = json!([{"site": 0, "operation": 0, "translation": [0, 0, 1]}, {"site": 0, "operation": 1}]);
+        // A slab: only the translation along the aperiodic axis is reported,
+        // the entry's position check is then skipped.
+        assert_eq!(check(data(off), Some(&slab)), 1);
+        // A periodic cell without a usable lattice skips the position check.
+        let mut no_lattice = cell.clone();
+        no_lattice.as_object_mut().unwrap().remove("lattice_vectors");
+        assert_eq!(check(data(json!([{"site": 0, "operation": 1}, {"site": 0, "operation": 1}])), Some(&no_lattice)), 0);
+        // A site map needs sites and operations.
+        assert_eq!(check(json!({"atom_sites": []}), None), 2);
+        // A non-integer translation is the schema's finding; the entry is skipped.
+        let frac = json!([{"site": 0, "operation": 0}, {"site": 0, "operation": 0, "translation": [0, 0, 0.5]}]);
+        assert_eq!(check(data(frac), Some(&cell)), 0);
     }
 
     #[test]

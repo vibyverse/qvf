@@ -479,11 +479,11 @@ LEGACY_CANONICAL: Mapping[str, str] = MappingProxyType({
 #: Every $defs entry name, in schema order.
 SCHEMA_DEFS: Tuple[str, ...] = (
     "ValueWithUnits", "UnitName", "LegacyUnitName", "ViewerHint", "Vec3",
-    "Camera", "Bookmark", "Sha256Hex", "ZipPath", "NumpyDtype", "MemberSize",
-    "MediaType", "BinaryMember", "JsonMember", "Section", "Volume3DBinary",
-    "Volume4DBinary", "Volume4DVectorBinary", "Volume4DComplexBinary",
-    "StructureAtom", "Lattice3x3", "StructurePayload", "BiomoleculeResidue",
-    "BiomoleculeSecondaryStructure", "SectionStructure",
+    "LatticeImage", "Camera", "Bookmark", "Sha256Hex", "ZipPath", "NumpyDtype",
+    "MemberSize", "MediaType", "BinaryMember", "JsonMember", "Section",
+    "Volume3DBinary", "Volume4DBinary", "Volume4DVectorBinary",
+    "Volume4DComplexBinary", "StructureAtom", "Lattice3x3", "StructurePayload",
+    "BiomoleculeResidue", "BiomoleculeSecondaryStructure", "SectionStructure",
     "SectionVolumeDensity", "VolumeGridPayload", "SectionVolumeOrbital",
     "SectionVolumeSpin", "SectionVolumeELF", "SectionVolumeGeneric",
     "SectionVolumeDifference", "SectionVolumePotential", "SectionVolumeRDG",

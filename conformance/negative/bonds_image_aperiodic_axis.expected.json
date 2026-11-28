@@ -1,0 +1,10 @@
+{
+  "archive": "bonds_image_aperiodic_axis.qvf",
+  "description": "A slab periodic along a and b whose bond image is -1 along c, which is not periodic; an image is 0 along every aperiodic axis (spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

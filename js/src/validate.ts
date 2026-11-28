@@ -67,7 +67,11 @@ import { checkDefinition, checkManifest, jsonEqual, payloadDefinition } from "./
  *   a density, spin density or orbital volume, a `volume.series` axis `trajectory_ref`, a grid
  *   `structure_ref`, and the span of a periodic grid against the cell of its
  *   structure, the Born charge count of `properties.dielectric`, and the
- *   periodic structure of a `wavefunction.bloch` section).
+ *   periodic structure of a `wavefunction.bloch` section, the periodic
+ *   `image` of every bond of a `structure`, `bonds` or `bond_orders` payload
+ *   against the `pbc` of its structure, and the `atom_sites` site map of a
+ *   `structure.symmetry` section against its sites, operations and the atoms
+ *   of its structure).
  * - `all`: everything (the default; currently the same as `references`).
  */
 export type ValidationLevel = "container" | "manifest" | "payloads" | "semantics" | "references" | "all";
@@ -550,6 +554,201 @@ function bondsErrors(sid: string, section: Obj, payload: unknown, structures: St
 const STATE_DENSITY_KINDS: ReadonlySet<string> = new Set(["volume.transition_density", "volume.difference"]);
 
 const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
+
+/**
+ * The structure a standalone `bonds`, `bond_orders` or `structure.symmetry`
+ * section describes, for the periodic-image and site-map rules (spec § 5.1,
+ * § 5.7): the one its `structure_ref` names, else the archive's only
+ * structure. `null` when neither resolves; an unresolved reference is the
+ * reference check's finding.
+ */
+function describedStructure(section: Obj, structures: StructureIndex): string | null {
+  if (has(section, "structure_ref")) {
+    const ref = section.structure_ref;
+    return typeof ref === "string" && structures.kindsById.get(ref) === "structure" ? ref : null;
+  }
+  return structures.onlyStructure;
+}
+
+/**
+ * `pbc` of a `structure` payload as three booleans: `[false, false, false]`
+ * when absent (a molecule), `null` when malformed (the periodicity check's
+ * finding).
+ */
+function pbcOf(structure: unknown): boolean[] | null {
+  if (!isObject(structure)) return null;
+  const pbc = has(structure, "pbc") ? structure.pbc : [false, false, false];
+  return Array.isArray(pbc) && pbc.length === 3 && pbc.every((x) => typeof x === "boolean") ? (pbc as boolean[]) : null;
+}
+
+/** Three integers, else `null` (the schema check's finding). */
+function int3(value: unknown): [number, number, number] | null {
+  return Array.isArray(value) && value.length === 3 && value.every(isInt) ? [value[0], value[1], value[2]] : null;
+}
+
+/**
+ * Periodic bond images of a `bonds` or `bond_orders` payload (spec § 5.1,
+ * *Periodic bond images*), given the `pbc` of the structure the bonds belong
+ * to.
+ *
+ * Only pairs that carry `image` are checked: an image needs a periodic
+ * structure and is 0 along every axis that is not periodic; a self-bond
+ * (`i == j`) needs a nonzero image; and no two imaged pairs are the same bond,
+ * `(i, j, n)` being the same as `(j, i, -n)`. Pairs without an image keep
+ * their earlier meaning and are not compared. Returns messages.
+ */
+function bondImageErrors(sid: string, payload: unknown, pbc: boolean[] | null): string[] {
+  const pairs = isObject(payload) ? payload.pairs : undefined;
+  if (pbc === null || !Array.isArray(pairs)) return [];
+  const errors: string[] = [];
+  const seen = new Map<string, number>();
+  pairs.forEach((pair, k) => {
+    if (!isObject(pair) || !has(pair, "image")) return;
+    const n = int3(pair.image);
+    if (n === null) return;
+    const where = `section ${quote(sid)}: pairs[${k}].image [${n.join(", ")}]`;
+    if (!pbc.some((x) => x)) {
+      errors.push(`${where} on a structure with no periodic axis; a bond image needs a periodic structure (spec § 5.1)`);
+      return;
+    }
+    const off = [0, 1, 2].filter((a) => n[a] !== 0 && !pbc[a]);
+    if (off.length > 0) {
+      errors.push(`${where} is nonzero along axis ${off[0]}, which is not periodic (pbc [${pbc.join(", ")}]) (spec § 5.1)`);
+      return;
+    }
+    const i = pair.i;
+    const j = pair.j;
+    if (!isInt(i) || !isInt(j)) return;
+    if (i === j && n.every((x) => x === 0)) {
+      errors.push(`${where} joins atom ${i} to itself in the same cell; a self-bond needs a nonzero image (spec § 5.1)`);
+      return;
+    }
+    const neg = n.map((x) => (x === 0 ? 0 : -x)) as [number, number, number];
+    let key: [number, number, number[]];
+    if (i < j) key = [i, j, n];
+    else if (i > j) key = [j, i, neg];
+    else key = [i, i, lexGreater(neg, n) ? neg : n];
+    const id = `${key[0]}/${key[1]}/${key[2].join(",")}`;
+    const first = seen.get(id);
+    if (first !== undefined) {
+      errors.push(`${where} is the bond of pairs[${first}] again: (i, j, n) and (j, i, -n) are one bond (spec § 5.1)`);
+    } else {
+      seen.set(id, k);
+    }
+  });
+  return errors;
+}
+
+/** Whether `a` is lexicographically greater than `b`. */
+function lexGreater(a: readonly number[], b: readonly number[]): boolean {
+  for (let c = 0; c < a.length; c++) {
+    if (a[c] !== b[c]) return a[c] > b[c];
+  }
+  return false;
+}
+
+/**
+ * Default largest distance, in Å, between an atom and the position its
+ * `atom_sites` entry generates (spec § 5.7, *Site map*).
+ */
+const SITE_TOLERANCE = 0.01;
+
+/** A `rows` x 3 matrix of finite numbers, else `null`. */
+function realMatrix(value: unknown, rows: number): number[][] | null {
+  if (!Array.isArray(value) || value.length !== rows) return null;
+  const out: number[][] = [];
+  for (const row of value) {
+    if (!Array.isArray(row) || row.length !== 3 || !row.every(isNumber)) return null;
+    out.push(row as number[]);
+  }
+  return out;
+}
+
+const g6 = (x: number): string => String(Number(x.toPrecision(6)));
+
+/**
+ * The site map of a `structure.symmetry` payload (spec § 5.7, *Site map*):
+ * `atom_sites` against `sites`, `operations` and, when the structure is known
+ * (`structure`, its payload, else `undefined`), its atoms.
+ *
+ * Every entry names a site and an operation that exist, its translation is 0
+ * along every axis that is not periodic, there is one entry per atom, and the
+ * position the entry generates, `R x_site + t + n` (fractional, turned
+ * Cartesian with the lattice, for a periodic structure; Cartesian for a
+ * molecule), lies within `site_tolerance` (default 0.01 Å) of the atom.
+ * Returns messages.
+ */
+function siteMapErrors(sid: string, payload: unknown, structure: unknown): string[] {
+  if (!isObject(payload) || !Array.isArray(payload.atom_sites)) return [];
+  const atomSites = payload.atom_sites;
+  const sites = payload.sites;
+  const ops = payload.operations;
+  const sec = `section ${quote(sid)}: `;
+  const errors: string[] = [];
+  for (const [name, value] of [["sites", sites], ["operations", ops]] as const) {
+    if (!Array.isArray(value)) errors.push(`${sec}atom_sites needs ${name}, which is absent (spec § 5.7)`);
+  }
+  if (!Array.isArray(sites) || !Array.isArray(ops)) return errors;
+
+  const pbc = structure !== undefined ? pbcOf(structure) : null;
+  let atoms: unknown[] | null = isObject(structure) && Array.isArray(structure.atoms) ? structure.atoms : null;
+  if (atoms !== null && atoms.length !== atomSites.length) {
+    errors.push(`${sec}atom_sites has ${atomSites.length} entries but the structure has ${atoms.length} atoms (spec § 5.7)`);
+    atoms = null;
+  }
+  if (pbc === null) atoms = null;
+  const periodic = pbc !== null && pbc.some((x) => x);
+  let lattice: number[][] | null = null;
+  if (atoms !== null && periodic) {
+    lattice = realMatrix((structure as Obj).lattice_vectors, 3);
+    if (lattice === null) atoms = null; // the periodicity check's finding
+  }
+  const tol = isNumber(payload.site_tolerance) && payload.site_tolerance > 0 ? payload.site_tolerance : SITE_TOLERANCE;
+
+  atomSites.forEach((entry, k) => {
+    if (!isObject(entry)) return;
+    const site = entry.site;
+    const op = entry.operation;
+    const n = int3(has(entry, "translation") ? entry.translation : [0, 0, 0]);
+    const where = `${sec}atom_sites[${k}]`;
+    let ok = isInt(site) && isInt(op) && n !== null;
+    if (isInt(site) && !(site >= 0 && site < sites.length)) {
+      errors.push(`${where}.site ${site} is not one of the ${sites.length} sites (spec § 5.7)`);
+      ok = false;
+    }
+    if (isInt(op) && !(op >= 0 && op < ops.length)) {
+      errors.push(`${where}.operation ${op} is not one of the ${ops.length} operations (spec § 5.7)`);
+      ok = false;
+    }
+    if (n !== null && pbc !== null) {
+      const off = [0, 1, 2].filter((a) => n[a] !== 0 && !pbc[a]);
+      if (off.length > 0) {
+        errors.push(`${where}.translation [${n.join(", ")}] is nonzero along axis ${off[0]}, which is not periodic (spec § 5.7)`);
+        ok = false;
+      }
+    }
+    if (!ok || atoms === null || n === null) return;
+    const siteObj = sites[site as number];
+    const opObj = ops[op as number];
+    const atomObj = atoms[k];
+    const pos = isObject(siteObj) && has(siteObj, "position") ? realMatrix([siteObj.position], 1) : null;
+    const o: Obj = isObject(opObj) ? opObj : {};
+    const rot = realMatrix(o.rotation, 3);
+    const shift = realMatrix([has(o, "translation") ? o.translation : [0, 0, 0]], 1);
+    const apos = isObject(atomObj) && has(atomObj, "position") ? realMatrix([atomObj.position], 1) : null;
+    if (rot === null || shift === null || pos === null || apos === null) return;
+    const [xs, t, a] = [pos[0], shift[0], apos[0]];
+    const f = [0, 1, 2].map((r) => rot[r][0] * xs[0] + rot[r][1] * xs[1] + rot[r][2] * xs[2] + t[r] + n[r]);
+    const x = lattice !== null ? [0, 1, 2].map((r) => f[0] * lattice[0][r] + f[1] * lattice[1][r] + f[2] * lattice[2][r]) : f;
+    const dist = Math.hypot(x[0] - a[0], x[1] - a[1], x[2] - a[2]);
+    if (!(dist <= tol)) {
+      errors.push(
+        `${where} generates (${x.map(g6).join(", ")}) Å, ${Number(dist.toPrecision(3))} Å from atom ${k}, more than the site tolerance ${tol} Å (spec § 5.7)`,
+      );
+    }
+  });
+  return errors;
+}
 
 /**
  * Orbital rows of a `wavefunction.gto` section's coefficient members, from
@@ -2238,6 +2437,10 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
   const derivativeSections: Array<{ i: number; sid: string; kind: string; s: Obj; members: Obj; meta: unknown }> = [];
   // standalone bonds sections with a structure_ref, checked the same way (spec § 5.1)
   const bondsSections: Array<{ i: number; sid: string; s: Obj; payload: unknown }> = [];
+  // Bond images and site maps (spec § 5.1, § 5.7), checked once every
+  // structure payload has been read. `own`: a structure section's own bonds.
+  const imageSections: Array<{ i: number; sid: string; role: string; s: Obj; own: boolean; payload: unknown }> = [];
+  const symmetrySections: Array<{ i: number; sid: string; s: Obj; payload: unknown }> = [];
   // grid payloads, checked once every structure has been read (spec § 5.2)
   const gridMembers: Array<{ where: string; sid: string; s: Obj; grid: Obj }> = [];
   // properties.* sections, checked the same way (the Born charges need the structures)
@@ -2364,6 +2567,16 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
     }
     if (rank >= AT_REFERENCES && kind === "bonds" && has(s, "structure_ref")) {
       bondsSections.push({ i, sid, s, payload: docs.get("bonds") });
+    }
+    if (rank >= AT_REFERENCES) {
+      // They read another section's payload (spec § 5.1, § 5.7).
+      if (kind === "structure" && docs.has("bonds")) {
+        imageSections.push({ i, sid, role: "bonds", s, own: true, payload: docs.get("bonds") });
+      } else if ((kind === "bonds" || kind === "bond_orders") && docs.has(kind)) {
+        imageSections.push({ i, sid, role: kind, s, own: false, payload: docs.get(kind) });
+      } else if (kind === "structure.symmetry" && docs.has("data")) {
+        symmetrySections.push({ i, sid, s, payload: docs.get("data") });
+      }
     }
     if (rank >= AT_SEMANTICS) {
       for (const [code, role, msg] of volumeErrors(sid, kind, members, docs, rank >= AT_REFERENCES ? kindsById : null)) {
@@ -2548,6 +2761,21 @@ async function run(zip: ZipArchive, lim: Limits, rank: number, schemaCheck: bool
     for (const d of bondsSections) {
       for (const msg of bondsErrors(d.sid, d.s, d.payload, structures)) {
         out.error("E_MEMBER_MALFORMED", memberPointer(d.i, "bonds"), msg);
+      }
+    }
+    // Periodic bond images and symmetry site maps against the structure they
+    // belong to, which may come later (spec § 5.1, § 5.7).
+    for (const d of imageSections) {
+      const structure = d.own ? d.sid : describedStructure(d.s, structures);
+      if (structure === null || !cellsOf.has(structure)) continue;
+      for (const msg of bondImageErrors(d.sid, d.payload, pbcOf(cellsOf.get(structure)))) {
+        out.error("E_MEMBER_MALFORMED", memberPointer(d.i, d.role), msg);
+      }
+    }
+    for (const d of symmetrySections) {
+      const structure = describedStructure(d.s, structures);
+      for (const msg of siteMapErrors(d.sid, d.payload, structure !== null ? cellsOf.get(structure) : undefined)) {
+        out.error("E_MEMBER_MALFORMED", memberPointer(d.i, "data"), msg);
       }
     }
   }

@@ -1,0 +1,59 @@
+{
+  "archive": "bonds_periodic_images.qvf",
+  "description": "A graphene sheet (pbc [true, true, false]) whose two carbons bond through three lattice images, written as the structure's own bonds member, and a one-atom simple cubic cell bonded to its own images along the three axes, as a standalone bonds section. Each bond is written once: (i, j, n) and (j, i, -n) are one bond (spec \u00a7 5.1, Periodic bond images).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "bonds",
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "structure_graphene",
+      "member": "bonds",
+      "json_pointer": [
+        "pairs",
+        1,
+        "image"
+      ],
+      "equals": [
+        -1,
+        0,
+        0
+      ]
+    },
+    {
+      "section": "structure_graphene",
+      "member": "bonds",
+      "json_pointer": [
+        "pairs",
+        2,
+        "j"
+      ],
+      "equals": 1
+    },
+    {
+      "section": "bonds_cubic",
+      "member": "bonds",
+      "json_pointer": [
+        "pairs",
+        2,
+        "image"
+      ],
+      "equals": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "section": "bonds_cubic",
+      "member": "bonds",
+      "json_pointer": [
+        "pairs",
+        0,
+        "i"
+      ],
+      "equals": 0
+    }
+  ]
+}

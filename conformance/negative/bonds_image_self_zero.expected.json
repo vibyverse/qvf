@@ -1,0 +1,10 @@
+{
+  "archive": "bonds_image_self_zero.qvf",
+  "description": "A bond of atom 1 to itself with the image [0, 0, 0]: a self-bond joins an atom to one of its copies and needs a nonzero image (spec \u00a7 5.1, Periodic bond images).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

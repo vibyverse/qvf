@@ -3962,6 +3962,7 @@ struct BondsPayloadPairsItem {
     int64_t i{};
     int64_t j{};
     std::optional<double> order{};
+    std::optional<std::array<int64_t, 3>> image{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -3971,6 +3972,8 @@ struct BondsPayloadPairsItem {
         codec::put(out, "j", j);
         if (out.has("order")) throw std::invalid_argument("use the typed field, not extra: order");
         if (order) codec::put(out, "order", *order);
+        if (out.has("image")) throw std::invalid_argument("use the typed field, not extra: image");
+        if (image) codec::put(out, "image", *image);
         return out;
     }
     static BondsPayloadPairsItem from_json(const Json& j) {
@@ -3979,7 +3982,8 @@ struct BondsPayloadPairsItem {
         out.i = codec::get<int64_t>(j, "i");
         out.j = codec::get<int64_t>(j, "j");
         if (j.has("order")) out.order.emplace(codec::get<double>(j, "order"));
-        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order") out.extra[kv.first] = kv.second;
+        if (j.has("image")) out.image.emplace(codec::get<std::array<int64_t, 3>>(j, "image"));
+        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "image") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -4009,6 +4013,7 @@ struct BondOrdersPayloadPairsItem {
     std::optional<double> distance_ang{};
     std::optional<std::string> symbol_i{};
     std::optional<std::string> symbol_j{};
+    std::optional<std::array<int64_t, 3>> image{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -4024,6 +4029,8 @@ struct BondOrdersPayloadPairsItem {
         if (symbol_i) codec::put(out, "symbol_i", *symbol_i);
         if (out.has("symbol_j")) throw std::invalid_argument("use the typed field, not extra: symbol_j");
         if (symbol_j) codec::put(out, "symbol_j", *symbol_j);
+        if (out.has("image")) throw std::invalid_argument("use the typed field, not extra: image");
+        if (image) codec::put(out, "image", *image);
         return out;
     }
     static BondOrdersPayloadPairsItem from_json(const Json& j) {
@@ -4035,7 +4042,8 @@ struct BondOrdersPayloadPairsItem {
         if (j.has("distance_ang")) out.distance_ang.emplace(codec::get<double>(j, "distance_ang"));
         if (j.has("symbol_i")) out.symbol_i.emplace(codec::get<std::string>(j, "symbol_i"));
         if (j.has("symbol_j")) out.symbol_j.emplace(codec::get<std::string>(j, "symbol_j"));
-        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "distance_ang" && kv.first != "symbol_i" && kv.first != "symbol_j") out.extra[kv.first] = kv.second;
+        if (j.has("image")) out.image.emplace(codec::get<std::array<int64_t, 3>>(j, "image"));
+        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "distance_ang" && kv.first != "symbol_i" && kv.first != "symbol_j" && kv.first != "image") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -6242,6 +6250,54 @@ struct SymmetryPayloadOperationsItem {
     }
 };
 
+struct SymmetryPayloadSitesItem {
+    std::optional<std::string> label{};
+    std::array<double, 3> position{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        if (out.has("position")) throw std::invalid_argument("use the typed field, not extra: position");
+        codec::put(out, "position", position);
+        return out;
+    }
+    static SymmetryPayloadSitesItem from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        SymmetryPayloadSitesItem out;
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        out.position = codec::get<std::array<double, 3>>(j, "position");
+        for (const auto& kv : j.items()) if (kv.first != "label" && kv.first != "position") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct SymmetryPayloadAtomSitesItem {
+    int64_t site{};
+    int64_t operation{};
+    std::optional<std::array<int64_t, 3>> translation{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("site")) throw std::invalid_argument("use the typed field, not extra: site");
+        codec::put(out, "site", site);
+        if (out.has("operation")) throw std::invalid_argument("use the typed field, not extra: operation");
+        codec::put(out, "operation", operation);
+        if (out.has("translation")) throw std::invalid_argument("use the typed field, not extra: translation");
+        if (translation) codec::put(out, "translation", *translation);
+        return out;
+    }
+    static SymmetryPayloadAtomSitesItem from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        SymmetryPayloadAtomSitesItem out;
+        out.site = codec::get<int64_t>(j, "site");
+        out.operation = codec::get<int64_t>(j, "operation");
+        if (j.has("translation")) out.translation.emplace(codec::get<std::array<int64_t, 3>>(j, "translation"));
+        for (const auto& kv : j.items()) if (kv.first != "site" && kv.first != "operation" && kv.first != "translation") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct SymmetryPayload {
     std::optional<int64_t> spacegroup_number{};
     std::optional<std::string> international{};
@@ -6254,6 +6310,10 @@ struct SymmetryPayload {
     std::optional<std::vector<std::string>> wyckoffs{};
     std::optional<std::vector<int64_t>> equivalent_atoms{};
     std::optional<double> symprec{};
+    std::optional<std::string> source{};
+    std::optional<std::vector<SymmetryPayloadSitesItem>> sites{};
+    std::optional<std::vector<SymmetryPayloadAtomSitesItem>> atom_sites{};
+    std::optional<double> site_tolerance{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -6279,6 +6339,14 @@ struct SymmetryPayload {
         if (equivalent_atoms) codec::put(out, "equivalent_atoms", *equivalent_atoms);
         if (out.has("symprec")) throw std::invalid_argument("use the typed field, not extra: symprec");
         if (symprec) codec::put(out, "symprec", *symprec);
+        if (out.has("source")) throw std::invalid_argument("use the typed field, not extra: source");
+        if (source) codec::put(out, "source", *source);
+        if (out.has("sites")) throw std::invalid_argument("use the typed field, not extra: sites");
+        if (sites) codec::put(out, "sites", *sites);
+        if (out.has("atom_sites")) throw std::invalid_argument("use the typed field, not extra: atom_sites");
+        if (atom_sites) codec::put(out, "atom_sites", *atom_sites);
+        if (out.has("site_tolerance")) throw std::invalid_argument("use the typed field, not extra: site_tolerance");
+        if (site_tolerance) codec::put(out, "site_tolerance", *site_tolerance);
         return out;
     }
     static SymmetryPayload from_json(const Json& j) {
@@ -6295,7 +6363,11 @@ struct SymmetryPayload {
         if (j.has("wyckoffs")) out.wyckoffs.emplace(codec::get<std::vector<std::string>>(j, "wyckoffs"));
         if (j.has("equivalent_atoms")) out.equivalent_atoms.emplace(codec::get<std::vector<int64_t>>(j, "equivalent_atoms"));
         if (j.has("symprec")) out.symprec.emplace(codec::get<double>(j, "symprec"));
-        for (const auto& kv : j.items()) if (kv.first != "spacegroup_number" && kv.first != "international" && kv.first != "hall" && kv.first != "point_group" && kv.first != "hermann_mauguin" && kv.first != "space_group_number" && kv.first != "space_group_symbol" && kv.first != "operations" && kv.first != "wyckoffs" && kv.first != "equivalent_atoms" && kv.first != "symprec") out.extra[kv.first] = kv.second;
+        if (j.has("source")) out.source.emplace(codec::get<std::string>(j, "source"));
+        if (j.has("sites")) out.sites.emplace(codec::get<std::vector<SymmetryPayloadSitesItem>>(j, "sites"));
+        if (j.has("atom_sites")) out.atom_sites.emplace(codec::get<std::vector<SymmetryPayloadAtomSitesItem>>(j, "atom_sites"));
+        if (j.has("site_tolerance")) out.site_tolerance.emplace(codec::get<double>(j, "site_tolerance"));
+        for (const auto& kv : j.items()) if (kv.first != "spacegroup_number" && kv.first != "international" && kv.first != "hall" && kv.first != "point_group" && kv.first != "hermann_mauguin" && kv.first != "space_group_number" && kv.first != "space_group_symbol" && kv.first != "operations" && kv.first != "wyckoffs" && kv.first != "equivalent_atoms" && kv.first != "symprec" && kv.first != "source" && kv.first != "sites" && kv.first != "atom_sites" && kv.first != "site_tolerance") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -11151,7 +11223,7 @@ struct RxOp { std::uint8_t code; std::int32_t x, y; };
 inline constexpr const char* kSchemaId = "https://vibe-qc.org/spec/qvf/1/manifest.schema.json";
 inline constexpr std::int32_t kRoot = 0;
 
-inline constexpr const char* kStrings[556] = {
+inline constexpr const char* kStrings[560] = {
     "qvf_version", "source", "sections", "schema_uri", "byte_order", "program", "version",
     "calculation", "provenance", "method", "functional", "basis", "charge", "multiplicity",
     "n_electrons", "scf_converged", "n_scf_iterations", "scf_energy", "fermi_energy",
@@ -11213,43 +11285,43 @@ inline constexpr const char* kStrings[556] = {
     "smearing", "smearing_type", "atom", "m", "integrated", "pairs", "symbol_i", "symbol_j",
     "distance_ang", "pair_labels", "spacegroup_number", "international", "hall", "point_group",
     "hermann_mauguin", "space_group_number", "space_group_symbol", "operations", "rotation",
-    "translation", "wyckoffs", "equivalent_atoms", "symprec", "order", "bond_orders",
-    "iterations", "iter", "delta_e", "diis_error", "rms_density_change", "converged",
-    "references", "command", "exit_status", "sequence", "job_ref", "input", "log", "files",
-    "filename", "truncated", "spec", "job_type", "tasks", "solvation", "dispersion",
-    "relativistic", "scf", "geometry", "resources", "options", "model", "epsilon",
-    "convergence", "max_iterations", "guess", "damping", "max_steps", "coordinates", "n_cores",
-    "memory_mb", "walltime_s", "ao_metadata", "atom_symbol", "shell_index", "primitive_index",
-    "angular_momentum", "shell_type", "exponent", "is_primitive", "is_contracted", "ao_index",
-    "cartesian_powers", "basis_label", "volumes", "fit", "V0", "E0", "B0", "B0_prime",
-    "residual_rms", "pressures_gpa", "volume_unit", "pressure_unit", "nk1", "nk2", "nk3",
-    "symmetry_expanded", "band_indices", "reciprocal_lattice", "qpath", "eigenvectors",
-    "n_atoms", "has_eigenvectors", "projected", "critical_points", "points", "rho",
-    "laplacian", "ellipticity", "atom_pair", "bond_paths", "stress", "convention", "length",
-    "mass_weighted", "atom_masses_amu", "states", "properties", "index", "excitation_energy",
-    "total_energy", "symmetry", "oscillator_strength", "rotatory_strength_cgs",
-    "transition_dipole", "transition_magnetic_dipole", "contributions", "nto_ref",
-    "density_ref", "from_mo", "to_mo", "weight", "reference_state", "n_states", "tda",
-    "spin_flip", "dipole", "quadrupole", "octupole", "polarizability", "hyperpolarizability",
-    "vector", "total", "traceless", "frequency_ev", "frequencies_ev", "stiffness",
-    "compliance", "bulk_modulus_gpa", "shear_modulus_gpa", "youngs_modulus_gpa",
-    "poisson_ratio", "average", "electronic", "ionic", "static", "born_charges",
-    "piezoelectric", "excited_states_ref", "thumbnail", "image", "decomposition", "fragments",
-    "variant", "system", "sum_rules", "orbital_pairs", "notes", "parent", "state", "directed",
-    "parts", "tolerance", "eigenvalue_convention", "threshold", "eigenvalue", "donor",
-    "acceptor", "kpoint_eigenvalues", "kpoint_energies", "orbital_pairs_gamma_only",
-    "created_utc", "modified_utc", "uuid", "authors", "license", "doi", "keywords",
-    "derived_from", "tags", "orcid", "affiliation", "email", "url", "zpve_eh",
-    "entropy_cal_mol_k", "total_debye", "vector_debye", "frozen_atoms", "distance_constraints",
-    "target_angstrom", "components", "by_method", "units_note", "nuclear_repulsion",
-    "one_electron", "two_electron", "exchange_correlation", "exchange", "correlation", "zpve",
-    "thermal", "embedding",
+    "translation", "wyckoffs", "equivalent_atoms", "symprec", "atom_sites", "site",
+    "operation", "site_tolerance", "order", "image", "bond_orders", "iterations", "iter",
+    "delta_e", "diis_error", "rms_density_change", "converged", "references", "command",
+    "exit_status", "sequence", "job_ref", "input", "log", "files", "filename", "truncated",
+    "spec", "job_type", "tasks", "solvation", "dispersion", "relativistic", "scf", "geometry",
+    "resources", "options", "model", "epsilon", "convergence", "max_iterations", "guess",
+    "damping", "max_steps", "coordinates", "n_cores", "memory_mb", "walltime_s", "ao_metadata",
+    "atom_symbol", "shell_index", "primitive_index", "angular_momentum", "shell_type",
+    "exponent", "is_primitive", "is_contracted", "ao_index", "cartesian_powers", "basis_label",
+    "volumes", "fit", "V0", "E0", "B0", "B0_prime", "residual_rms", "pressures_gpa",
+    "volume_unit", "pressure_unit", "nk1", "nk2", "nk3", "symmetry_expanded", "band_indices",
+    "reciprocal_lattice", "qpath", "eigenvectors", "n_atoms", "has_eigenvectors", "projected",
+    "critical_points", "points", "rho", "laplacian", "ellipticity", "atom_pair", "bond_paths",
+    "stress", "convention", "length", "mass_weighted", "atom_masses_amu", "states",
+    "properties", "index", "excitation_energy", "total_energy", "symmetry",
+    "oscillator_strength", "rotatory_strength_cgs", "transition_dipole",
+    "transition_magnetic_dipole", "contributions", "nto_ref", "density_ref", "from_mo",
+    "to_mo", "weight", "reference_state", "n_states", "tda", "spin_flip", "dipole",
+    "quadrupole", "octupole", "polarizability", "hyperpolarizability", "vector", "total",
+    "traceless", "frequency_ev", "frequencies_ev", "stiffness", "compliance",
+    "bulk_modulus_gpa", "shear_modulus_gpa", "youngs_modulus_gpa", "poisson_ratio", "average",
+    "electronic", "ionic", "static", "born_charges", "piezoelectric", "excited_states_ref",
+    "thumbnail", "decomposition", "fragments", "variant", "system", "sum_rules",
+    "orbital_pairs", "notes", "parent", "state", "directed", "parts", "tolerance",
+    "eigenvalue_convention", "threshold", "eigenvalue", "donor", "acceptor",
+    "kpoint_eigenvalues", "kpoint_energies", "orbital_pairs_gamma_only", "created_utc",
+    "modified_utc", "uuid", "authors", "license", "doi", "keywords", "derived_from", "tags",
+    "orcid", "affiliation", "email", "url", "zpve_eh", "entropy_cal_mol_k", "total_debye",
+    "vector_debye", "frozen_atoms", "distance_constraints", "target_angstrom", "components",
+    "by_method", "units_note", "nuclear_repulsion", "one_electron", "two_electron",
+    "exchange_correlation", "exchange", "correlation", "zpve", "thermal", "embedding",
 };
 inline constexpr double kNumbers[9] = {
     0.0, 3.0, 1.0, 180.0, 10.0, 100.0, 7.0, 2.0, 230.0,
 };
 // JSON literals of const / enum, as JSON text.
-inline constexpr const char* kValues[257] = {
+inline constexpr const char* kValues[259] = {
     "1", "\"little\"", "\"pending\"", "\"running\"", "\"converged\"", "\"failed\"",
     "\"angstrom\"", "\"bohr\"", "\"hartree\"", "\"ev\"", "\"kcal_per_mol\"", "\"kj_per_mol\"",
     "\"cm-1\"", "\"nm\"", "\"debye\"", "\"mhz\"", "\"hz\"", "\"ppm\"", "\"km_per_mol\"",
@@ -11284,474 +11356,477 @@ inline constexpr const char* kValues[257] = {
     "\"iao\"", "\"ibo\"", "\"boys\"", "\"pipek_mezey\"", "\"electron_occupation\"",
     "\"transition_weight\"", "\"real\"", "\"complex_split_last_axis\"", "\"imag\"", "\"hole\"",
     "\"particle\"", "\"wavefunction.bloch\"", "\"fractional\"", "\"bands\"", "\"dos.total\"",
-    "\"dos.projected\"", "\"dos.coop\"", "\"dos.cohp\"", "\"structure.symmetry\"", "\"bonds\"",
-    "\"bond_orders\"", "\"scf_history\"", "\"citations\"", "\"run.record\"", "\"job.spec\"",
-    "\"molecular\"", "\"periodic\"", "\"\"", "\"cartesian\"", "\"internal\"", "\"redundant\"",
-    "\"basis.ao\"", "\"s\"", "\"p\"", "\"sp\"", "\"d\"", "\"f\"", "\"g\"", "\"h\"",
-    "\"equation_of_state\"", "\"birch_murnaghan\"", "\"murnaghan\"", "\"vinet\"",
-    "\"poirier_tarantola\"", "\"polynomial\"", "\"fermi_surface\"", "\"phonon_bands\"",
-    "\"phonon_dos\"", "\"topology.qtaim\"", "\"bcp\"", "\"rcp\"", "\"ccp\"", "\"ncp\"",
-    "\"forces\"", "\"gradient\"", "\"hessian\"", "\"excited_states\"",
-    "\"properties.electric\"", "\"properties.elastic\"", "\"properties.dielectric\"",
-    "\"buckingham\"", "\"voigt\"", "\"reuss\"", "\"hill\"", "\"volume.transition_density\"",
-    "\"preview\"", "\"image/png\"", "\"image/jpeg\"", "\"image/svg+xml\"",
-    "\"energy_decomposition\"", "\"ziegler-rauk\"", "\"lmo-eda\"", "\"gks-eda\"",
-    "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"", "\"led\"", "\"many-body\"", "\"own\"",
-    "\"supersystem\"", "\"electrostatic\"", "\"pauli\"", "\"exchange\"", "\"repulsion\"",
-    "\"orbital\"", "\"induction\"", "\"dispersion\"", "\"exchange_induction\"",
-    "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"", "\"frozen\"",
-    "\"exchange_correlation\"", "\"correlation\"", "\"reference\"", "\"coupling\"",
-    "\"kinetic\"", "\"coulomb\"", "\"residual\"", "\"nocv\"", "\"covp\"", "\"per_spin\"",
-    "\"spin_summed\"",
+    "\"dos.projected\"", "\"dos.coop\"", "\"dos.cohp\"", "\"structure.symmetry\"",
+    "\"deposited\"", "\"detected\"", "\"bonds\"", "\"bond_orders\"", "\"scf_history\"",
+    "\"citations\"", "\"run.record\"", "\"job.spec\"", "\"molecular\"", "\"periodic\"", "\"\"",
+    "\"cartesian\"", "\"internal\"", "\"redundant\"", "\"basis.ao\"", "\"s\"", "\"p\"",
+    "\"sp\"", "\"d\"", "\"f\"", "\"g\"", "\"h\"", "\"equation_of_state\"",
+    "\"birch_murnaghan\"", "\"murnaghan\"", "\"vinet\"", "\"poirier_tarantola\"",
+    "\"polynomial\"", "\"fermi_surface\"", "\"phonon_bands\"", "\"phonon_dos\"",
+    "\"topology.qtaim\"", "\"bcp\"", "\"rcp\"", "\"ccp\"", "\"ncp\"", "\"forces\"",
+    "\"gradient\"", "\"hessian\"", "\"excited_states\"", "\"properties.electric\"",
+    "\"properties.elastic\"", "\"properties.dielectric\"", "\"buckingham\"", "\"voigt\"",
+    "\"reuss\"", "\"hill\"", "\"volume.transition_density\"", "\"preview\"", "\"image/png\"",
+    "\"image/jpeg\"", "\"image/svg+xml\"", "\"energy_decomposition\"", "\"ziegler-rauk\"",
+    "\"lmo-eda\"", "\"gks-eda\"", "\"kitaura-morokuma\"", "\"almo-eda\"", "\"sapt\"",
+    "\"led\"", "\"many-body\"", "\"own\"", "\"supersystem\"", "\"electrostatic\"", "\"pauli\"",
+    "\"exchange\"", "\"repulsion\"", "\"orbital\"", "\"induction\"", "\"dispersion\"",
+    "\"exchange_induction\"", "\"exchange_dispersion\"", "\"delta_hf\"", "\"preparation\"",
+    "\"frozen\"", "\"exchange_correlation\"", "\"correlation\"", "\"reference\"",
+    "\"coupling\"", "\"kinetic\"", "\"coulomb\"", "\"residual\"", "\"nocv\"", "\"covp\"",
+    "\"per_spin\"", "\"spin_summed\"",
 };
 // Node lists, string lists and value lists (see the opcodes).
-inline constexpr std::int32_t kLists[904] = {
-    0, 1, 2, 5, 6, 7, 2, 3, 4, 5, 41, 42, 245, 246, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+inline constexpr std::int32_t kLists[909] = {
+    0, 1, 2, 5, 6, 7, 2, 3, 4, 5, 41, 42, 246, 247, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 47, 48, 49, 50, 51, 51, 50, 258, 260,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 47, 48, 49, 50, 51, 51, 50, 260, 262,
     52, 34, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 54, 55, 56, 57, 58, 54, 55, 58, 61, 62, 63,
-    288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305,
-    306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323,
-    324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341,
-    342, 343, 344, 345, 346, 347, 348, 62, 63, 349, 350, 62, 63, 353, 354, 62, 63, 361, 362,
-    363, 364, 357, 358, 62, 63, 369, 370, 371, 372, 365, 366, 70, 47, 71, 77, 387, 388, 79, 78,
-    78, 79, 21, 21, 78, 21, 78, 21, 78, 390, 394, 400, 407, 413, 419, 52, 80, 81, 82, 83, 81,
-    84, 85, 70, 71, 72, 88, 89, 90, 446, 447, 440, 444, 91, 101, 102, 103, 104, 57, 76, 77,
-    101, 102, 100, 107, 101, 102, 101, 102, 101, 102, 82, 83, 84, 85, 86, 513, 514, 87, 76, 77,
+    290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307,
+    308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325,
+    326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343,
+    344, 345, 346, 347, 348, 349, 350, 62, 63, 351, 352, 62, 63, 355, 356, 62, 63, 363, 364,
+    365, 366, 359, 360, 62, 63, 371, 372, 373, 374, 367, 368, 70, 47, 71, 77, 389, 390, 79, 78,
+    78, 79, 21, 21, 78, 21, 78, 21, 78, 392, 396, 402, 409, 415, 421, 52, 80, 81, 82, 83, 81,
+    84, 85, 70, 71, 72, 88, 89, 90, 448, 449, 442, 446, 91, 101, 102, 103, 104, 57, 76, 77,
+    101, 102, 100, 107, 101, 102, 101, 102, 101, 102, 82, 83, 84, 85, 86, 515, 516, 87, 76, 77,
     101, 102, 110, 109, 111, 111, 113, 101, 102, 101, 102, 101, 102, 101, 102, 101, 102, 101,
-    102, 115, 62, 116, 94, 95, 96, 97, 62, 553, 559, 560, 567, 568, 563, 564, 42, 53, 62, 98,
-    99, 119, 119, 608, 609, 63, 62, 610, 611, 618, 619, 620, 614, 615, 621, 622, 630, 631, 633,
-    634, 635, 629, 632, 625, 626, 30, 144, 70, 71, 151, 152, 77, 649, 650, 651, 102, 103, 104,
-    105, 106, 97, 107, 108, 109, 110, 97, 63, 62, 675, 30, 144, 159, 64, 62, 112, 113, 114,
-    115, 116, 697, 718, 719, 721, 722, 723, 717, 720, 713, 714, 30, 170, 171, 39, 64, 161, 61,
+    102, 115, 62, 116, 94, 95, 96, 97, 62, 555, 561, 562, 569, 570, 565, 566, 42, 53, 62, 98,
+    99, 119, 119, 610, 611, 63, 62, 612, 613, 620, 621, 622, 616, 617, 623, 624, 632, 633, 635,
+    636, 637, 631, 634, 627, 628, 30, 144, 70, 71, 151, 152, 77, 651, 652, 653, 102, 103, 104,
+    105, 106, 97, 107, 108, 109, 110, 97, 63, 62, 677, 30, 144, 159, 64, 62, 112, 113, 114,
+    115, 116, 699, 720, 721, 723, 724, 725, 719, 722, 715, 716, 30, 170, 171, 39, 64, 161, 61,
     62, 63, 118, 161, 181, 61, 62, 63, 182, 61, 183, 184, 120, 121, 122, 123, 67, 6, 191, 192,
-    191, 193, 194, 785, 786, 195, 196, 782, 198, 67, 190, 9, 68, 1, 802, 803, 5, 204, 205, 52,
-    58, 206, 831, 832, 30, 210, 211, 219, 211, 220, 83, 126, 127, 128, 129, 130, 232, 234, 223,
-    232, 234, 132, 133, 134, 885, 891, 235, 132, 131, 133, 134, 221, 219, 917, 918, 219, 219,
-    219, 219, 245, 250, 257, 258, 259, 219, 245, 219, 219, 219, 274, 276, 277, 245, 219, 1014,
-    1015, 11, 286, 287, 288, 289, 1031, 1032, 288, 289, 287, 1029, 1033, 1035, 1036, 294, 295,
+    191, 193, 194, 787, 788, 195, 196, 784, 198, 67, 190, 9, 68, 1, 804, 805, 5, 204, 205, 52,
+    58, 206, 833, 834, 30, 210, 211, 219, 211, 220, 83, 126, 127, 128, 129, 130, 232, 234, 223,
+    232, 234, 132, 133, 134, 887, 893, 235, 132, 131, 133, 134, 221, 219, 919, 920, 219, 219,
+    219, 219, 245, 250, 257, 258, 259, 219, 245, 219, 219, 219, 274, 276, 277, 245, 219, 1016,
+    1017, 11, 286, 287, 288, 289, 1033, 1034, 288, 289, 287, 1031, 1035, 1037, 1038, 294, 295,
     296, 297, 295, 296, 297, 299, 294, 301, 67, 303, 39, 306, 108, 87, 146, 147, 148, 149, 150,
-    151, 152, 153, 154, 155, 156, 157, 97, 158, 159, 160, 161, 1097, 1098, 163, 164, 108, 308,
-    315, 309, 314, 244, 315, 108, 276, 278, 307, 39, 306, 216, 1126, 1127, 1128, 1129, 39, 306,
-    276, 278, 1132, 1133, 108, 311, 1115, 1121, 1134, 11, 324, 286, 287, 39, 306, 61, 62, 63,
-    1151, 1152, 1153, 1154, 1155, 1147, 1148, 1156, 1157, 1160, 1161, 324, 108, 329, 307, 304,
-    311, 330, 87, 146, 149, 150, 151, 152, 153, 154, 155, 156, 157, 97, 166, 108, 108, 1194,
-    1199, 332, 333, 1210, 1211, 1214, 1215, 1241, 1242, 39, 351, 0, 67, 39, 334, 0, 67, 69, 0,
-    1277, 1278, 39, 334, 356, 119, 39, 334, 356, 119, 64, 257, 258, 1304, 1306, 1317, 1318,
-    102, 370, 92, 357, 257, 258, 376, 9, 357, 257, 258, 375, 377, 377, 378, 160, 54, 55, 58,
-    383, 54, 55, 58, 3, 4, 5, 388, 389, 1410, 1411, 61, 62, 63, 5, 393, 61, 62, 63, 394, 179,
-    180, 1424, 1425, 1426, 1428, 1429, 1430, 403, 182, 183, 184, 245, 415, 416, 417, 418, 419,
-    420, 190, 421, 422, 423, 186, 187, 188, 189, 190, 191, 192, 101, 102, 426, 39, 427, 403,
-    194, 195, 196, 197, 198, 326, 39, 442, 211, 1537, 1538, 1539, 1540, 1542, 1543, 1544, 1545,
-    1546, 1536, 1541, 1532, 1533, 119, 211, 351, 1570, 1571, 447, 448, 83, 47, 203, 204, 205,
-    206, 147, 61, 62, 63, 1615, 1616, 1611, 1612, 1621, 1622, 1617, 1618, 208, 263, 61, 62, 63,
-    1635, 1636, 457, 458, 459, 61, 62, 63, 460, 61, 62, 63, 459, 461, 462, 472, 473, 474, 76,
-    77, 460, 61, 62, 63, 460, 61, 62, 63, 479, 480, 481, 482, 483, 1704, 1705, 1706, 1707,
-    1708, 1710, 1711, 484, 263, 486, 455, 214, 182, 455, 254, 214, 182, 263, 254, 489, 215,
-    216, 217, 496, 101, 102, 501, 502, 61, 62, 63, 54, 55, 58, 60, 220, 221, 54, 55, 58, 60,
-    222, 220, 221, 504, 61, 62, 63, 181, 505, 192, 224, 225, 226, 227, 228, 229, 230, 231,
-    1804, 1805, 64, 77, 232, 233, 1834, 1835, 52, 197, 84, 234, 235, 236, 237, 238, 85, 86,
-    239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 1840, 1841, 76, 77,
-    485, 514, 1855, 1856, 83, 357, 253, 254, 1860, 1861, 255, 256, 461, 518, 197, 87, 76, 77,
-    324, 1888, 1889, 1890, 52, 52, 1925, 1926, 77, 543, 485, 9, 485, 6,
+    151, 152, 153, 154, 155, 156, 157, 97, 158, 159, 160, 161, 1099, 1100, 163, 164, 108, 308,
+    315, 309, 314, 244, 315, 108, 276, 278, 307, 39, 306, 216, 1128, 1129, 1130, 1131, 39, 306,
+    276, 278, 1134, 1135, 108, 311, 1117, 1123, 1136, 11, 324, 286, 287, 39, 306, 61, 62, 63,
+    1153, 1154, 1155, 1156, 1157, 1149, 1150, 1158, 1159, 1162, 1163, 324, 108, 329, 307, 304,
+    311, 330, 87, 146, 149, 150, 151, 152, 153, 154, 155, 156, 157, 97, 166, 108, 108, 1196,
+    1201, 332, 333, 1212, 1213, 1216, 1217, 1243, 1244, 39, 351, 0, 67, 39, 334, 0, 67, 69, 0,
+    1279, 1280, 39, 334, 356, 119, 39, 334, 356, 119, 64, 257, 258, 1306, 1308, 1319, 1320,
+    102, 370, 173, 174, 47, 376, 377, 92, 357, 257, 258, 381, 9, 357, 257, 258, 379, 382, 382,
+    383, 160, 54, 55, 58, 388, 54, 55, 58, 3, 4, 5, 393, 394, 1425, 1426, 61, 62, 63, 5, 398,
+    61, 62, 63, 399, 181, 182, 1439, 1440, 1441, 1443, 1444, 1445, 408, 184, 185, 186, 245,
+    420, 421, 422, 423, 424, 425, 190, 426, 427, 428, 188, 189, 190, 191, 192, 193, 194, 101,
+    102, 431, 39, 432, 408, 196, 197, 198, 199, 200, 326, 39, 447, 211, 1552, 1553, 1554, 1555,
+    1557, 1558, 1559, 1560, 1561, 1551, 1556, 1547, 1548, 119, 211, 351, 1585, 1586, 452, 453,
+    83, 47, 205, 206, 207, 208, 147, 61, 62, 63, 1630, 1631, 1626, 1627, 1636, 1637, 1632,
+    1633, 210, 263, 61, 62, 63, 1650, 1651, 462, 463, 464, 61, 62, 63, 465, 61, 62, 63, 464,
+    466, 467, 477, 478, 479, 76, 77, 465, 61, 62, 63, 465, 61, 62, 63, 484, 485, 486, 487, 488,
+    1719, 1720, 1721, 1722, 1723, 1725, 1726, 489, 263, 491, 460, 216, 184, 460, 254, 216, 184,
+    263, 254, 494, 217, 218, 219, 501, 101, 102, 506, 507, 61, 62, 63, 54, 55, 58, 60, 222,
+    223, 54, 55, 58, 60, 224, 222, 223, 508, 61, 62, 63, 181, 509, 192, 226, 227, 228, 229,
+    230, 231, 232, 233, 1819, 1820, 64, 77, 234, 235, 1849, 1850, 52, 197, 84, 236, 237, 238,
+    239, 240, 85, 86, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
+    1855, 1856, 76, 77, 490, 518, 1870, 1871, 83, 357, 255, 256, 1875, 1876, 257, 258, 466,
+    522, 197, 87, 76, 77, 324, 1903, 1904, 1905, 52, 52, 1940, 1941, 77, 547, 490, 9, 490, 6,
 };
 // (key, node) pairs: Properties, PatternProperties, DependentSchemas.
-inline constexpr std::int32_t kPairs[2586] = {
-    5, 201, 6, 202, 7, 203, 9, 205, 10, 206, 11, 207, 12, 208, 13, 209, 14, 210, 15, 211, 16,
-    212, 17, 213, 18, 214, 19, 215, 20, 216, 21, 217, 22, 218, 23, 219, 24, 221, 25, 222, 26,
-    223, 27, 224, 28, 225, 29, 226, 32, 230, 33, 232, 34, 234, 35, 235, 0, 197, 3, 198, 4, 199,
-    1, 200, 8, 204, 30, 227, 31, 228, 36, 236, 37, 237, 38, 238, 39, 239, 40, 240, 2, 241, 41,
-    243, 42, 244, 43, 247, 44, 248, 45, 249, 46, 250, 47, 253, 48, 254, 49, 255, 50, 256, 51,
-    257, 52, 262, 53, 263, 34, 264, 54, 266, 55, 267, 56, 268, 57, 269, 58, 271, 59, 272, 60,
-    273, 54, 274, 55, 275, 58, 276, 59, 277, 60, 278, 61, 279, 62, 280, 64, 281, 65, 282, 66,
-    283, 67, 284, 68, 285, 69, 286, 63, 287, 56, 351, 57, 352, 56, 355, 57, 356, 56, 359, 57,
-    360, 56, 367, 57, 368, 70, 373, 47, 374, 71, 375, 72, 376, 73, 377, 74, 378, 75, 379, 76,
-    380, 77, 382, 78, 384, 79, 386, 21, 389, 79, 392, 78, 396, 79, 399, 21, 402, 78, 404, 21,
-    409, 78, 411, 21, 415, 78, 417, 21, 421, 78, 423, 52, 425, 80, 426, 81, 427, 73, 428, 82,
-    429, 83, 431, 81, 432, 84, 433, 85, 434, 86, 435, 87, 436, 88, 437, 89, 438, 90, 439, 83,
-    443, 83, 449, 91, 452, 92, 453, 62, 450, 63, 451, 93, 454, 94, 456, 95, 458, 96, 460, 12,
-    462, 13, 463, 52, 464, 97, 465, 98, 466, 99, 467, 101, 471, 102, 472, 62, 468, 100, 469,
-    63, 470, 10, 473, 103, 485, 104, 486, 103, 474, 104, 475, 57, 477, 105, 479, 106, 481, 67,
-    482, 42, 483, 101, 492, 102, 493, 62, 487, 100, 488, 107, 489, 108, 490, 63, 491, 101, 497,
-    102, 498, 62, 494, 100, 495, 63, 496, 101, 501, 102, 502, 62, 499, 63, 500, 101, 505, 102,
-    506, 62, 503, 63, 504, 101, 518, 102, 519, 62, 507, 109, 508, 110, 509, 53, 510, 111, 511,
-    112, 512, 113, 515, 114, 516, 63, 517, 101, 522, 102, 523, 62, 520, 63, 521, 101, 526, 102,
-    527, 62, 524, 63, 525, 101, 530, 102, 531, 62, 528, 63, 529, 101, 534, 102, 535, 62, 532,
-    63, 533, 101, 538, 102, 539, 62, 536, 63, 537, 101, 542, 102, 543, 115, 544, 62, 540, 63,
-    541, 10, 545, 62, 546, 116, 547, 42, 549, 117, 550, 118, 552, 62, 555, 116, 557, 56, 561,
-    57, 562, 56, 565, 57, 566, 10, 569, 42, 570, 53, 571, 62, 572, 12, 573, 10, 574, 13, 580,
-    120, 582, 121, 583, 122, 584, 123, 585, 124, 586, 125, 587, 126, 588, 127, 589, 128, 590,
-    129, 591, 130, 592, 131, 593, 132, 594, 133, 595, 134, 596, 135, 597, 136, 598, 137, 599,
-    138, 600, 139, 601, 140, 602, 141, 603, 142, 604, 143, 605, 119, 606, 12, 607, 62, 575, 63,
-    576, 56, 612, 57, 613, 56, 616, 57, 617, 56, 623, 57, 624, 56, 627, 57, 628, 30, 638, 144,
-    639, 145, 640, 146, 641, 147, 642, 148, 643, 39, 644, 149, 645, 150, 646, 62, 636, 63, 637,
-    70, 647, 71, 648, 39, 669, 144, 670, 148, 671, 155, 672, 146, 673, 147, 674, 151, 652, 152,
-    654, 77, 656, 153, 658, 39, 659, 62, 661, 78, 662, 154, 664, 155, 665, 156, 666, 42, 667,
-    145, 678, 149, 679, 150, 680, 42, 676, 30, 683, 144, 684, 157, 685, 158, 686, 145, 687,
-    146, 688, 147, 689, 148, 690, 39, 691, 62, 681, 63, 682, 10, 692, 159, 693, 64, 694, 62,
-    695, 160, 696, 145, 712, 161, 698, 162, 700, 163, 702, 164, 703, 165, 704, 166, 705, 167,
-    707, 168, 709, 169, 710, 42, 711, 56, 715, 57, 716, 30, 726, 170, 727, 171, 728, 39, 729,
-    172, 730, 62, 724, 63, 725, 64, 731, 173, 732, 77, 733, 170, 735, 171, 736, 174, 737, 175,
-    738, 176, 739, 177, 740, 178, 741, 179, 742, 77, 743, 180, 745, 42, 746, 161, 751, 62, 748,
-    118, 749, 63, 750, 10, 752, 161, 753, 162, 755, 181, 759, 62, 757, 63, 758, 10, 760, 182,
-    761, 10, 763, 61, 764, 64, 765, 183, 766, 184, 768, 185, 770, 186, 772, 187, 773, 188, 775,
-    189, 776, 39, 777, 10, 778, 67, 779, 190, 780, 10, 781, 191, 784, 10, 790, 197, 791, 193,
-    792, 194, 793, 6, 788, 191, 789, 195, 794, 196, 795, 192, 796, 10, 798, 198, 799, 199, 800,
-    10, 801, 67, 804, 190, 805, 160, 807, 200, 808, 201, 809, 9, 810, 68, 811, 202, 812, 203,
-    813, 1, 814, 10, 815, 5, 816, 204, 817, 205, 818, 10, 819, 10, 825, 160, 826, 200, 827,
-    201, 828, 195, 829, 196, 830, 52, 820, 58, 821, 206, 822, 207, 823, 208, 824, 56, 833, 57,
-    834, 30, 838, 210, 839, 62, 835, 209, 836, 63, 837, 211, 840, 212, 842, 213, 844, 214, 846,
-    215, 848, 216, 850, 217, 852, 218, 854, 151, 855, 77, 857, 219, 861, 62, 859, 63, 860, 83,
-    873, 226, 874, 42, 875, 228, 878, 229, 879, 231, 882, 211, 862, 220, 864, 221, 866, 222,
-    868, 223, 869, 224, 870, 225, 872, 195, 876, 227, 877, 230, 881, 232, 883, 233, 884, 234,
-    888, 232, 887, 234, 894, 232, 893, 223, 896, 10, 897, 235, 898, 236, 899, 82, 900, 237,
-    902, 238, 903, 234, 904, 239, 905, 243, 911, 244, 912, 245, 913, 221, 906, 240, 907, 241,
-    908, 64, 909, 242, 910, 219, 916, 62, 914, 63, 915, 56, 919, 57, 920, 219, 923, 62, 921,
-    63, 922, 219, 926, 62, 924, 63, 925, 219, 929, 62, 927, 63, 928, 219, 932, 62, 930, 63,
-    931, 245, 938, 70, 939, 250, 940, 251, 941, 252, 942, 245, 945, 254, 946, 255, 948, 257,
-    951, 258, 952, 259, 953, 260, 954, 261, 955, 246, 933, 247, 934, 248, 935, 249, 936, 253,
-    943, 256, 949, 219, 958, 62, 956, 63, 957, 263, 960, 264, 962, 265, 963, 245, 966, 70, 967,
-    246, 968, 267, 969, 268, 970, 269, 972, 271, 974, 272, 975, 273, 976, 262, 959, 266, 964,
-    270, 973, 219, 980, 62, 978, 63, 979, 219, 983, 62, 981, 63, 982, 219, 986, 62, 984, 63,
-    985, 10, 987, 10, 992, 276, 993, 278, 994, 277, 995, 64, 996, 246, 988, 247, 989, 195, 990,
-    275, 991, 274, 997, 10, 999, 245, 1000, 70, 1001, 64, 1002, 279, 1003, 280, 1004, 252,
-    1005, 281, 1006, 282, 1007, 283, 1008, 284, 1009, 285, 1010, 219, 1013, 62, 1011, 63, 1012,
-    56, 1016, 57, 1017, 11, 1020, 286, 1021, 287, 1022, 288, 1023, 289, 1024, 290, 1025, 291,
-    1026, 292, 1027, 293, 1028, 62, 1018, 63, 1019, 56, 1037, 57, 1038, 10, 1039, 294, 1040,
-    295, 1041, 296, 1042, 297, 1044, 298, 1046, 10, 1047, 295, 1048, 296, 1049, 297, 1051, 299,
-    1053, 300, 1055, 10, 1056, 294, 1057, 301, 1058, 64, 1059, 302, 1060, 10, 1062, 67, 1063,
-    298, 1064, 304, 1065, 303, 1066, 305, 1068, 14, 1070, 10, 1071, 307, 1072, 39, 1073, 306,
-    1075, 216, 1077, 10, 1079, 108, 1080, 308, 1081, 304, 1082, 307, 1083, 39, 1084, 306, 1086,
-    216, 1088, 276, 1090, 278, 1091, 309, 1092, 310, 1093, 311, 1094, 312, 1095, 313, 1096,
-    314, 1099, 244, 1100, 315, 1101, 316, 1102, 317, 1103, 318, 1104, 319, 1107, 320, 1109,
-    321, 1111, 322, 1113, 323, 1114, 108, 1117, 308, 1118, 309, 1120, 108, 1123, 108, 1136,
-    311, 1138, 11, 1141, 324, 1142, 286, 1143, 287, 1144, 39, 1145, 306, 1146, 62, 1139, 63,
-    1140, 56, 1149, 57, 1150, 56, 1158, 57, 1159, 56, 1162, 57, 1163, 10, 1164, 324, 1177, 325,
-    1178, 327, 1179, 324, 1165, 325, 1167, 117, 1169, 326, 1171, 327, 1173, 328, 1174, 42,
-    1175, 10, 1180, 39, 1193, 108, 1181, 329, 1182, 307, 1183, 304, 1184, 308, 1185, 311, 1186,
-    330, 1187, 331, 1188, 18, 1190, 42, 1191, 108, 1196, 329, 1198, 108, 1201, 329, 1203, 332,
-    1206, 333, 1207, 334, 1208, 306, 1209, 62, 1204, 63, 1205, 56, 1212, 57, 1213, 56, 1216,
-    57, 1217, 10, 1218, 335, 1219, 336, 1220, 337, 1221, 338, 1222, 339, 1223, 340, 1224, 341,
-    1225, 10, 1226, 343, 1246, 344, 1247, 333, 1248, 324, 1227, 117, 1229, 342, 1231, 343,
-    1233, 344, 1234, 345, 1235, 329, 1236, 346, 1237, 347, 1238, 348, 1239, 349, 1243, 42,
-    1244, 62, 1249, 6, 1250, 350, 1251, 39, 1254, 351, 1255, 62, 1252, 63, 1253, 329, 1256,
-    352, 1257, 353, 1258, 344, 1259, 14, 1260, 39, 1263, 334, 1264, 354, 1272, 295, 1273, 355,
-    1274, 108, 1275, 64, 1276, 62, 1261, 63, 1262, 329, 1265, 352, 1266, 353, 1267, 344, 1268,
-    14, 1269, 348, 1270, 57, 1279, 39, 1282, 334, 1283, 356, 1284, 119, 1285, 62, 1280, 63,
-    1281, 39, 1288, 334, 1289, 356, 1290, 119, 1291, 62, 1286, 63, 1287, 354, 1292, 295, 1293,
-    355, 1294, 108, 1295, 64, 1296, 257, 1307, 258, 1308, 64, 1309, 358, 1310, 359, 1311, 360,
-    1312, 257, 1319, 258, 1320, 344, 1323, 39, 1324, 9, 1297, 329, 1298, 344, 1299, 352, 1300,
-    353, 1301, 357, 1302, 361, 1313, 348, 1315, 42, 1321, 102, 1327, 62, 1325, 63, 1326, 370,
-    1337, 371, 1339, 362, 1328, 363, 1329, 364, 1330, 365, 1331, 366, 1332, 367, 1333, 368,
-    1334, 369, 1335, 372, 1340, 373, 1342, 374, 1344, 92, 1347, 62, 1345, 63, 1346, 10, 1348,
-    10, 1351, 257, 1352, 258, 1353, 375, 1354, 357, 1349, 376, 1357, 62, 1355, 63, 1356, 10,
-    1358, 10, 1362, 257, 1363, 258, 1364, 375, 1365, 360, 1366, 358, 1367, 359, 1368, 9, 1359,
-    357, 1360, 377, 1371, 62, 1369, 63, 1370, 10, 1372, 10, 1375, 378, 1376, 160, 1377, 379,
-    1378, 380, 1379, 381, 1380, 377, 1373, 382, 1381, 54, 1382, 55, 1383, 58, 1384, 59, 1385,
-    60, 1386, 383, 1389, 62, 1387, 63, 1388, 54, 1390, 55, 1391, 58, 1392, 59, 1393, 60, 1394,
-    388, 1406, 389, 1407, 390, 1408, 20, 1409, 62, 1395, 5, 1396, 204, 1397, 384, 1398, 385,
-    1399, 28, 1400, 29, 1401, 386, 1402, 387, 1403, 22, 1404, 63, 1405, 10, 1413, 391, 1414,
-    53, 1415, 60, 1416, 392, 1417, 21, 1412, 393, 1420, 62, 1418, 63, 1419, 394, 1421, 9, 1422,
-    11, 1423, 10, 1427, 12, 1431, 13, 1432, 324, 1433, 395, 1435, 67, 1437, 396, 1438, 397,
-    1439, 398, 1440, 399, 1441, 400, 1442, 401, 1443, 402, 1444, 10, 1445, 403, 1446, 248,
-    1447, 404, 1448, 10, 1449, 405, 1450, 406, 1451, 407, 1452, 408, 1453, 10, 1454, 405, 1455,
-    409, 1456, 410, 1457, 10, 1458, 411, 1459, 412, 1460, 413, 1461, 245, 1464, 415, 1465, 416,
-    1466, 417, 1467, 418, 1468, 424, 1470, 419, 1472, 420, 1473, 190, 1474, 421, 1475, 422,
-    1476, 423, 1477, 425, 1478, 101, 1480, 102, 1481, 62, 1462, 414, 1463, 63, 1479, 426, 1484,
-    39, 1485, 427, 1486, 62, 1482, 63, 1483, 10, 1487, 403, 1488, 428, 1489, 429, 1490, 430,
-    1491, 431, 1492, 432, 1493, 337, 1494, 433, 1495, 180, 1497, 434, 1498, 435, 1499, 326,
-    1502, 39, 1503, 62, 1500, 63, 1501, 10, 1504, 344, 1523, 39, 1524, 79, 1525, 441, 1526, 57,
-    1505, 436, 1507, 437, 1508, 438, 1509, 327, 1510, 439, 1511, 324, 1512, 344, 1514, 329,
-    1515, 440, 1516, 79, 1518, 441, 1519, 42, 1521, 56, 1534, 57, 1535, 442, 1529, 211, 1530,
-    443, 1531, 62, 1527, 63, 1528, 10, 1547, 211, 1563, 324, 1548, 117, 1550, 342, 1552, 346,
-    1554, 444, 1555, 218, 1556, 445, 1557, 348, 1558, 349, 1560, 42, 1561, 56, 1572, 57, 1573,
-    119, 1566, 211, 1567, 351, 1568, 446, 1569, 62, 1564, 63, 1565, 211, 1582, 444, 1574, 218,
-    1575, 352, 1576, 353, 1577, 348, 1578, 42, 1580, 447, 1585, 62, 1583, 63, 1584, 83, 1588,
-    47, 1589, 449, 1590, 450, 1591, 451, 1592, 452, 1593, 77, 1595, 77, 1599, 54, 1601, 47,
-    1605, 448, 1586, 453, 1597, 42, 1603, 147, 1608, 454, 1609, 119, 1610, 62, 1606, 63, 1607,
-    56, 1613, 57, 1614, 56, 1619, 57, 1620, 10, 1623, 67, 1624, 9, 1625, 455, 1626, 42, 1627,
-    10, 1628, 197, 1629, 456, 1630, 263, 1633, 119, 1634, 62, 1631, 63, 1632, 56, 1637, 57,
-    1638, 10, 1639, 67, 1640, 457, 1641, 446, 1642, 458, 1643, 42, 1645, 457, 1647, 459, 1652,
-    62, 1649, 100, 1650, 63, 1651, 460, 1655, 62, 1653, 63, 1654, 10, 1656, 459, 1657, 119,
-    1659, 10, 1660, 461, 1661, 462, 1662, 463, 1663, 13, 1664, 464, 1665, 465, 1666, 466, 1667,
-    467, 1668, 468, 1669, 469, 1670, 470, 1672, 471, 1673, 10, 1674, 472, 1675, 473, 1676, 108,
-    1677, 474, 1678, 10, 1679, 462, 1687, 463, 1688, 465, 1689, 467, 1690, 9, 1680, 475, 1681,
-    476, 1682, 477, 1683, 478, 1684, 42, 1685, 460, 1693, 62, 1691, 63, 1692, 460, 1696, 62,
-    1694, 63, 1695, 10, 1703, 10, 1713, 484, 1714, 485, 1715, 42, 1716, 10, 1718, 263, 1719,
-    486, 1720, 455, 1721, 455, 1723, 486, 1725, 10, 1727, 254, 1728, 455, 1729, 10, 1731, 263,
-    1732, 487, 1733, 264, 1734, 10, 1736, 254, 1737, 488, 1738, 10, 1741, 479, 1742, 103, 1743,
-    480, 1744, 481, 1745, 482, 1746, 483, 1747, 103, 1709, 479, 1712, 480, 1717, 481, 1726,
-    482, 1730, 483, 1735, 42, 1740, 10, 1748, 10, 1757, 489, 1758, 490, 1759, 491, 1760, 492,
-    1761, 493, 1762, 494, 1763, 489, 1749, 490, 1750, 491, 1751, 492, 1752, 493, 1753, 494,
-    1754, 495, 1755, 42, 1756, 10, 1764, 10, 1772, 496, 1773, 497, 1774, 498, 1775, 499, 1776,
-    500, 1777, 496, 1765, 497, 1766, 498, 1767, 499, 1768, 500, 1770, 42, 1771, 101, 1782, 102,
-    1783, 62, 1778, 501, 1779, 244, 1780, 63, 1781, 502, 1786, 503, 1787, 62, 1784, 63, 1785,
-    54, 1788, 55, 1789, 58, 1790, 59, 1791, 60, 1792, 54, 1793, 55, 1794, 58, 1795, 59, 1796,
-    60, 1797, 504, 1801, 62, 1798, 100, 1799, 63, 1800, 10, 1802, 10, 1811, 507, 1812, 181,
-    1803, 506, 1806, 9, 1807, 505, 1808, 39, 1810, 192, 1813, 508, 1815, 509, 1817, 105, 1818,
-    510, 1819, 10, 1820, 9, 1821, 10, 1822, 11, 1823, 397, 1824, 10, 1825, 64, 1826, 77, 1827,
-    511, 1829, 12, 1830, 13, 1831, 478, 1832, 11, 1833, 512, 1836, 197, 1837, 10, 1838, 52,
-    1839, 197, 1842, 505, 1843, 513, 1845, 108, 1846, 511, 1847, 375, 1848, 64, 1849, 10, 1850,
-    41, 1857, 485, 1851, 514, 1852, 515, 1854, 10, 1858, 83, 1859, 516, 1862, 517, 1863, 485,
-    1864, 357, 1865, 10, 1867, 461, 1868, 108, 1869, 518, 1870, 197, 1871, 519, 1872, 520,
-    1873, 521, 1874, 522, 1876, 471, 1878, 64, 1879, 10, 1880, 324, 1881, 326, 1882, 523, 1884,
-    62, 1885, 63, 1886, 10, 1891, 349, 1892, 53, 1893, 524, 1894, 525, 1895, 526, 1896, 527,
-    1897, 528, 1899, 529, 1900, 530, 1901, 531, 1903, 532, 1905, 10, 1907, 52, 1908, 533, 1909,
-    534, 1910, 535, 1911, 10, 1912, 52, 1913, 6, 1914, 536, 1915, 537, 1916, 200, 1917, 538,
-    1918, 201, 1919, 195, 1920, 196, 1921, 539, 1922, 540, 1923, 103, 1924, 77, 1931, 543,
-    1933, 541, 1927, 542, 1929, 10, 1934, 485, 1935, 9, 1936, 544, 1937, 545, 1938, 546, 1940,
-    10, 1941, 547, 1942, 496, 1943, 548, 1944, 549, 1945, 550, 1946, 551, 1947, 552, 1948, 397,
-    1949, 396, 1950, 553, 1951, 554, 1952, 555, 1953, 10, 1954, 9, 1955, 485, 1956, 544, 1957,
-    6, 1959, 3, 1960, 66, 1961, 24, 1958,
+inline constexpr std::int32_t kPairs[2608] = {
+    5, 202, 6, 203, 7, 204, 9, 206, 10, 207, 11, 208, 12, 209, 13, 210, 14, 211, 15, 212, 16,
+    213, 17, 214, 18, 215, 19, 216, 20, 217, 21, 218, 22, 219, 23, 220, 24, 222, 25, 223, 26,
+    224, 27, 225, 28, 226, 29, 227, 32, 231, 33, 233, 34, 235, 35, 236, 0, 198, 3, 199, 4, 200,
+    1, 201, 8, 205, 30, 228, 31, 229, 36, 237, 37, 238, 38, 239, 39, 240, 40, 241, 2, 242, 41,
+    244, 42, 245, 43, 248, 44, 249, 45, 250, 46, 251, 47, 255, 48, 256, 49, 257, 50, 258, 51,
+    259, 52, 264, 53, 265, 34, 266, 54, 268, 55, 269, 56, 270, 57, 271, 58, 273, 59, 274, 60,
+    275, 54, 276, 55, 277, 58, 278, 59, 279, 60, 280, 61, 281, 62, 282, 64, 283, 65, 284, 66,
+    285, 67, 286, 68, 287, 69, 288, 63, 289, 56, 353, 57, 354, 56, 357, 57, 358, 56, 361, 57,
+    362, 56, 369, 57, 370, 70, 375, 47, 376, 71, 377, 72, 378, 73, 379, 74, 380, 75, 381, 76,
+    382, 77, 384, 78, 386, 79, 388, 21, 391, 79, 394, 78, 398, 79, 401, 21, 404, 78, 406, 21,
+    411, 78, 413, 21, 417, 78, 419, 21, 423, 78, 425, 52, 427, 80, 428, 81, 429, 73, 430, 82,
+    431, 83, 433, 81, 434, 84, 435, 85, 436, 86, 437, 87, 438, 88, 439, 89, 440, 90, 441, 83,
+    445, 83, 451, 91, 454, 92, 455, 62, 452, 63, 453, 93, 456, 94, 458, 95, 460, 96, 462, 12,
+    464, 13, 465, 52, 466, 97, 467, 98, 468, 99, 469, 101, 473, 102, 474, 62, 470, 100, 471,
+    63, 472, 10, 475, 103, 487, 104, 488, 103, 476, 104, 477, 57, 479, 105, 481, 106, 483, 67,
+    484, 42, 485, 101, 494, 102, 495, 62, 489, 100, 490, 107, 491, 108, 492, 63, 493, 101, 499,
+    102, 500, 62, 496, 100, 497, 63, 498, 101, 503, 102, 504, 62, 501, 63, 502, 101, 507, 102,
+    508, 62, 505, 63, 506, 101, 520, 102, 521, 62, 509, 109, 510, 110, 511, 53, 512, 111, 513,
+    112, 514, 113, 517, 114, 518, 63, 519, 101, 524, 102, 525, 62, 522, 63, 523, 101, 528, 102,
+    529, 62, 526, 63, 527, 101, 532, 102, 533, 62, 530, 63, 531, 101, 536, 102, 537, 62, 534,
+    63, 535, 101, 540, 102, 541, 62, 538, 63, 539, 101, 544, 102, 545, 115, 546, 62, 542, 63,
+    543, 10, 547, 62, 548, 116, 549, 42, 551, 117, 552, 118, 554, 62, 557, 116, 559, 56, 563,
+    57, 564, 56, 567, 57, 568, 10, 571, 42, 572, 53, 573, 62, 574, 12, 575, 10, 576, 13, 582,
+    120, 584, 121, 585, 122, 586, 123, 587, 124, 588, 125, 589, 126, 590, 127, 591, 128, 592,
+    129, 593, 130, 594, 131, 595, 132, 596, 133, 597, 134, 598, 135, 599, 136, 600, 137, 601,
+    138, 602, 139, 603, 140, 604, 141, 605, 142, 606, 143, 607, 119, 608, 12, 609, 62, 577, 63,
+    578, 56, 614, 57, 615, 56, 618, 57, 619, 56, 625, 57, 626, 56, 629, 57, 630, 30, 640, 144,
+    641, 145, 642, 146, 643, 147, 644, 148, 645, 39, 646, 149, 647, 150, 648, 62, 638, 63, 639,
+    70, 649, 71, 650, 39, 671, 144, 672, 148, 673, 155, 674, 146, 675, 147, 676, 151, 654, 152,
+    656, 77, 658, 153, 660, 39, 661, 62, 663, 78, 664, 154, 666, 155, 667, 156, 668, 42, 669,
+    145, 680, 149, 681, 150, 682, 42, 678, 30, 685, 144, 686, 157, 687, 158, 688, 145, 689,
+    146, 690, 147, 691, 148, 692, 39, 693, 62, 683, 63, 684, 10, 694, 159, 695, 64, 696, 62,
+    697, 160, 698, 145, 714, 161, 700, 162, 702, 163, 704, 164, 705, 165, 706, 166, 707, 167,
+    709, 168, 711, 169, 712, 42, 713, 56, 717, 57, 718, 30, 728, 170, 729, 171, 730, 39, 731,
+    172, 732, 62, 726, 63, 727, 64, 733, 173, 734, 77, 735, 170, 737, 171, 738, 174, 739, 175,
+    740, 176, 741, 177, 742, 178, 743, 179, 744, 77, 745, 180, 747, 42, 748, 161, 753, 62, 750,
+    118, 751, 63, 752, 10, 754, 161, 755, 162, 757, 181, 761, 62, 759, 63, 760, 10, 762, 182,
+    763, 10, 765, 61, 766, 64, 767, 183, 768, 184, 770, 185, 772, 186, 774, 187, 775, 188, 777,
+    189, 778, 39, 779, 10, 780, 67, 781, 190, 782, 10, 783, 191, 786, 10, 792, 197, 793, 193,
+    794, 194, 795, 6, 790, 191, 791, 195, 796, 196, 797, 192, 798, 10, 800, 198, 801, 199, 802,
+    10, 803, 67, 806, 190, 807, 160, 809, 200, 810, 201, 811, 9, 812, 68, 813, 202, 814, 203,
+    815, 1, 816, 10, 817, 5, 818, 204, 819, 205, 820, 10, 821, 10, 827, 160, 828, 200, 829,
+    201, 830, 195, 831, 196, 832, 52, 822, 58, 823, 206, 824, 207, 825, 208, 826, 56, 835, 57,
+    836, 30, 840, 210, 841, 62, 837, 209, 838, 63, 839, 211, 842, 212, 844, 213, 846, 214, 848,
+    215, 850, 216, 852, 217, 854, 218, 856, 151, 857, 77, 859, 219, 863, 62, 861, 63, 862, 83,
+    875, 226, 876, 42, 877, 228, 880, 229, 881, 231, 884, 211, 864, 220, 866, 221, 868, 222,
+    870, 223, 871, 224, 872, 225, 874, 195, 878, 227, 879, 230, 883, 232, 885, 233, 886, 234,
+    890, 232, 889, 234, 896, 232, 895, 223, 898, 10, 899, 235, 900, 236, 901, 82, 902, 237,
+    904, 238, 905, 234, 906, 239, 907, 243, 913, 244, 914, 245, 915, 221, 908, 240, 909, 241,
+    910, 64, 911, 242, 912, 219, 918, 62, 916, 63, 917, 56, 921, 57, 922, 219, 925, 62, 923,
+    63, 924, 219, 928, 62, 926, 63, 927, 219, 931, 62, 929, 63, 930, 219, 934, 62, 932, 63,
+    933, 245, 940, 70, 941, 250, 942, 251, 943, 252, 944, 245, 947, 254, 948, 255, 950, 257,
+    953, 258, 954, 259, 955, 260, 956, 261, 957, 246, 935, 247, 936, 248, 937, 249, 938, 253,
+    945, 256, 951, 219, 960, 62, 958, 63, 959, 263, 962, 264, 964, 265, 965, 245, 968, 70, 969,
+    246, 970, 267, 971, 268, 972, 269, 974, 271, 976, 272, 977, 273, 978, 262, 961, 266, 966,
+    270, 975, 219, 982, 62, 980, 63, 981, 219, 985, 62, 983, 63, 984, 219, 988, 62, 986, 63,
+    987, 10, 989, 10, 994, 276, 995, 278, 996, 277, 997, 64, 998, 246, 990, 247, 991, 195, 992,
+    275, 993, 274, 999, 10, 1001, 245, 1002, 70, 1003, 64, 1004, 279, 1005, 280, 1006, 252,
+    1007, 281, 1008, 282, 1009, 283, 1010, 284, 1011, 285, 1012, 219, 1015, 62, 1013, 63, 1014,
+    56, 1018, 57, 1019, 11, 1022, 286, 1023, 287, 1024, 288, 1025, 289, 1026, 290, 1027, 291,
+    1028, 292, 1029, 293, 1030, 62, 1020, 63, 1021, 56, 1039, 57, 1040, 10, 1041, 294, 1042,
+    295, 1043, 296, 1044, 297, 1046, 298, 1048, 10, 1049, 295, 1050, 296, 1051, 297, 1053, 299,
+    1055, 300, 1057, 10, 1058, 294, 1059, 301, 1060, 64, 1061, 302, 1062, 10, 1064, 67, 1065,
+    298, 1066, 304, 1067, 303, 1068, 305, 1070, 14, 1072, 10, 1073, 307, 1074, 39, 1075, 306,
+    1077, 216, 1079, 10, 1081, 108, 1082, 308, 1083, 304, 1084, 307, 1085, 39, 1086, 306, 1088,
+    216, 1090, 276, 1092, 278, 1093, 309, 1094, 310, 1095, 311, 1096, 312, 1097, 313, 1098,
+    314, 1101, 244, 1102, 315, 1103, 316, 1104, 317, 1105, 318, 1106, 319, 1109, 320, 1111,
+    321, 1113, 322, 1115, 323, 1116, 108, 1119, 308, 1120, 309, 1122, 108, 1125, 108, 1138,
+    311, 1140, 11, 1143, 324, 1144, 286, 1145, 287, 1146, 39, 1147, 306, 1148, 62, 1141, 63,
+    1142, 56, 1151, 57, 1152, 56, 1160, 57, 1161, 56, 1164, 57, 1165, 10, 1166, 324, 1179, 325,
+    1180, 327, 1181, 324, 1167, 325, 1169, 117, 1171, 326, 1173, 327, 1175, 328, 1176, 42,
+    1177, 10, 1182, 39, 1195, 108, 1183, 329, 1184, 307, 1185, 304, 1186, 308, 1187, 311, 1188,
+    330, 1189, 331, 1190, 18, 1192, 42, 1193, 108, 1198, 329, 1200, 108, 1203, 329, 1205, 332,
+    1208, 333, 1209, 334, 1210, 306, 1211, 62, 1206, 63, 1207, 56, 1214, 57, 1215, 56, 1218,
+    57, 1219, 10, 1220, 335, 1221, 336, 1222, 337, 1223, 338, 1224, 339, 1225, 340, 1226, 341,
+    1227, 10, 1228, 343, 1248, 344, 1249, 333, 1250, 324, 1229, 117, 1231, 342, 1233, 343,
+    1235, 344, 1236, 345, 1237, 329, 1238, 346, 1239, 347, 1240, 348, 1241, 349, 1245, 42,
+    1246, 62, 1251, 6, 1252, 350, 1253, 39, 1256, 351, 1257, 62, 1254, 63, 1255, 329, 1258,
+    352, 1259, 353, 1260, 344, 1261, 14, 1262, 39, 1265, 334, 1266, 354, 1274, 295, 1275, 355,
+    1276, 108, 1277, 64, 1278, 62, 1263, 63, 1264, 329, 1267, 352, 1268, 353, 1269, 344, 1270,
+    14, 1271, 348, 1272, 57, 1281, 39, 1284, 334, 1285, 356, 1286, 119, 1287, 62, 1282, 63,
+    1283, 39, 1290, 334, 1291, 356, 1292, 119, 1293, 62, 1288, 63, 1289, 354, 1294, 295, 1295,
+    355, 1296, 108, 1297, 64, 1298, 257, 1309, 258, 1310, 64, 1311, 358, 1312, 359, 1313, 360,
+    1314, 257, 1321, 258, 1322, 344, 1325, 39, 1326, 9, 1299, 329, 1300, 344, 1301, 352, 1302,
+    353, 1303, 357, 1304, 361, 1315, 348, 1317, 42, 1323, 102, 1329, 62, 1327, 63, 1328, 370,
+    1339, 371, 1341, 64, 1350, 47, 1351, 376, 1354, 377, 1355, 371, 1356, 362, 1330, 363, 1331,
+    364, 1332, 365, 1333, 366, 1334, 367, 1335, 368, 1336, 369, 1337, 372, 1342, 373, 1344,
+    374, 1346, 1, 1347, 274, 1348, 375, 1352, 378, 1357, 92, 1360, 62, 1358, 63, 1359, 10,
+    1361, 10, 1364, 257, 1365, 258, 1366, 379, 1367, 380, 1368, 357, 1362, 381, 1371, 62, 1369,
+    63, 1370, 10, 1372, 10, 1376, 257, 1377, 258, 1378, 379, 1379, 360, 1380, 358, 1381, 359,
+    1382, 380, 1383, 9, 1373, 357, 1374, 382, 1386, 62, 1384, 63, 1385, 10, 1387, 10, 1390,
+    383, 1391, 160, 1392, 384, 1393, 385, 1394, 386, 1395, 382, 1388, 387, 1396, 54, 1397, 55,
+    1398, 58, 1399, 59, 1400, 60, 1401, 388, 1404, 62, 1402, 63, 1403, 54, 1405, 55, 1406, 58,
+    1407, 59, 1408, 60, 1409, 393, 1421, 394, 1422, 395, 1423, 20, 1424, 62, 1410, 5, 1411,
+    204, 1412, 389, 1413, 390, 1414, 28, 1415, 29, 1416, 391, 1417, 392, 1418, 22, 1419, 63,
+    1420, 10, 1428, 396, 1429, 53, 1430, 60, 1431, 397, 1432, 21, 1427, 398, 1435, 62, 1433,
+    63, 1434, 399, 1436, 9, 1437, 11, 1438, 10, 1442, 12, 1446, 13, 1447, 324, 1448, 400, 1450,
+    67, 1452, 401, 1453, 402, 1454, 403, 1455, 404, 1456, 405, 1457, 406, 1458, 407, 1459, 10,
+    1460, 408, 1461, 248, 1462, 409, 1463, 10, 1464, 410, 1465, 411, 1466, 412, 1467, 413,
+    1468, 10, 1469, 410, 1470, 414, 1471, 415, 1472, 10, 1473, 416, 1474, 417, 1475, 418, 1476,
+    245, 1479, 420, 1480, 421, 1481, 422, 1482, 423, 1483, 429, 1485, 424, 1487, 425, 1488,
+    190, 1489, 426, 1490, 427, 1491, 428, 1492, 430, 1493, 101, 1495, 102, 1496, 62, 1477, 419,
+    1478, 63, 1494, 431, 1499, 39, 1500, 432, 1501, 62, 1497, 63, 1498, 10, 1502, 408, 1503,
+    433, 1504, 434, 1505, 435, 1506, 436, 1507, 437, 1508, 337, 1509, 438, 1510, 180, 1512,
+    439, 1513, 440, 1514, 326, 1517, 39, 1518, 62, 1515, 63, 1516, 10, 1519, 344, 1538, 39,
+    1539, 79, 1540, 446, 1541, 57, 1520, 441, 1522, 442, 1523, 443, 1524, 327, 1525, 444, 1526,
+    324, 1527, 344, 1529, 329, 1530, 445, 1531, 79, 1533, 446, 1534, 42, 1536, 56, 1549, 57,
+    1550, 447, 1544, 211, 1545, 448, 1546, 62, 1542, 63, 1543, 10, 1562, 211, 1578, 324, 1563,
+    117, 1565, 342, 1567, 346, 1569, 449, 1570, 218, 1571, 450, 1572, 348, 1573, 349, 1575, 42,
+    1576, 56, 1587, 57, 1588, 119, 1581, 211, 1582, 351, 1583, 451, 1584, 62, 1579, 63, 1580,
+    211, 1597, 449, 1589, 218, 1590, 352, 1591, 353, 1592, 348, 1593, 42, 1595, 452, 1600, 62,
+    1598, 63, 1599, 83, 1603, 47, 1604, 454, 1605, 455, 1606, 456, 1607, 457, 1608, 77, 1610,
+    77, 1614, 54, 1616, 47, 1620, 453, 1601, 458, 1612, 42, 1618, 147, 1623, 459, 1624, 119,
+    1625, 62, 1621, 63, 1622, 56, 1628, 57, 1629, 56, 1634, 57, 1635, 10, 1638, 67, 1639, 9,
+    1640, 460, 1641, 42, 1642, 10, 1643, 197, 1644, 461, 1645, 263, 1648, 119, 1649, 62, 1646,
+    63, 1647, 56, 1652, 57, 1653, 10, 1654, 67, 1655, 462, 1656, 451, 1657, 463, 1658, 42,
+    1660, 462, 1662, 464, 1667, 62, 1664, 100, 1665, 63, 1666, 465, 1670, 62, 1668, 63, 1669,
+    10, 1671, 464, 1672, 119, 1674, 10, 1675, 466, 1676, 467, 1677, 468, 1678, 13, 1679, 469,
+    1680, 470, 1681, 471, 1682, 472, 1683, 473, 1684, 474, 1685, 475, 1687, 476, 1688, 10,
+    1689, 477, 1690, 478, 1691, 108, 1692, 479, 1693, 10, 1694, 467, 1702, 468, 1703, 470,
+    1704, 472, 1705, 9, 1695, 480, 1696, 481, 1697, 482, 1698, 483, 1699, 42, 1700, 465, 1708,
+    62, 1706, 63, 1707, 465, 1711, 62, 1709, 63, 1710, 10, 1718, 10, 1728, 489, 1729, 490,
+    1730, 42, 1731, 10, 1733, 263, 1734, 491, 1735, 460, 1736, 460, 1738, 491, 1740, 10, 1742,
+    254, 1743, 460, 1744, 10, 1746, 263, 1747, 492, 1748, 264, 1749, 10, 1751, 254, 1752, 493,
+    1753, 10, 1756, 484, 1757, 103, 1758, 485, 1759, 486, 1760, 487, 1761, 488, 1762, 103,
+    1724, 484, 1727, 485, 1732, 486, 1741, 487, 1745, 488, 1750, 42, 1755, 10, 1763, 10, 1772,
+    494, 1773, 495, 1774, 496, 1775, 497, 1776, 498, 1777, 499, 1778, 494, 1764, 495, 1765,
+    496, 1766, 497, 1767, 498, 1768, 499, 1769, 500, 1770, 42, 1771, 10, 1779, 10, 1787, 501,
+    1788, 502, 1789, 503, 1790, 504, 1791, 505, 1792, 501, 1780, 502, 1781, 503, 1782, 504,
+    1783, 505, 1785, 42, 1786, 101, 1797, 102, 1798, 62, 1793, 506, 1794, 244, 1795, 63, 1796,
+    507, 1801, 380, 1802, 62, 1799, 63, 1800, 54, 1803, 55, 1804, 58, 1805, 59, 1806, 60, 1807,
+    54, 1808, 55, 1809, 58, 1810, 59, 1811, 60, 1812, 508, 1816, 62, 1813, 100, 1814, 63, 1815,
+    10, 1817, 10, 1826, 511, 1827, 181, 1818, 510, 1821, 9, 1822, 509, 1823, 39, 1825, 192,
+    1828, 512, 1830, 513, 1832, 105, 1833, 514, 1834, 10, 1835, 9, 1836, 10, 1837, 11, 1838,
+    402, 1839, 10, 1840, 64, 1841, 77, 1842, 515, 1844, 12, 1845, 13, 1846, 483, 1847, 11,
+    1848, 516, 1851, 197, 1852, 10, 1853, 52, 1854, 197, 1857, 509, 1858, 517, 1860, 108, 1861,
+    515, 1862, 379, 1863, 64, 1864, 10, 1865, 41, 1872, 490, 1866, 518, 1867, 519, 1869, 10,
+    1873, 83, 1874, 520, 1877, 521, 1878, 490, 1879, 357, 1880, 10, 1882, 466, 1883, 108, 1884,
+    522, 1885, 197, 1886, 523, 1887, 524, 1888, 525, 1889, 526, 1891, 476, 1893, 64, 1894, 10,
+    1895, 324, 1896, 326, 1897, 527, 1899, 62, 1900, 63, 1901, 10, 1906, 349, 1907, 53, 1908,
+    528, 1909, 529, 1910, 530, 1911, 531, 1912, 532, 1914, 533, 1915, 534, 1916, 535, 1918,
+    536, 1920, 10, 1922, 52, 1923, 537, 1924, 538, 1925, 539, 1926, 10, 1927, 52, 1928, 6,
+    1929, 540, 1930, 541, 1931, 200, 1932, 542, 1933, 201, 1934, 195, 1935, 196, 1936, 543,
+    1937, 544, 1938, 103, 1939, 77, 1946, 547, 1948, 545, 1942, 546, 1944, 10, 1949, 490, 1950,
+    9, 1951, 548, 1952, 549, 1953, 550, 1955, 10, 1956, 551, 1957, 501, 1958, 552, 1959, 553,
+    1960, 554, 1961, 555, 1962, 556, 1963, 402, 1964, 401, 1965, 557, 1966, 558, 1967, 559,
+    1968, 10, 1969, 9, 1970, 490, 1971, 548, 1972, 6, 1974, 3, 1975, 66, 1976, 24, 1973,
 };
 // (name, list start, count) triples: DependentRequired.
 inline constexpr std::int32_t kTriples[24] = {
     107, 230, 1, 108, 231, 1, 109, 250, 1, 110, 251, 1, 112, 252, 1, 113, 253, 1, 114, 254, 1,
-    244, 803, 1,
+    244, 808, 1,
 };
 
-inline constexpr Node kNodes[1962] = {
-    {0, 4}, {4, 4}, {8, 1}, {9, 1}, {10, 2}, {12, 4}, {16, 5}, {21, 4}, {25, 2}, {27, 4},
-    {31, 2}, {33, 2}, {35, 2}, {37, 4}, {41, 4}, {45, 4}, {49, 1}, {50, 1}, {51, 1}, {52, 1},
-    {53, 3}, {56, 4}, {60, 4}, {64, 3}, {67, 4}, {71, 1}, {72, 1}, {73, 5}, {78, 2}, {80, 1},
-    {81, 1}, {82, 1}, {83, 2}, {85, 1}, {86, 1}, {87, 1}, {88, 1}, {89, 1}, {90, 1}, {91, 6},
-    {97, 1}, {98, 1}, {99, 5}, {104, 3}, {107, 1}, {108, 1}, {109, 1}, {110, 1}, {111, 1},
-    {112, 1}, {113, 3}, {116, 3}, {119, 3}, {122, 1}, {123, 5}, {128, 3}, {131, 1}, {132, 1},
-    {133, 3}, {136, 2}, {138, 2}, {140, 5}, {145, 2}, {147, 5}, {152, 5}, {157, 5}, {162, 6},
-    {168, 5}, {173, 6}, {179, 5}, {184, 5}, {189, 1}, {190, 1}, {191, 3}, {194, 1}, {195, 4},
-    {199, 5}, {204, 3}, {207, 1}, {208, 1}, {209, 1}, {210, 1}, {211, 1}, {212, 1}, {213, 2},
-    {215, 1}, {216, 2}, {218, 1}, {219, 1}, {220, 1}, {221, 5}, {226, 5}, {231, 1}, {232, 1},
-    {233, 1}, {234, 1}, {235, 5}, {240, 5}, {245, 5}, {250, 5}, {255, 5}, {260, 6}, {266, 2},
-    {268, 1}, {269, 1}, {270, 1}, {271, 5}, {276, 6}, {282, 1}, {283, 1}, {284, 1}, {285, 4},
-    {289, 4}, {293, 1}, {294, 1}, {295, 1}, {296, 1}, {297, 1}, {298, 3}, {301, 2}, {303, 1},
-    {304, 2}, {306, 1}, {307, 5}, {312, 1}, {313, 5}, {318, 1}, {319, 5}, {324, 4}, {328, 1},
-    {329, 4}, {333, 2}, {335, 3}, {338, 2}, {340, 3}, {343, 5}, {348, 4}, {352, 4}, {356, 4},
-    {360, 1}, {361, 1}, {362, 5}, {367, 1}, {368, 4}, {372, 1}, {373, 4}, {377, 1}, {378, 2},
-    {380, 1}, {381, 3}, {384, 2}, {386, 1}, {387, 1}, {388, 4}, {392, 4}, {396, 2}, {398, 1},
-    {399, 5}, {404, 2}, {406, 2}, {408, 5}, {413, 5}, {418, 5}, {423, 4}, {427, 2}, {429, 2},
-    {431, 4}, {435, 4}, {439, 4}, {443, 4}, {447, 5}, {452, 5}, {457, 5}, {462, 2}, {464, 2},
-    {466, 4}, {470, 4}, {474, 2}, {476, 5}, {481, 5}, {486, 5}, {491, 5}, {496, 5}, {501, 5},
-    {506, 5}, {511, 5}, {516, 1}, {517, 4}, {521, 5}, {526, 5}, {531, 3}, {534, 3}, {537, 3},
-    {540, 5}, {545, 4}, {549, 5}, {554, 3}, {557, 2}, {559, 1}, {560, 1}, {561, 4}, {565, 2},
-    {567, 2}, {569, 1}, {570, 2}, {572, 1}, {573, 1}, {574, 1}, {575, 1}, {576, 1}, {577, 2},
-    {579, 1}, {580, 2}, {582, 1}, {583, 1}, {584, 2}, {586, 1}, {587, 3}, {590, 1}, {591, 2},
-    {593, 1}, {594, 2}, {596, 2}, {598, 2}, {600, 2}, {602, 2}, {604, 2}, {606, 1}, {607, 3},
-    {610, 1}, {611, 2}, {613, 1}, {614, 2}, {616, 1}, {617, 0}, {617, 0}, {617, 1}, {618, 1},
-    {619, 1}, {620, 1}, {621, 1}, {622, 2}, {624, 1}, {625, 1}, {626, 1}, {627, 1}, {628, 1},
-    {629, 1}, {630, 1}, {631, 3}, {634, 4}, {638, 2}, {640, 1}, {641, 1}, {642, 1}, {643, 1},
-    {644, 3}, {647, 2}, {649, 2}, {651, 1}, {652, 2}, {654, 1}, {655, 2}, {657, 1}, {658, 1},
-    {659, 1}, {660, 1}, {661, 1}, {662, 1}, {663, 3}, {666, 2}, {668, 1}, {669, 1}, {670, 1},
-    {671, 1}, {672, 1}, {673, 1}, {674, 1}, {675, 1}, {676, 3}, {679, 1}, {680, 1}, {681, 1},
-    {682, 1}, {683, 1}, {684, 1}, {685, 1}, {686, 1}, {687, 1}, {688, 1}, {689, 1}, {690, 1},
-    {691, 1}, {692, 1}, {693, 1}, {694, 1}, {695, 1}, {696, 1}, {697, 1}, {698, 1}, {699, 1},
-    {700, 1}, {701, 1}, {702, 1}, {703, 1}, {704, 1}, {705, 1}, {706, 1}, {707, 1}, {708, 1},
-    {709, 1}, {710, 1}, {711, 1}, {712, 1}, {713, 1}, {714, 1}, {715, 1}, {716, 1}, {717, 1},
-    {718, 1}, {719, 1}, {720, 1}, {721, 1}, {722, 1}, {723, 1}, {724, 1}, {725, 1}, {726, 1},
-    {727, 1}, {728, 1}, {729, 1}, {730, 1}, {731, 1}, {732, 1}, {733, 1}, {734, 1}, {735, 1},
-    {736, 1}, {737, 1}, {738, 1}, {739, 1}, {740, 1}, {741, 1}, {742, 1}, {743, 1}, {744, 1},
-    {745, 1}, {746, 1}, {747, 1}, {748, 1}, {749, 1}, {750, 1}, {751, 2}, {753, 1}, {754, 1},
-    {755, 1}, {756, 2}, {758, 1}, {759, 1}, {760, 1}, {761, 3}, {764, 0}, {764, 0}, {764, 0},
-    {764, 1}, {765, 1}, {766, 1}, {767, 1}, {768, 3}, {771, 0}, {771, 0}, {771, 0}, {771, 1},
-    {772, 3}, {775, 1}, {776, 2}, {778, 1}, {779, 3}, {782, 3}, {785, 3}, {788, 1}, {789, 1},
-    {790, 2}, {792, 1}, {793, 4}, {797, 1}, {798, 1}, {799, 1}, {800, 1}, {801, 3}, {804, 1},
-    {805, 2}, {807, 1}, {808, 1}, {809, 1}, {810, 2}, {812, 1}, {813, 1}, {814, 2}, {816, 1},
-    {817, 1}, {818, 2}, {820, 1}, {821, 1}, {822, 1}, {823, 1}, {824, 1}, {825, 1}, {826, 2},
-    {828, 1}, {829, 2}, {831, 1}, {832, 1}, {833, 1}, {834, 2}, {836, 1}, {837, 2}, {839, 1},
-    {840, 1}, {841, 1}, {842, 2}, {844, 1}, {845, 2}, {847, 1}, {848, 1}, {849, 1}, {850, 1},
-    {851, 1}, {852, 3}, {855, 2}, {857, 2}, {859, 1}, {860, 1}, {861, 1}, {862, 1}, {863, 3},
-    {866, 3}, {869, 3}, {872, 3}, {875, 2}, {877, 1}, {878, 1}, {879, 1}, {880, 1}, {881, 1},
-    {882, 1}, {883, 1}, {884, 1}, {885, 1}, {886, 1}, {887, 1}, {888, 4}, {892, 1}, {893, 1},
-    {894, 2}, {896, 1}, {897, 2}, {899, 1}, {900, 2}, {902, 1}, {903, 2}, {905, 1}, {906, 1},
-    {907, 2}, {909, 2}, {911, 2}, {913, 2}, {915, 2}, {917, 1}, {918, 1}, {919, 4}, {923, 1},
-    {924, 1}, {925, 0}, {925, 1}, {926, 4}, {930, 1}, {931, 4}, {935, 2}, {937, 4}, {941, 1},
-    {942, 1}, {943, 1}, {944, 3}, {947, 1}, {948, 1}, {949, 1}, {950, 1}, {951, 1}, {952, 2},
-    {954, 1}, {955, 4}, {959, 1}, {960, 1}, {961, 1}, {962, 1}, {963, 4}, {967, 1}, {968, 1},
-    {969, 1}, {970, 4}, {974, 1}, {975, 1}, {976, 1}, {977, 4}, {981, 1}, {982, 1}, {983, 1},
-    {984, 1}, {985, 1}, {986, 1}, {987, 1}, {988, 1}, {989, 1}, {990, 2}, {992, 2}, {994, 1},
-    {995, 4}, {999, 1}, {1000, 1}, {1001, 1}, {1002, 4}, {1006, 1}, {1007, 1}, {1008, 1},
-    {1009, 4}, {1013, 1}, {1014, 1}, {1015, 1}, {1016, 4}, {1020, 1}, {1021, 1}, {1022, 1},
-    {1023, 4}, {1027, 1}, {1028, 1}, {1029, 1}, {1030, 4}, {1034, 1}, {1035, 1}, {1036, 1},
-    {1037, 4}, {1041, 1}, {1042, 1}, {1043, 1}, {1044, 0}, {1044, 1}, {1045, 2}, {1047, 1},
-    {1048, 1}, {1049, 2}, {1051, 1}, {1052, 1}, {1053, 1}, {1054, 2}, {1056, 1}, {1057, 1},
-    {1058, 1}, {1059, 2}, {1061, 1}, {1062, 1}, {1063, 1}, {1064, 2}, {1066, 1}, {1067, 1},
-    {1068, 1}, {1069, 3}, {1072, 0}, {1072, 1}, {1073, 0}, {1073, 2}, {1075, 2}, {1077, 1},
-    {1078, 1}, {1079, 0}, {1079, 1}, {1080, 7}, {1087, 2}, {1089, 1}, {1090, 1}, {1091, 1},
-    {1092, 1}, {1093, 1}, {1094, 1}, {1095, 1}, {1096, 1}, {1097, 1}, {1098, 1}, {1099, 1},
-    {1100, 1}, {1101, 1}, {1102, 1}, {1103, 1}, {1104, 1}, {1105, 1}, {1106, 1}, {1107, 1},
-    {1108, 1}, {1109, 1}, {1110, 1}, {1111, 1}, {1112, 1}, {1113, 1}, {1114, 1}, {1115, 1},
-    {1116, 1}, {1117, 1}, {1118, 1}, {1119, 1}, {1120, 1}, {1121, 1}, {1122, 1}, {1123, 1},
-    {1124, 2}, {1126, 1}, {1127, 1}, {1128, 1}, {1129, 3}, {1132, 0}, {1132, 0}, {1132, 1},
-    {1133, 1}, {1134, 1}, {1135, 1}, {1136, 2}, {1138, 1}, {1139, 1}, {1140, 1}, {1141, 1},
-    {1142, 4}, {1146, 1}, {1147, 1}, {1148, 4}, {1152, 2}, {1154, 1}, {1155, 1}, {1156, 1},
-    {1157, 4}, {1161, 1}, {1162, 1}, {1163, 1}, {1164, 1}, {1165, 1}, {1166, 1}, {1167, 1},
-    {1168, 1}, {1169, 1}, {1170, 3}, {1173, 2}, {1175, 1}, {1176, 1}, {1177, 1}, {1178, 2},
-    {1180, 3}, {1183, 2}, {1185, 2}, {1187, 2}, {1189, 1}, {1190, 2}, {1192, 2}, {1194, 1},
-    {1195, 1}, {1196, 4}, {1200, 1}, {1201, 1}, {1202, 2}, {1204, 1}, {1205, 3}, {1208, 1},
-    {1209, 1}, {1210, 1}, {1211, 1}, {1212, 1}, {1213, 1}, {1214, 1}, {1215, 1}, {1216, 3},
-    {1219, 1}, {1220, 1}, {1221, 1}, {1222, 1}, {1223, 1}, {1224, 4}, {1228, 1}, {1229, 1},
-    {1230, 1}, {1231, 1}, {1232, 1}, {1233, 1}, {1234, 1}, {1235, 1}, {1236, 1}, {1237, 0},
-    {1237, 2}, {1239, 1}, {1240, 1}, {1241, 1}, {1242, 1}, {1243, 2}, {1245, 1}, {1246, 2},
-    {1248, 1}, {1249, 1}, {1250, 1}, {1251, 3}, {1254, 2}, {1256, 3}, {1259, 2}, {1261, 2},
-    {1263, 1}, {1264, 1}, {1265, 2}, {1267, 1}, {1268, 1}, {1269, 1}, {1270, 1}, {1271, 1},
-    {1272, 4}, {1276, 1}, {1277, 1}, {1278, 4}, {1282, 2}, {1284, 1}, {1285, 1}, {1286, 1},
-    {1287, 4}, {1291, 1}, {1292, 1}, {1293, 1}, {1294, 1}, {1295, 1}, {1296, 1}, {1297, 1},
-    {1298, 2}, {1300, 2}, {1302, 1}, {1303, 1}, {1304, 1}, {1305, 1}, {1306, 1}, {1307, 1},
-    {1308, 1}, {1309, 1}, {1310, 2}, {1312, 1}, {1313, 1}, {1314, 2}, {1316, 1}, {1317, 1},
-    {1318, 1}, {1319, 4}, {1323, 1}, {1324, 0}, {1324, 2}, {1326, 1}, {1327, 2}, {1329, 1},
-    {1330, 1}, {1331, 4}, {1335, 1}, {1336, 0}, {1336, 3}, {1339, 1}, {1340, 0}, {1340, 2},
-    {1342, 1}, {1343, 3}, {1346, 1}, {1347, 3}, {1350, 1}, {1351, 2}, {1353, 1}, {1354, 1},
-    {1355, 2}, {1357, 1}, {1358, 3}, {1361, 1}, {1362, 1}, {1363, 0}, {1363, 2}, {1365, 2},
-    {1367, 0}, {1367, 1}, {1368, 2}, {1370, 1}, {1371, 1}, {1372, 1}, {1373, 1}, {1374, 1},
-    {1375, 5}, {1380, 0}, {1380, 1}, {1381, 1}, {1382, 1}, {1383, 2}, {1385, 2}, {1387, 3},
-    {1390, 1}, {1391, 0}, {1391, 1}, {1392, 1}, {1393, 0}, {1393, 1}, {1394, 1}, {1395, 2},
-    {1397, 2}, {1399, 1}, {1400, 1}, {1401, 1}, {1402, 1}, {1403, 1}, {1404, 2}, {1406, 2},
-    {1408, 2}, {1410, 1}, {1411, 0}, {1411, 2}, {1413, 2}, {1415, 1}, {1416, 0}, {1416, 3},
-    {1419, 2}, {1421, 2}, {1423, 2}, {1425, 4}, {1429, 0}, {1429, 2}, {1431, 2}, {1433, 2},
-    {1435, 2}, {1437, 2}, {1439, 1}, {1440, 1}, {1441, 1}, {1442, 2}, {1444, 1}, {1445, 2},
-    {1447, 4}, {1451, 1}, {1452, 1}, {1453, 2}, {1455, 1}, {1456, 2}, {1458, 1}, {1459, 2},
-    {1461, 1}, {1462, 2}, {1464, 1}, {1465, 2}, {1467, 1}, {1468, 2}, {1470, 1}, {1471, 2},
-    {1473, 1}, {1474, 2}, {1476, 2}, {1478, 3}, {1481, 2}, {1483, 1}, {1484, 1}, {1485, 4},
-    {1489, 1}, {1490, 2}, {1492, 1}, {1493, 2}, {1495, 1}, {1496, 2}, {1498, 1}, {1499, 1},
-    {1500, 1}, {1501, 2}, {1503, 1}, {1504, 3}, {1507, 1}, {1508, 2}, {1510, 1}, {1511, 2},
-    {1513, 2}, {1515, 2}, {1517, 2}, {1519, 1}, {1520, 2}, {1522, 1}, {1523, 1}, {1524, 1},
-    {1525, 1}, {1526, 2}, {1528, 2}, {1530, 1}, {1531, 1}, {1532, 1}, {1533, 1}, {1534, 2},
-    {1536, 2}, {1538, 1}, {1539, 1}, {1540, 1}, {1541, 0}, {1541, 2}, {1543, 2}, {1545, 4},
-    {1549, 2}, {1551, 2}, {1553, 2}, {1555, 1}, {1556, 1}, {1557, 1}, {1558, 1}, {1559, 2},
-    {1561, 1}, {1562, 2}, {1564, 2}, {1566, 2}, {1568, 2}, {1570, 1}, {1571, 4}, {1575, 1},
-    {1576, 1}, {1577, 1}, {1578, 1}, {1579, 2}, {1581, 1}, {1582, 4}, {1586, 1}, {1587, 1},
-    {1588, 4}, {1592, 1}, {1593, 1}, {1594, 4}, {1598, 1}, {1599, 1}, {1600, 4}, {1604, 1},
-    {1605, 1}, {1606, 1}, {1607, 1}, {1608, 2}, {1610, 3}, {1613, 2}, {1615, 1}, {1616, 1},
-    {1617, 1}, {1618, 1}, {1619, 2}, {1621, 2}, {1623, 2}, {1625, 4}, {1629, 1}, {1630, 1},
-    {1631, 2}, {1633, 3}, {1636, 2}, {1638, 2}, {1640, 1}, {1641, 1}, {1642, 1}, {1643, 1},
-    {1644, 4}, {1648, 1}, {1649, 2}, {1651, 4}, {1655, 1}, {1656, 1}, {1657, 1}, {1658, 2},
-    {1660, 3}, {1663, 2}, {1665, 1}, {1666, 1}, {1667, 1}, {1668, 4}, {1672, 1}, {1673, 1},
-    {1674, 2}, {1676, 1}, {1677, 1}, {1678, 4}, {1682, 1}, {1683, 1}, {1684, 4}, {1688, 1},
-    {1689, 1}, {1690, 4}, {1694, 1}, {1695, 1}, {1696, 4}, {1700, 1}, {1701, 0}, {1701, 2},
-    {1703, 2}, {1705, 2}, {1707, 5}, {1712, 0}, {1712, 1}, {1713, 1}, {1714, 1}, {1715, 2},
-    {1717, 3}, {1720, 1}, {1721, 0}, {1721, 2}, {1723, 1}, {1724, 1}, {1725, 1}, {1726, 1},
-    {1727, 3}, {1730, 1}, {1731, 2}, {1733, 1}, {1734, 2}, {1736, 3}, {1739, 1}, {1740, 4},
-    {1744, 1}, {1745, 1}, {1746, 1}, {1747, 1}, {1748, 2}, {1750, 1}, {1751, 5}, {1756, 1},
-    {1757, 1}, {1758, 1}, {1759, 1}, {1760, 1}, {1761, 1}, {1762, 1}, {1763, 1}, {1764, 1},
-    {1765, 2}, {1767, 1}, {1768, 1}, {1769, 1}, {1770, 2}, {1772, 1}, {1773, 1}, {1774, 1},
-    {1775, 1}, {1776, 2}, {1778, 0}, {1778, 2}, {1780, 3}, {1783, 3}, {1786, 2}, {1788, 3},
-    {1791, 1}, {1792, 1}, {1793, 0}, {1793, 2}, {1795, 3}, {1798, 2}, {1800, 3}, {1803, 1},
-    {1804, 3}, {1807, 1}, {1808, 1}, {1809, 0}, {1809, 2}, {1811, 2}, {1813, 1}, {1814, 2},
-    {1816, 1}, {1817, 0}, {1817, 2}, {1819, 1}, {1820, 2}, {1822, 2}, {1824, 1}, {1825, 2},
-    {1827, 1}, {1828, 2}, {1830, 0}, {1830, 2}, {1832, 2}, {1834, 1}, {1835, 2}, {1837, 1},
-    {1838, 2}, {1840, 1}, {1841, 0}, {1841, 1}, {1842, 1}, {1843, 2}, {1845, 2}, {1847, 2},
-    {1849, 1}, {1850, 2}, {1852, 1}, {1853, 2}, {1855, 1}, {1856, 1}, {1857, 1}, {1858, 1},
-    {1859, 1}, {1860, 1}, {1861, 1}, {1862, 4}, {1866, 1}, {1867, 1}, {1868, 1}, {1869, 2},
-    {1871, 1}, {1872, 1}, {1873, 2}, {1875, 2}, {1877, 2}, {1879, 1}, {1880, 2}, {1882, 1},
-    {1883, 2}, {1885, 2}, {1887, 2}, {1889, 1}, {1890, 2}, {1892, 1}, {1893, 1}, {1894, 2},
-    {1896, 1}, {1897, 1}, {1898, 2}, {1900, 1}, {1901, 1}, {1902, 2}, {1904, 1}, {1905, 2},
-    {1907, 1}, {1908, 1}, {1909, 1}, {1910, 1}, {1911, 1}, {1912, 2}, {1914, 1}, {1915, 1},
-    {1916, 1}, {1917, 1}, {1918, 2}, {1920, 1}, {1921, 2}, {1923, 1}, {1924, 1}, {1925, 4},
-    {1929, 1}, {1930, 1}, {1931, 1}, {1932, 1}, {1933, 1}, {1934, 1}, {1935, 1}, {1936, 1},
-    {1937, 1}, {1938, 3}, {1941, 0}, {1941, 2}, {1943, 0}, {1943, 0}, {1943, 1}, {1944, 1},
-    {1945, 1}, {1946, 1}, {1947, 2}, {1949, 1}, {1950, 1}, {1951, 1}, {1952, 2}, {1954, 0},
-    {1954, 3}, {1957, 1}, {1958, 2}, {1960, 2}, {1962, 2}, {1964, 1}, {1965, 4}, {1969, 2},
-    {1971, 1}, {1972, 1}, {1973, 3}, {1976, 1}, {1977, 1}, {1978, 1}, {1979, 1}, {1980, 0},
-    {1980, 1}, {1981, 3}, {1984, 2}, {1986, 2}, {1988, 1}, {1989, 1}, {1990, 1}, {1991, 2},
-    {1993, 2}, {1995, 1}, {1996, 3}, {1999, 1}, {2000, 1}, {2001, 1}, {2002, 2}, {2004, 1},
-    {2005, 1}, {2006, 1}, {2007, 1}, {2008, 2}, {2010, 1}, {2011, 1}, {2012, 1}, {2013, 1},
-    {2014, 4}, {2018, 1}, {2019, 1}, {2020, 1}, {2021, 1}, {2022, 1}, {2023, 1}, {2024, 1},
-    {2025, 2}, {2027, 1}, {2028, 1}, {2029, 1}, {2030, 2}, {2032, 0}, {2032, 2}, {2034, 2},
-    {2036, 2}, {2038, 1}, {2039, 1}, {2040, 1}, {2041, 1}, {2042, 0}, {2042, 2}, {2044, 1},
-    {2045, 2}, {2047, 1}, {2048, 2}, {2050, 1}, {2051, 1}, {2052, 1}, {2053, 1}, {2054, 3},
-    {2057, 2}, {2059, 2}, {2061, 2}, {2063, 1}, {2064, 1}, {2065, 1}, {2066, 1}, {2067, 3},
-    {2070, 1}, {2071, 1}, {2072, 1}, {2073, 1}, {2074, 1}, {2075, 1}, {2076, 1}, {2077, 1},
-    {2078, 4}, {2082, 1}, {2083, 1}, {2084, 2}, {2086, 2}, {2088, 1}, {2089, 1}, {2090, 2},
-    {2092, 1}, {2093, 4}, {2097, 1}, {2098, 1}, {2099, 2}, {2101, 2}, {2103, 1}, {2104, 1},
-    {2105, 2}, {2107, 2}, {2109, 2}, {2111, 2}, {2113, 2}, {2115, 1}, {2116, 2}, {2118, 1},
-    {2119, 1}, {2120, 1}, {2121, 2}, {2123, 1}, {2124, 4}, {2128, 1}, {2129, 1}, {2130, 1},
-    {2131, 1}, {2132, 1}, {2133, 4}, {2137, 1}, {2138, 1}, {2139, 1}, {2140, 1}, {2141, 2},
-    {2143, 2}, {2145, 1}, {2146, 3}, {2149, 1}, {2150, 1}, {2151, 3}, {2154, 1}, {2155, 2},
-    {2157, 1}, {2158, 2}, {2160, 1}, {2161, 4}, {2165, 2}, {2167, 3}, {2170, 2}, {2172, 2},
-    {2174, 1}, {2175, 1}, {2176, 1}, {2177, 2}, {2179, 2}, {2181, 1}, {2182, 2}, {2184, 1},
-    {2185, 1}, {2186, 1}, {2187, 2}, {2189, 2}, {2191, 3}, {2194, 1}, {2195, 1}, {2196, 1},
-    {2197, 1}, {2198, 4}, {2202, 1}, {2203, 3}, {2206, 1}, {2207, 1}, {2208, 1}, {2209, 1},
-    {2210, 3}, {2213, 1}, {2214, 2}, {2216, 3}, {2219, 4}, {2223, 1}, {2224, 1}, {2225, 2},
-    {2227, 1}, {2228, 2}, {2230, 2}, {2232, 2}, {2234, 1}, {2235, 4}, {2239, 1}, {2240, 0},
-    {2240, 2}, {2242, 5}, {2247, 0}, {2247, 2}, {2249, 2}, {2251, 2}, {2253, 1}, {2254, 4},
-    {2258, 1}, {2259, 0}, {2259, 2}, {2261, 2}, {2263, 5}, {2268, 0}, {2268, 2}, {2270, 2},
-    {2272, 1}, {2273, 2}, {2275, 1}, {2276, 1}, {2277, 1}, {2278, 4}, {2282, 1}, {2283, 0},
-    {2283, 2}, {2285, 5}, {2290, 0}, {2290, 2}, {2292, 1}, {2293, 1}, {2294, 1}, {2295, 1},
-    {2296, 1}, {2297, 1}, {2298, 1}, {2299, 1}, {2300, 1}, {2301, 1}, {2302, 1}, {2303, 4},
-    {2307, 1}, {2308, 1}, {2309, 1}, {2310, 1}, {2311, 1}, {2312, 1}, {2313, 1}, {2314, 2},
-    {2316, 1}, {2317, 1}, {2318, 1}, {2319, 1}, {2320, 1}, {2321, 2}, {2323, 1}, {2324, 1},
-    {2325, 5}, {2330, 1}, {2331, 1}, {2332, 1}, {2333, 1}, {2334, 1}, {2335, 1}, {2336, 4},
-    {2340, 0}, {2340, 2}, {2342, 1}, {2343, 2}, {2345, 1}, {2346, 1}, {2347, 4}, {2351, 1},
-    {2352, 1}, {2353, 2}, {2355, 1}, {2356, 2}, {2358, 1}, {2359, 1}, {2360, 1}, {2361, 2},
-    {2363, 1}, {2364, 1}, {2365, 1}, {2366, 2}, {2368, 4}, {2372, 2}, {2374, 2}, {2376, 2},
-    {2378, 2}, {2380, 1}, {2381, 2}, {2383, 2}, {2385, 1}, {2386, 1}, {2387, 1}, {2388, 1},
-    {2389, 0}, {2389, 2}, {2391, 2}, {2393, 2}, {2395, 0}, {2395, 2}, {2397, 2}, {2399, 2},
-    {2401, 1}, {2402, 0}, {2402, 2}, {2404, 2}, {2406, 1}, {2407, 0}, {2407, 2}, {2409, 2},
-    {2411, 2}, {2413, 1}, {2414, 4}, {2418, 2}, {2420, 3}, {2423, 2}, {2425, 2}, {2427, 4},
-    {2431, 1}, {2432, 4}, {2436, 2}, {2438, 2}, {2440, 2}, {2442, 1}, {2443, 1}, {2444, 1},
-    {2445, 2}, {2447, 1}, {2448, 4}, {2452, 1}, {2453, 1}, {2454, 1}, {2455, 4}, {2459, 1},
-    {2460, 1}, {2461, 1}, {2462, 0}, {2462, 1}, {2463, 1}, {2464, 1}, {2465, 1}, {2466, 1},
-    {2467, 2}, {2469, 2}, {2471, 2}, {2473, 1}, {2474, 1}, {2475, 1}, {2476, 1}, {2477, 1},
-    {2478, 4}, {2482, 1}, {2483, 1}, {2484, 0}, {2484, 4}, {2488, 2}, {2490, 2}, {2492, 2},
-    {2494, 2}, {2496, 1}, {2497, 1}, {2498, 2}, {2500, 1}, {2501, 1}, {2502, 3}, {2505, 2},
-    {2507, 2}, {2509, 1}, {2510, 4}, {2514, 1}, {2515, 3}, {2518, 1}, {2519, 1}, {2520, 1},
-    {2521, 1}, {2522, 1}, {2523, 1}, {2524, 4}, {2528, 1}, {2529, 1}, {2530, 1}, {2531, 1},
-    {2532, 1}, {2533, 1}, {2534, 1}, {2535, 3}, {2538, 0}, {2538, 0}, {2538, 0}, {2538, 1},
-    {2539, 3}, {2542, 0}, {2542, 0}, {2542, 0}, {2542, 1}, {2543, 1}, {2544, 0}, {2544, 2},
-    {2546, 1}, {2547, 2}, {2549, 1}, {2550, 2}, {2552, 1}, {2553, 2}, {2555, 2}, {2557, 2},
-    {2559, 1}, {2560, 2}, {2562, 1}, {2563, 1}, {2564, 3}, {2567, 1}, {2568, 1}, {2569, 1},
-    {2570, 4}, {2574, 1}, {2575, 1}, {2576, 1}, {2577, 1}, {2578, 1}, {2579, 1}, {2580, 1},
-    {2581, 2}, {2583, 2}, {2585, 2}, {2587, 2}, {2589, 1}, {2590, 2}, {2592, 1}, {2593, 3},
-    {2596, 1}, {2597, 1}, {2598, 1}, {2599, 4}, {2603, 1}, {2604, 2}, {2606, 3}, {2609, 1},
-    {2610, 1}, {2611, 1}, {2612, 1}, {2613, 1}, {2614, 4}, {2618, 2}, {2620, 2}, {2622, 2},
-    {2624, 2}, {2626, 2}, {2628, 4}, {2632, 2}, {2634, 2}, {2636, 1}, {2637, 3}, {2640, 1},
-    {2641, 1}, {2642, 1}, {2643, 4}, {2647, 1}, {2648, 1}, {2649, 1}, {2650, 1}, {2651, 1},
-    {2652, 1}, {2653, 3}, {2656, 0}, {2656, 1}, {2657, 1}, {2658, 1}, {2659, 1}, {2660, 3},
-    {2663, 1}, {2664, 1}, {2665, 0}, {2665, 2}, {2667, 2}, {2669, 1}, {2670, 1}, {2671, 0},
-    {2671, 1}, {2672, 1}, {2673, 1}, {2674, 4}, {2678, 1}, {2679, 1}, {2680, 1}, {2681, 1},
-    {2682, 1}, {2683, 2}, {2685, 0}, {2685, 2}, {2687, 1}, {2688, 1}, {2689, 2}, {2691, 2},
-    {2693, 1}, {2694, 2}, {2696, 1}, {2697, 1}, {2698, 1}, {2699, 1}, {2700, 4}, {2704, 1},
-    {2705, 1}, {2706, 4}, {2710, 1}, {2711, 0}, {2711, 2}, {2713, 1}, {2714, 1}, {2715, 0},
-    {2715, 2}, {2717, 1}, {2718, 1}, {2719, 2}, {2721, 1}, {2722, 2}, {2724, 1}, {2725, 1},
-    {2726, 1}, {2727, 2}, {2729, 1}, {2730, 1}, {2731, 1}, {2732, 0}, {2732, 2}, {2734, 2},
-    {2736, 1}, {2737, 1}, {2738, 0}, {2738, 2}, {2740, 1}, {2741, 2}, {2743, 1}, {2744, 1},
-    {2745, 3}, {2748, 1}, {2749, 1}, {2750, 1}, {2751, 1}, {2752, 1}, {2753, 1}, {2754, 4},
-    {2758, 1}, {2759, 1}, {2760, 4}, {2764, 1}, {2765, 1}, {2766, 4}, {2770, 1}, {2771, 4},
-    {2775, 1}, {2776, 1}, {2777, 0}, {2777, 1}, {2778, 1}, {2779, 1}, {2780, 1}, {2781, 1},
-    {2782, 1}, {2783, 2}, {2785, 1}, {2786, 5}, {2791, 0}, {2791, 1}, {2792, 2}, {2794, 2},
-    {2796, 6}, {2802, 0}, {2802, 1}, {2803, 1}, {2804, 1}, {2805, 2}, {2807, 1}, {2808, 1},
-    {2809, 1}, {2810, 5}, {2815, 0}, {2815, 1}, {2816, 1}, {2817, 5}, {2822, 0}, {2822, 1},
-    {2823, 2}, {2825, 1}, {2826, 5}, {2831, 0}, {2831, 1}, {2832, 4}, {2836, 1}, {2837, 4},
-    {2841, 0}, {2841, 1}, {2842, 1}, {2843, 1}, {2844, 1}, {2845, 1}, {2846, 1}, {2847, 0},
-    {2847, 1}, {2848, 1}, {2849, 1}, {2850, 1}, {2851, 1}, {2852, 1}, {2853, 1}, {2854, 4},
-    {2858, 0}, {2858, 1}, {2859, 1}, {2860, 1}, {2861, 1}, {2862, 1}, {2863, 1}, {2864, 0},
-    {2864, 1}, {2865, 1}, {2866, 1}, {2867, 3}, {2870, 1}, {2871, 1}, {2872, 4}, {2876, 0},
-    {2876, 1}, {2877, 1}, {2878, 1}, {2879, 1}, {2880, 1}, {2881, 1}, {2882, 1}, {2883, 2},
-    {2885, 4}, {2889, 1}, {2890, 1}, {2891, 1}, {2892, 4}, {2896, 1}, {2897, 1}, {2898, 1},
-    {2899, 1}, {2900, 1}, {2901, 1}, {2902, 1}, {2903, 1}, {2904, 1}, {2905, 1}, {2906, 1},
-    {2907, 1}, {2908, 1}, {2909, 1}, {2910, 4}, {2914, 1}, {2915, 0}, {2915, 1}, {2916, 1},
-    {2917, 2}, {2919, 1}, {2920, 1}, {2921, 3}, {2924, 1}, {2925, 5}, {2930, 0}, {2930, 1},
-    {2931, 3}, {2934, 1}, {2935, 2}, {2937, 1}, {2938, 1}, {2939, 1}, {2940, 1}, {2941, 0},
-    {2941, 1}, {2942, 1}, {2943, 1}, {2944, 1}, {2945, 0}, {2945, 2}, {2947, 4}, {2951, 2},
-    {2953, 2}, {2955, 1}, {2956, 2}, {2958, 1}, {2959, 1}, {2960, 1}, {2961, 2}, {2963, 1},
-    {2964, 1}, {2965, 0}, {2965, 1}, {2966, 1}, {2967, 2}, {2969, 1}, {2970, 3}, {2973, 2},
-    {2975, 1}, {2976, 1}, {2977, 2}, {2979, 1}, {2980, 1}, {2981, 0}, {2981, 2}, {2983, 4},
-    {2987, 2}, {2989, 1}, {2990, 1}, {2991, 1}, {2992, 1}, {2993, 0}, {2993, 1}, {2994, 1},
-    {2995, 2}, {2997, 1}, {2998, 2}, {3000, 1}, {3001, 2}, {3003, 1}, {3004, 0}, {3004, 2},
-    {3006, 1}, {3007, 2}, {3009, 1}, {3010, 2}, {3012, 2}, {3014, 2}, {3016, 2}, {3018, 2},
-    {3020, 1}, {3021, 1}, {3022, 1}, {3023, 0}, {3023, 1}, {3024, 4}, {3028, 2}, {3030, 1},
-    {3031, 2}, {3033, 2}, {3035, 1}, {3036, 1}, {3037, 1}, {3038, 1}, {3039, 0}, {3039, 1},
-    {3040, 1}, {3041, 2}, {3043, 2}, {3045, 2}, {3047, 2}, {3049, 1}, {3050, 2}, {3052, 2},
-    {3054, 2}, {3056, 1}, {3057, 2}, {3059, 1}, {3060, 2}, {3062, 1}, {3063, 0}, {3063, 2},
-    {3065, 1}, {3066, 1}, {3067, 1}, {3068, 0}, {3068, 2}, {3070, 1}, {3071, 1}, {3072, 1},
-    {3073, 1}, {3074, 1}, {3075, 1}, {3076, 2}, {3078, 2}, {3080, 1}, {3081, 1}, {3082, 1},
-    {3083, 1}, {3084, 1}, {3085, 2}, {3087, 2}, {3089, 2}, {3091, 4}, {3095, 4}, {3099, 2},
-    {3101, 2}, {3103, 0}, {3103, 1}, {3104, 2}, {3106, 1}, {3107, 2}, {3109, 1}, {3110, 1},
-    {3111, 1}, {3112, 1}, {3113, 1}, {3114, 1}, {3115, 1}, {3116, 1}, {3117, 1}, {3118, 1},
-    {3119, 1}, {3120, 1}, {3121, 1}, {3122, 1}, {3123, 1}, {3124, 0}, {3124, 2}, {3126, 1},
-    {3127, 1}, {3128, 4}, {3132, 2}, {3134, 1}, {3135, 1},
+inline constexpr Node kNodes[1977] = {
+    {0, 4}, {4, 4}, {8, 1}, {9, 1}, {10, 2}, {12, 4}, {16, 4}, {20, 5}, {25, 4}, {29, 2},
+    {31, 4}, {35, 2}, {37, 2}, {39, 2}, {41, 4}, {45, 4}, {49, 4}, {53, 1}, {54, 1}, {55, 1},
+    {56, 1}, {57, 3}, {60, 4}, {64, 4}, {68, 3}, {71, 4}, {75, 1}, {76, 1}, {77, 5}, {82, 2},
+    {84, 1}, {85, 1}, {86, 1}, {87, 2}, {89, 1}, {90, 1}, {91, 1}, {92, 1}, {93, 1}, {94, 1},
+    {95, 6}, {101, 1}, {102, 1}, {103, 5}, {108, 3}, {111, 1}, {112, 1}, {113, 1}, {114, 1},
+    {115, 1}, {116, 1}, {117, 3}, {120, 3}, {123, 3}, {126, 1}, {127, 5}, {132, 3}, {135, 1},
+    {136, 1}, {137, 3}, {140, 2}, {142, 2}, {144, 5}, {149, 2}, {151, 5}, {156, 5}, {161, 5},
+    {166, 6}, {172, 5}, {177, 6}, {183, 5}, {188, 5}, {193, 1}, {194, 1}, {195, 3}, {198, 1},
+    {199, 4}, {203, 5}, {208, 3}, {211, 1}, {212, 1}, {213, 1}, {214, 1}, {215, 1}, {216, 1},
+    {217, 2}, {219, 1}, {220, 2}, {222, 1}, {223, 1}, {224, 1}, {225, 5}, {230, 5}, {235, 1},
+    {236, 1}, {237, 1}, {238, 1}, {239, 5}, {244, 5}, {249, 5}, {254, 5}, {259, 5}, {264, 6},
+    {270, 2}, {272, 1}, {273, 1}, {274, 1}, {275, 5}, {280, 6}, {286, 1}, {287, 1}, {288, 1},
+    {289, 4}, {293, 4}, {297, 1}, {298, 1}, {299, 1}, {300, 1}, {301, 1}, {302, 3}, {305, 2},
+    {307, 1}, {308, 2}, {310, 1}, {311, 5}, {316, 1}, {317, 5}, {322, 1}, {323, 5}, {328, 4},
+    {332, 1}, {333, 4}, {337, 2}, {339, 3}, {342, 2}, {344, 3}, {347, 5}, {352, 4}, {356, 4},
+    {360, 4}, {364, 1}, {365, 1}, {366, 5}, {371, 1}, {372, 4}, {376, 1}, {377, 4}, {381, 1},
+    {382, 2}, {384, 1}, {385, 3}, {388, 2}, {390, 1}, {391, 1}, {392, 4}, {396, 4}, {400, 2},
+    {402, 1}, {403, 5}, {408, 2}, {410, 2}, {412, 5}, {417, 5}, {422, 5}, {427, 4}, {431, 2},
+    {433, 2}, {435, 4}, {439, 4}, {443, 4}, {447, 4}, {451, 5}, {456, 5}, {461, 5}, {466, 2},
+    {468, 2}, {470, 4}, {474, 4}, {478, 2}, {480, 5}, {485, 5}, {490, 5}, {495, 5}, {500, 5},
+    {505, 5}, {510, 5}, {515, 5}, {520, 1}, {521, 4}, {525, 5}, {530, 5}, {535, 3}, {538, 3},
+    {541, 3}, {544, 5}, {549, 4}, {553, 5}, {558, 3}, {561, 2}, {563, 1}, {564, 1}, {565, 4},
+    {569, 2}, {571, 2}, {573, 1}, {574, 2}, {576, 1}, {577, 1}, {578, 1}, {579, 1}, {580, 1},
+    {581, 2}, {583, 1}, {584, 2}, {586, 1}, {587, 1}, {588, 2}, {590, 1}, {591, 3}, {594, 1},
+    {595, 2}, {597, 1}, {598, 2}, {600, 2}, {602, 2}, {604, 2}, {606, 2}, {608, 2}, {610, 1},
+    {611, 3}, {614, 1}, {615, 2}, {617, 1}, {618, 2}, {620, 1}, {621, 0}, {621, 0}, {621, 1},
+    {622, 1}, {623, 1}, {624, 1}, {625, 1}, {626, 2}, {628, 1}, {629, 1}, {630, 1}, {631, 1},
+    {632, 1}, {633, 1}, {634, 1}, {635, 3}, {638, 4}, {642, 2}, {644, 1}, {645, 1}, {646, 1},
+    {647, 1}, {648, 1}, {649, 3}, {652, 2}, {654, 2}, {656, 1}, {657, 2}, {659, 1}, {660, 2},
+    {662, 1}, {663, 1}, {664, 1}, {665, 1}, {666, 1}, {667, 1}, {668, 3}, {671, 2}, {673, 1},
+    {674, 1}, {675, 1}, {676, 1}, {677, 1}, {678, 1}, {679, 1}, {680, 1}, {681, 3}, {684, 1},
+    {685, 1}, {686, 1}, {687, 1}, {688, 1}, {689, 1}, {690, 1}, {691, 1}, {692, 1}, {693, 1},
+    {694, 1}, {695, 1}, {696, 1}, {697, 1}, {698, 1}, {699, 1}, {700, 1}, {701, 1}, {702, 1},
+    {703, 1}, {704, 1}, {705, 1}, {706, 1}, {707, 1}, {708, 1}, {709, 1}, {710, 1}, {711, 1},
+    {712, 1}, {713, 1}, {714, 1}, {715, 1}, {716, 1}, {717, 1}, {718, 1}, {719, 1}, {720, 1},
+    {721, 1}, {722, 1}, {723, 1}, {724, 1}, {725, 1}, {726, 1}, {727, 1}, {728, 1}, {729, 1},
+    {730, 1}, {731, 1}, {732, 1}, {733, 1}, {734, 1}, {735, 1}, {736, 1}, {737, 1}, {738, 1},
+    {739, 1}, {740, 1}, {741, 1}, {742, 1}, {743, 1}, {744, 1}, {745, 1}, {746, 1}, {747, 1},
+    {748, 1}, {749, 1}, {750, 1}, {751, 1}, {752, 1}, {753, 1}, {754, 1}, {755, 1}, {756, 2},
+    {758, 1}, {759, 1}, {760, 1}, {761, 2}, {763, 1}, {764, 1}, {765, 1}, {766, 3}, {769, 0},
+    {769, 0}, {769, 0}, {769, 1}, {770, 1}, {771, 1}, {772, 1}, {773, 3}, {776, 0}, {776, 0},
+    {776, 0}, {776, 1}, {777, 3}, {780, 1}, {781, 2}, {783, 1}, {784, 3}, {787, 3}, {790, 3},
+    {793, 1}, {794, 1}, {795, 2}, {797, 1}, {798, 4}, {802, 1}, {803, 1}, {804, 1}, {805, 1},
+    {806, 3}, {809, 1}, {810, 2}, {812, 1}, {813, 1}, {814, 1}, {815, 2}, {817, 1}, {818, 1},
+    {819, 2}, {821, 1}, {822, 1}, {823, 2}, {825, 1}, {826, 1}, {827, 1}, {828, 1}, {829, 1},
+    {830, 1}, {831, 2}, {833, 1}, {834, 2}, {836, 1}, {837, 1}, {838, 1}, {839, 2}, {841, 1},
+    {842, 2}, {844, 1}, {845, 1}, {846, 1}, {847, 2}, {849, 1}, {850, 2}, {852, 1}, {853, 1},
+    {854, 1}, {855, 1}, {856, 1}, {857, 3}, {860, 2}, {862, 2}, {864, 1}, {865, 1}, {866, 1},
+    {867, 1}, {868, 3}, {871, 3}, {874, 3}, {877, 3}, {880, 2}, {882, 1}, {883, 1}, {884, 1},
+    {885, 1}, {886, 1}, {887, 1}, {888, 1}, {889, 1}, {890, 1}, {891, 1}, {892, 1}, {893, 4},
+    {897, 1}, {898, 1}, {899, 2}, {901, 1}, {902, 2}, {904, 1}, {905, 2}, {907, 1}, {908, 2},
+    {910, 1}, {911, 1}, {912, 2}, {914, 2}, {916, 2}, {918, 2}, {920, 2}, {922, 1}, {923, 1},
+    {924, 4}, {928, 1}, {929, 1}, {930, 0}, {930, 1}, {931, 4}, {935, 1}, {936, 4}, {940, 2},
+    {942, 4}, {946, 1}, {947, 1}, {948, 1}, {949, 3}, {952, 1}, {953, 1}, {954, 1}, {955, 1},
+    {956, 1}, {957, 2}, {959, 1}, {960, 4}, {964, 1}, {965, 1}, {966, 1}, {967, 1}, {968, 4},
+    {972, 1}, {973, 1}, {974, 1}, {975, 4}, {979, 1}, {980, 1}, {981, 1}, {982, 4}, {986, 1},
+    {987, 1}, {988, 1}, {989, 1}, {990, 1}, {991, 1}, {992, 1}, {993, 1}, {994, 1}, {995, 2},
+    {997, 2}, {999, 1}, {1000, 4}, {1004, 1}, {1005, 1}, {1006, 1}, {1007, 4}, {1011, 1},
+    {1012, 1}, {1013, 1}, {1014, 4}, {1018, 1}, {1019, 1}, {1020, 1}, {1021, 4}, {1025, 1},
+    {1026, 1}, {1027, 1}, {1028, 4}, {1032, 1}, {1033, 1}, {1034, 1}, {1035, 4}, {1039, 1},
+    {1040, 1}, {1041, 1}, {1042, 4}, {1046, 1}, {1047, 1}, {1048, 1}, {1049, 0}, {1049, 1},
+    {1050, 2}, {1052, 1}, {1053, 1}, {1054, 2}, {1056, 1}, {1057, 1}, {1058, 1}, {1059, 2},
+    {1061, 1}, {1062, 1}, {1063, 1}, {1064, 2}, {1066, 1}, {1067, 1}, {1068, 1}, {1069, 2},
+    {1071, 1}, {1072, 1}, {1073, 1}, {1074, 3}, {1077, 0}, {1077, 1}, {1078, 0}, {1078, 2},
+    {1080, 2}, {1082, 1}, {1083, 1}, {1084, 0}, {1084, 1}, {1085, 7}, {1092, 2}, {1094, 1},
+    {1095, 1}, {1096, 1}, {1097, 1}, {1098, 1}, {1099, 1}, {1100, 1}, {1101, 1}, {1102, 1},
+    {1103, 1}, {1104, 1}, {1105, 1}, {1106, 1}, {1107, 1}, {1108, 1}, {1109, 1}, {1110, 1},
+    {1111, 1}, {1112, 1}, {1113, 1}, {1114, 1}, {1115, 1}, {1116, 1}, {1117, 1}, {1118, 1},
+    {1119, 1}, {1120, 1}, {1121, 1}, {1122, 1}, {1123, 1}, {1124, 1}, {1125, 1}, {1126, 1},
+    {1127, 1}, {1128, 1}, {1129, 2}, {1131, 1}, {1132, 1}, {1133, 1}, {1134, 3}, {1137, 0},
+    {1137, 0}, {1137, 1}, {1138, 1}, {1139, 1}, {1140, 1}, {1141, 2}, {1143, 1}, {1144, 1},
+    {1145, 1}, {1146, 1}, {1147, 4}, {1151, 1}, {1152, 1}, {1153, 4}, {1157, 2}, {1159, 1},
+    {1160, 1}, {1161, 1}, {1162, 4}, {1166, 1}, {1167, 1}, {1168, 1}, {1169, 1}, {1170, 1},
+    {1171, 1}, {1172, 1}, {1173, 1}, {1174, 1}, {1175, 3}, {1178, 2}, {1180, 1}, {1181, 1},
+    {1182, 1}, {1183, 2}, {1185, 3}, {1188, 2}, {1190, 2}, {1192, 2}, {1194, 1}, {1195, 2},
+    {1197, 2}, {1199, 1}, {1200, 1}, {1201, 4}, {1205, 1}, {1206, 1}, {1207, 2}, {1209, 1},
+    {1210, 3}, {1213, 1}, {1214, 1}, {1215, 1}, {1216, 1}, {1217, 1}, {1218, 1}, {1219, 1},
+    {1220, 1}, {1221, 3}, {1224, 1}, {1225, 1}, {1226, 1}, {1227, 1}, {1228, 1}, {1229, 4},
+    {1233, 1}, {1234, 1}, {1235, 1}, {1236, 1}, {1237, 1}, {1238, 1}, {1239, 1}, {1240, 1},
+    {1241, 1}, {1242, 0}, {1242, 2}, {1244, 1}, {1245, 1}, {1246, 1}, {1247, 1}, {1248, 2},
+    {1250, 1}, {1251, 2}, {1253, 1}, {1254, 1}, {1255, 1}, {1256, 3}, {1259, 2}, {1261, 3},
+    {1264, 2}, {1266, 2}, {1268, 1}, {1269, 1}, {1270, 2}, {1272, 1}, {1273, 1}, {1274, 1},
+    {1275, 1}, {1276, 1}, {1277, 4}, {1281, 1}, {1282, 1}, {1283, 4}, {1287, 2}, {1289, 1},
+    {1290, 1}, {1291, 1}, {1292, 4}, {1296, 1}, {1297, 1}, {1298, 1}, {1299, 1}, {1300, 1},
+    {1301, 1}, {1302, 1}, {1303, 2}, {1305, 2}, {1307, 1}, {1308, 1}, {1309, 1}, {1310, 1},
+    {1311, 1}, {1312, 1}, {1313, 1}, {1314, 1}, {1315, 2}, {1317, 1}, {1318, 1}, {1319, 2},
+    {1321, 1}, {1322, 1}, {1323, 1}, {1324, 4}, {1328, 1}, {1329, 0}, {1329, 2}, {1331, 1},
+    {1332, 2}, {1334, 1}, {1335, 1}, {1336, 4}, {1340, 1}, {1341, 0}, {1341, 3}, {1344, 1},
+    {1345, 0}, {1345, 2}, {1347, 1}, {1348, 3}, {1351, 1}, {1352, 3}, {1355, 1}, {1356, 2},
+    {1358, 1}, {1359, 1}, {1360, 2}, {1362, 1}, {1363, 3}, {1366, 1}, {1367, 1}, {1368, 0},
+    {1368, 2}, {1370, 2}, {1372, 0}, {1372, 1}, {1373, 2}, {1375, 1}, {1376, 1}, {1377, 1},
+    {1378, 1}, {1379, 1}, {1380, 5}, {1385, 0}, {1385, 1}, {1386, 1}, {1387, 1}, {1388, 2},
+    {1390, 2}, {1392, 3}, {1395, 1}, {1396, 0}, {1396, 1}, {1397, 1}, {1398, 0}, {1398, 1},
+    {1399, 1}, {1400, 2}, {1402, 2}, {1404, 1}, {1405, 1}, {1406, 1}, {1407, 1}, {1408, 1},
+    {1409, 2}, {1411, 2}, {1413, 2}, {1415, 1}, {1416, 0}, {1416, 2}, {1418, 2}, {1420, 1},
+    {1421, 0}, {1421, 3}, {1424, 2}, {1426, 2}, {1428, 2}, {1430, 4}, {1434, 0}, {1434, 2},
+    {1436, 2}, {1438, 2}, {1440, 2}, {1442, 2}, {1444, 1}, {1445, 1}, {1446, 1}, {1447, 2},
+    {1449, 1}, {1450, 2}, {1452, 4}, {1456, 1}, {1457, 1}, {1458, 2}, {1460, 1}, {1461, 2},
+    {1463, 1}, {1464, 2}, {1466, 1}, {1467, 2}, {1469, 1}, {1470, 2}, {1472, 1}, {1473, 2},
+    {1475, 1}, {1476, 2}, {1478, 1}, {1479, 2}, {1481, 2}, {1483, 3}, {1486, 2}, {1488, 1},
+    {1489, 1}, {1490, 4}, {1494, 1}, {1495, 2}, {1497, 1}, {1498, 2}, {1500, 1}, {1501, 2},
+    {1503, 1}, {1504, 1}, {1505, 1}, {1506, 2}, {1508, 1}, {1509, 3}, {1512, 1}, {1513, 2},
+    {1515, 1}, {1516, 2}, {1518, 2}, {1520, 2}, {1522, 2}, {1524, 1}, {1525, 2}, {1527, 1},
+    {1528, 1}, {1529, 1}, {1530, 1}, {1531, 2}, {1533, 2}, {1535, 1}, {1536, 1}, {1537, 1},
+    {1538, 1}, {1539, 2}, {1541, 2}, {1543, 1}, {1544, 1}, {1545, 1}, {1546, 0}, {1546, 2},
+    {1548, 2}, {1550, 4}, {1554, 2}, {1556, 2}, {1558, 2}, {1560, 1}, {1561, 1}, {1562, 1},
+    {1563, 1}, {1564, 2}, {1566, 1}, {1567, 2}, {1569, 2}, {1571, 2}, {1573, 2}, {1575, 1},
+    {1576, 4}, {1580, 1}, {1581, 1}, {1582, 1}, {1583, 1}, {1584, 2}, {1586, 1}, {1587, 4},
+    {1591, 1}, {1592, 1}, {1593, 4}, {1597, 1}, {1598, 1}, {1599, 4}, {1603, 1}, {1604, 1},
+    {1605, 4}, {1609, 1}, {1610, 1}, {1611, 1}, {1612, 1}, {1613, 2}, {1615, 3}, {1618, 2},
+    {1620, 1}, {1621, 1}, {1622, 1}, {1623, 1}, {1624, 2}, {1626, 2}, {1628, 2}, {1630, 4},
+    {1634, 1}, {1635, 1}, {1636, 2}, {1638, 3}, {1641, 2}, {1643, 2}, {1645, 1}, {1646, 1},
+    {1647, 1}, {1648, 1}, {1649, 4}, {1653, 1}, {1654, 2}, {1656, 4}, {1660, 1}, {1661, 1},
+    {1662, 1}, {1663, 2}, {1665, 3}, {1668, 2}, {1670, 1}, {1671, 1}, {1672, 1}, {1673, 4},
+    {1677, 1}, {1678, 1}, {1679, 2}, {1681, 1}, {1682, 1}, {1683, 4}, {1687, 1}, {1688, 1},
+    {1689, 4}, {1693, 1}, {1694, 1}, {1695, 4}, {1699, 1}, {1700, 1}, {1701, 4}, {1705, 1},
+    {1706, 0}, {1706, 2}, {1708, 2}, {1710, 2}, {1712, 5}, {1717, 0}, {1717, 1}, {1718, 1},
+    {1719, 1}, {1720, 2}, {1722, 3}, {1725, 1}, {1726, 0}, {1726, 2}, {1728, 1}, {1729, 1},
+    {1730, 1}, {1731, 1}, {1732, 3}, {1735, 1}, {1736, 2}, {1738, 1}, {1739, 2}, {1741, 3},
+    {1744, 1}, {1745, 4}, {1749, 1}, {1750, 1}, {1751, 1}, {1752, 1}, {1753, 2}, {1755, 1},
+    {1756, 5}, {1761, 1}, {1762, 1}, {1763, 1}, {1764, 1}, {1765, 1}, {1766, 1}, {1767, 1},
+    {1768, 1}, {1769, 1}, {1770, 2}, {1772, 1}, {1773, 1}, {1774, 1}, {1775, 2}, {1777, 1},
+    {1778, 1}, {1779, 1}, {1780, 1}, {1781, 2}, {1783, 0}, {1783, 2}, {1785, 3}, {1788, 3},
+    {1791, 2}, {1793, 3}, {1796, 1}, {1797, 1}, {1798, 0}, {1798, 2}, {1800, 3}, {1803, 2},
+    {1805, 3}, {1808, 1}, {1809, 3}, {1812, 1}, {1813, 1}, {1814, 0}, {1814, 2}, {1816, 2},
+    {1818, 1}, {1819, 2}, {1821, 1}, {1822, 0}, {1822, 2}, {1824, 1}, {1825, 2}, {1827, 2},
+    {1829, 1}, {1830, 2}, {1832, 1}, {1833, 2}, {1835, 0}, {1835, 2}, {1837, 2}, {1839, 1},
+    {1840, 2}, {1842, 1}, {1843, 2}, {1845, 1}, {1846, 0}, {1846, 1}, {1847, 1}, {1848, 2},
+    {1850, 2}, {1852, 2}, {1854, 1}, {1855, 2}, {1857, 1}, {1858, 2}, {1860, 1}, {1861, 1},
+    {1862, 1}, {1863, 1}, {1864, 1}, {1865, 1}, {1866, 1}, {1867, 4}, {1871, 1}, {1872, 1},
+    {1873, 1}, {1874, 2}, {1876, 1}, {1877, 1}, {1878, 2}, {1880, 2}, {1882, 2}, {1884, 1},
+    {1885, 2}, {1887, 1}, {1888, 2}, {1890, 2}, {1892, 2}, {1894, 1}, {1895, 2}, {1897, 1},
+    {1898, 1}, {1899, 2}, {1901, 1}, {1902, 1}, {1903, 2}, {1905, 1}, {1906, 1}, {1907, 2},
+    {1909, 1}, {1910, 2}, {1912, 1}, {1913, 1}, {1914, 1}, {1915, 1}, {1916, 1}, {1917, 2},
+    {1919, 1}, {1920, 1}, {1921, 1}, {1922, 1}, {1923, 2}, {1925, 1}, {1926, 2}, {1928, 1},
+    {1929, 1}, {1930, 4}, {1934, 1}, {1935, 1}, {1936, 1}, {1937, 1}, {1938, 1}, {1939, 1},
+    {1940, 1}, {1941, 1}, {1942, 1}, {1943, 3}, {1946, 0}, {1946, 2}, {1948, 0}, {1948, 0},
+    {1948, 1}, {1949, 1}, {1950, 1}, {1951, 1}, {1952, 2}, {1954, 1}, {1955, 1}, {1956, 1},
+    {1957, 2}, {1959, 0}, {1959, 3}, {1962, 1}, {1963, 2}, {1965, 2}, {1967, 2}, {1969, 1},
+    {1970, 4}, {1974, 2}, {1976, 1}, {1977, 1}, {1978, 3}, {1981, 1}, {1982, 1}, {1983, 1},
+    {1984, 1}, {1985, 0}, {1985, 1}, {1986, 3}, {1989, 2}, {1991, 2}, {1993, 1}, {1994, 1},
+    {1995, 1}, {1996, 2}, {1998, 2}, {2000, 1}, {2001, 3}, {2004, 1}, {2005, 1}, {2006, 1},
+    {2007, 2}, {2009, 1}, {2010, 1}, {2011, 1}, {2012, 1}, {2013, 2}, {2015, 1}, {2016, 1},
+    {2017, 1}, {2018, 1}, {2019, 4}, {2023, 1}, {2024, 1}, {2025, 1}, {2026, 1}, {2027, 1},
+    {2028, 1}, {2029, 1}, {2030, 2}, {2032, 1}, {2033, 1}, {2034, 1}, {2035, 2}, {2037, 0},
+    {2037, 2}, {2039, 2}, {2041, 2}, {2043, 1}, {2044, 1}, {2045, 1}, {2046, 1}, {2047, 0},
+    {2047, 2}, {2049, 1}, {2050, 2}, {2052, 1}, {2053, 2}, {2055, 1}, {2056, 1}, {2057, 1},
+    {2058, 1}, {2059, 3}, {2062, 2}, {2064, 2}, {2066, 2}, {2068, 1}, {2069, 1}, {2070, 1},
+    {2071, 1}, {2072, 3}, {2075, 1}, {2076, 1}, {2077, 1}, {2078, 1}, {2079, 1}, {2080, 1},
+    {2081, 1}, {2082, 1}, {2083, 4}, {2087, 1}, {2088, 1}, {2089, 2}, {2091, 2}, {2093, 1},
+    {2094, 1}, {2095, 2}, {2097, 1}, {2098, 4}, {2102, 1}, {2103, 1}, {2104, 2}, {2106, 2},
+    {2108, 1}, {2109, 1}, {2110, 2}, {2112, 2}, {2114, 2}, {2116, 2}, {2118, 2}, {2120, 1},
+    {2121, 2}, {2123, 1}, {2124, 1}, {2125, 1}, {2126, 2}, {2128, 1}, {2129, 4}, {2133, 1},
+    {2134, 1}, {2135, 1}, {2136, 1}, {2137, 1}, {2138, 4}, {2142, 1}, {2143, 1}, {2144, 1},
+    {2145, 1}, {2146, 2}, {2148, 2}, {2150, 1}, {2151, 3}, {2154, 1}, {2155, 1}, {2156, 3},
+    {2159, 1}, {2160, 2}, {2162, 1}, {2163, 2}, {2165, 1}, {2166, 4}, {2170, 2}, {2172, 3},
+    {2175, 2}, {2177, 2}, {2179, 1}, {2180, 1}, {2181, 1}, {2182, 2}, {2184, 2}, {2186, 1},
+    {2187, 2}, {2189, 1}, {2190, 1}, {2191, 1}, {2192, 2}, {2194, 2}, {2196, 3}, {2199, 1},
+    {2200, 1}, {2201, 1}, {2202, 1}, {2203, 4}, {2207, 1}, {2208, 3}, {2211, 1}, {2212, 1},
+    {2213, 1}, {2214, 1}, {2215, 3}, {2218, 1}, {2219, 2}, {2221, 3}, {2224, 4}, {2228, 1},
+    {2229, 1}, {2230, 2}, {2232, 1}, {2233, 2}, {2235, 2}, {2237, 2}, {2239, 1}, {2240, 2},
+    {2242, 3}, {2245, 2}, {2247, 1}, {2248, 2}, {2250, 3}, {2253, 2}, {2255, 2}, {2257, 1},
+    {2258, 2}, {2260, 1}, {2261, 4}, {2265, 1}, {2266, 0}, {2266, 2}, {2268, 5}, {2273, 0},
+    {2273, 2}, {2275, 2}, {2277, 2}, {2279, 1}, {2280, 1}, {2281, 4}, {2285, 1}, {2286, 0},
+    {2286, 2}, {2288, 2}, {2290, 5}, {2295, 0}, {2295, 2}, {2297, 2}, {2299, 1}, {2300, 2},
+    {2302, 1}, {2303, 1}, {2304, 1}, {2305, 1}, {2306, 4}, {2310, 1}, {2311, 0}, {2311, 2},
+    {2313, 5}, {2318, 0}, {2318, 2}, {2320, 1}, {2321, 1}, {2322, 1}, {2323, 1}, {2324, 1},
+    {2325, 1}, {2326, 1}, {2327, 1}, {2328, 1}, {2329, 1}, {2330, 1}, {2331, 4}, {2335, 1},
+    {2336, 1}, {2337, 1}, {2338, 1}, {2339, 1}, {2340, 1}, {2341, 1}, {2342, 2}, {2344, 1},
+    {2345, 1}, {2346, 1}, {2347, 1}, {2348, 1}, {2349, 2}, {2351, 1}, {2352, 1}, {2353, 5},
+    {2358, 1}, {2359, 1}, {2360, 1}, {2361, 1}, {2362, 1}, {2363, 1}, {2364, 4}, {2368, 0},
+    {2368, 2}, {2370, 1}, {2371, 2}, {2373, 1}, {2374, 1}, {2375, 4}, {2379, 1}, {2380, 1},
+    {2381, 2}, {2383, 1}, {2384, 2}, {2386, 1}, {2387, 1}, {2388, 1}, {2389, 2}, {2391, 1},
+    {2392, 1}, {2393, 1}, {2394, 2}, {2396, 4}, {2400, 2}, {2402, 2}, {2404, 2}, {2406, 2},
+    {2408, 1}, {2409, 2}, {2411, 2}, {2413, 1}, {2414, 1}, {2415, 1}, {2416, 1}, {2417, 0},
+    {2417, 2}, {2419, 2}, {2421, 2}, {2423, 0}, {2423, 2}, {2425, 2}, {2427, 2}, {2429, 1},
+    {2430, 0}, {2430, 2}, {2432, 2}, {2434, 1}, {2435, 0}, {2435, 2}, {2437, 2}, {2439, 2},
+    {2441, 1}, {2442, 4}, {2446, 2}, {2448, 3}, {2451, 2}, {2453, 2}, {2455, 4}, {2459, 1},
+    {2460, 4}, {2464, 2}, {2466, 2}, {2468, 2}, {2470, 1}, {2471, 1}, {2472, 1}, {2473, 2},
+    {2475, 1}, {2476, 4}, {2480, 1}, {2481, 1}, {2482, 1}, {2483, 4}, {2487, 1}, {2488, 1},
+    {2489, 1}, {2490, 0}, {2490, 1}, {2491, 1}, {2492, 1}, {2493, 1}, {2494, 1}, {2495, 2},
+    {2497, 2}, {2499, 2}, {2501, 1}, {2502, 1}, {2503, 1}, {2504, 1}, {2505, 1}, {2506, 4},
+    {2510, 1}, {2511, 1}, {2512, 0}, {2512, 4}, {2516, 2}, {2518, 2}, {2520, 2}, {2522, 2},
+    {2524, 1}, {2525, 1}, {2526, 2}, {2528, 1}, {2529, 1}, {2530, 3}, {2533, 2}, {2535, 2},
+    {2537, 1}, {2538, 4}, {2542, 1}, {2543, 3}, {2546, 1}, {2547, 1}, {2548, 1}, {2549, 1},
+    {2550, 1}, {2551, 1}, {2552, 4}, {2556, 1}, {2557, 1}, {2558, 1}, {2559, 1}, {2560, 1},
+    {2561, 1}, {2562, 1}, {2563, 3}, {2566, 0}, {2566, 0}, {2566, 0}, {2566, 1}, {2567, 3},
+    {2570, 0}, {2570, 0}, {2570, 0}, {2570, 1}, {2571, 1}, {2572, 0}, {2572, 2}, {2574, 1},
+    {2575, 2}, {2577, 1}, {2578, 2}, {2580, 1}, {2581, 2}, {2583, 2}, {2585, 2}, {2587, 1},
+    {2588, 2}, {2590, 1}, {2591, 1}, {2592, 3}, {2595, 1}, {2596, 1}, {2597, 1}, {2598, 4},
+    {2602, 1}, {2603, 1}, {2604, 1}, {2605, 1}, {2606, 1}, {2607, 1}, {2608, 1}, {2609, 2},
+    {2611, 2}, {2613, 2}, {2615, 2}, {2617, 1}, {2618, 2}, {2620, 1}, {2621, 3}, {2624, 1},
+    {2625, 1}, {2626, 1}, {2627, 4}, {2631, 1}, {2632, 2}, {2634, 3}, {2637, 1}, {2638, 1},
+    {2639, 1}, {2640, 1}, {2641, 1}, {2642, 4}, {2646, 2}, {2648, 2}, {2650, 2}, {2652, 2},
+    {2654, 2}, {2656, 4}, {2660, 2}, {2662, 2}, {2664, 1}, {2665, 3}, {2668, 1}, {2669, 1},
+    {2670, 1}, {2671, 4}, {2675, 1}, {2676, 1}, {2677, 1}, {2678, 1}, {2679, 1}, {2680, 1},
+    {2681, 3}, {2684, 0}, {2684, 1}, {2685, 1}, {2686, 1}, {2687, 1}, {2688, 3}, {2691, 1},
+    {2692, 1}, {2693, 0}, {2693, 2}, {2695, 2}, {2697, 1}, {2698, 1}, {2699, 0}, {2699, 1},
+    {2700, 1}, {2701, 1}, {2702, 4}, {2706, 1}, {2707, 1}, {2708, 1}, {2709, 1}, {2710, 1},
+    {2711, 2}, {2713, 0}, {2713, 2}, {2715, 1}, {2716, 1}, {2717, 2}, {2719, 2}, {2721, 1},
+    {2722, 2}, {2724, 1}, {2725, 1}, {2726, 1}, {2727, 1}, {2728, 4}, {2732, 1}, {2733, 1},
+    {2734, 4}, {2738, 1}, {2739, 0}, {2739, 2}, {2741, 1}, {2742, 1}, {2743, 0}, {2743, 2},
+    {2745, 1}, {2746, 1}, {2747, 2}, {2749, 1}, {2750, 2}, {2752, 1}, {2753, 1}, {2754, 1},
+    {2755, 2}, {2757, 1}, {2758, 1}, {2759, 1}, {2760, 0}, {2760, 2}, {2762, 2}, {2764, 1},
+    {2765, 1}, {2766, 0}, {2766, 2}, {2768, 1}, {2769, 2}, {2771, 1}, {2772, 1}, {2773, 3},
+    {2776, 1}, {2777, 1}, {2778, 1}, {2779, 1}, {2780, 1}, {2781, 1}, {2782, 4}, {2786, 1},
+    {2787, 1}, {2788, 4}, {2792, 1}, {2793, 1}, {2794, 4}, {2798, 1}, {2799, 4}, {2803, 1},
+    {2804, 1}, {2805, 0}, {2805, 1}, {2806, 1}, {2807, 1}, {2808, 1}, {2809, 1}, {2810, 1},
+    {2811, 2}, {2813, 1}, {2814, 5}, {2819, 0}, {2819, 1}, {2820, 2}, {2822, 2}, {2824, 6},
+    {2830, 0}, {2830, 1}, {2831, 1}, {2832, 1}, {2833, 2}, {2835, 1}, {2836, 1}, {2837, 1},
+    {2838, 5}, {2843, 0}, {2843, 1}, {2844, 1}, {2845, 5}, {2850, 0}, {2850, 1}, {2851, 2},
+    {2853, 1}, {2854, 5}, {2859, 0}, {2859, 1}, {2860, 4}, {2864, 1}, {2865, 4}, {2869, 0},
+    {2869, 1}, {2870, 1}, {2871, 1}, {2872, 1}, {2873, 1}, {2874, 1}, {2875, 0}, {2875, 1},
+    {2876, 1}, {2877, 1}, {2878, 1}, {2879, 1}, {2880, 1}, {2881, 1}, {2882, 4}, {2886, 0},
+    {2886, 1}, {2887, 1}, {2888, 1}, {2889, 1}, {2890, 1}, {2891, 1}, {2892, 0}, {2892, 1},
+    {2893, 1}, {2894, 1}, {2895, 3}, {2898, 1}, {2899, 1}, {2900, 4}, {2904, 0}, {2904, 1},
+    {2905, 1}, {2906, 1}, {2907, 1}, {2908, 1}, {2909, 1}, {2910, 1}, {2911, 2}, {2913, 4},
+    {2917, 1}, {2918, 1}, {2919, 1}, {2920, 4}, {2924, 1}, {2925, 1}, {2926, 1}, {2927, 1},
+    {2928, 1}, {2929, 1}, {2930, 1}, {2931, 1}, {2932, 1}, {2933, 1}, {2934, 1}, {2935, 1},
+    {2936, 1}, {2937, 1}, {2938, 4}, {2942, 1}, {2943, 0}, {2943, 1}, {2944, 1}, {2945, 2},
+    {2947, 1}, {2948, 1}, {2949, 3}, {2952, 1}, {2953, 5}, {2958, 0}, {2958, 1}, {2959, 3},
+    {2962, 1}, {2963, 2}, {2965, 1}, {2966, 1}, {2967, 1}, {2968, 1}, {2969, 0}, {2969, 1},
+    {2970, 1}, {2971, 1}, {2972, 1}, {2973, 0}, {2973, 2}, {2975, 4}, {2979, 2}, {2981, 2},
+    {2983, 1}, {2984, 2}, {2986, 1}, {2987, 1}, {2988, 1}, {2989, 2}, {2991, 1}, {2992, 1},
+    {2993, 0}, {2993, 1}, {2994, 1}, {2995, 2}, {2997, 1}, {2998, 3}, {3001, 2}, {3003, 1},
+    {3004, 1}, {3005, 2}, {3007, 1}, {3008, 1}, {3009, 0}, {3009, 2}, {3011, 4}, {3015, 2},
+    {3017, 1}, {3018, 1}, {3019, 1}, {3020, 1}, {3021, 0}, {3021, 1}, {3022, 1}, {3023, 2},
+    {3025, 1}, {3026, 2}, {3028, 1}, {3029, 2}, {3031, 1}, {3032, 0}, {3032, 2}, {3034, 1},
+    {3035, 2}, {3037, 1}, {3038, 2}, {3040, 2}, {3042, 2}, {3044, 2}, {3046, 2}, {3048, 1},
+    {3049, 1}, {3050, 1}, {3051, 0}, {3051, 1}, {3052, 4}, {3056, 2}, {3058, 1}, {3059, 2},
+    {3061, 2}, {3063, 1}, {3064, 1}, {3065, 1}, {3066, 1}, {3067, 0}, {3067, 1}, {3068, 1},
+    {3069, 2}, {3071, 2}, {3073, 2}, {3075, 2}, {3077, 1}, {3078, 2}, {3080, 2}, {3082, 2},
+    {3084, 1}, {3085, 2}, {3087, 1}, {3088, 2}, {3090, 1}, {3091, 0}, {3091, 2}, {3093, 1},
+    {3094, 1}, {3095, 1}, {3096, 0}, {3096, 2}, {3098, 1}, {3099, 1}, {3100, 1}, {3101, 1},
+    {3102, 1}, {3103, 1}, {3104, 2}, {3106, 2}, {3108, 1}, {3109, 1}, {3110, 1}, {3111, 1},
+    {3112, 1}, {3113, 2}, {3115, 2}, {3117, 2}, {3119, 4}, {3123, 4}, {3127, 2}, {3129, 2},
+    {3131, 0}, {3131, 1}, {3132, 2}, {3134, 1}, {3135, 2}, {3137, 1}, {3138, 1}, {3139, 1},
+    {3140, 1}, {3141, 1}, {3142, 1}, {3143, 1}, {3144, 1}, {3145, 1}, {3146, 1}, {3147, 1},
+    {3148, 1}, {3149, 1}, {3150, 1}, {3151, 1}, {3152, 0}, {3152, 2}, {3154, 1}, {3155, 1},
+    {3156, 4}, {3160, 2}, {3162, 1}, {3163, 1},
 };
 
-inline constexpr Op kOps[3136] = {
+inline constexpr Op kOps[3164] = {
     {kType, 4, 0, 0},  // n0 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 0, 3, 0},  // required: qvf_version, source, sections
@@ -11765,1249 +11840,1249 @@ inline constexpr Op kOps[3136] = {
     {kType, 4, 0, 0},  // n4 type
     {kProperties, 86, 4, 0},  // properties: isovalue, colormap, opacity, replication
     {kType, 8, 0, 0},  // n5 type
-    {kItems, 252, 0, 0},  // items
+    {kItems, 253, 0, 0},  // items
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kType, 4, 0, 0},  // n6 type
+    {kType, 8, 0, 0},  // n6 type
+    {kItems, 254, 0, 0},  // items
+    {kMinItems, 3, 0, 0},  // minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
+    {kType, 4, 0, 0},  // n7 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 62, 3, 0},  // required: position, focal_point, view_up
     {kProperties, 94, 5, 0},  // properties: position, focal_point, view_up, view_angle, parallel_scale
     {kOneOf, 69, 2, 0},  // oneOf
-    {kType, 4, 0, 0},  // n7 type
+    {kType, 4, 0, 0},  // n8 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 71, 2, 0},  // required: name, camera
     {kProperties, 104, 3, 0},  // properties: name, description, camera
-    {kType, 32, 0, 0},  // n8 type
-    {kPattern, 2, 0, 0},  // pattern ^[a-f0-9]{64}$
     {kType, 32, 0, 0},  // n9 type
+    {kPattern, 2, 0, 0},  // pattern ^[a-f0-9]{64}$
+    {kType, 32, 0, 0},  // n10 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 3, 0, 0},  // pattern ^[^/][^\0]*$
-    {kNot, 265, 0, 0},  // not
-    {kType, 32, 0, 0},  // n10 type
+    {kNot, 267, 0, 0},  // not
+    {kType, 32, 0, 0},  // n11 type
     {kEnum, 73, 10, 0},  // enum
-    {kType, 64, 0, 0},  // n11 type
+    {kType, 64, 0, 0},  // n12 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n12 type
+    {kType, 32, 0, 0},  // n13 type
     {kPattern, 5, 0, 0},  // pattern ^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$
-    {kType, 4, 0, 0},  // n13 type
+    {kType, 4, 0, 0},  // n14 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 83, 5, 0},  // required: path, format, dtype, shape, sha256
     {kProperties, 110, 7, 0},  // properties: path, format, dtype, shape, sha256, size, media_type
-    {kType, 4, 0, 0},  // n14 type
+    {kType, 4, 0, 0},  // n15 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 88, 3, 0},  // required: path, format, sha256
     {kProperties, 124, 5, 0},  // properties: path, format, sha256, size, media_type
-    {kType, 4, 0, 0},  // n15 type
+    {kType, 4, 0, 0},  // n16 type
     {kRequired, 91, 3, 0},  // required: id, kind, members
     {kProperties, 134, 9, 0},  // properties: id, kind, label, component, critical, structure_ref, run_ref...
     {kOneOf, 94, 61, 0},  // oneOf
-    {kAllOf, 157, 2, 0},  // n16 allOf
-    {kAllOf, 161, 2, 0},  // n17 allOf
-    {kAllOf, 169, 2, 0},  // n18 allOf
-    {kAllOf, 177, 2, 0},  // n19 allOf
-    {kType, 4, 0, 0},  // n20 type
+    {kAllOf, 157, 2, 0},  // n17 allOf
+    {kAllOf, 161, 2, 0},  // n18 allOf
+    {kAllOf, 169, 2, 0},  // n19 allOf
+    {kAllOf, 177, 2, 0},  // n20 allOf
+    {kType, 4, 0, 0},  // n21 type
     {kRequired, 179, 3, 0},  // required: symbol, position, atomic_number
     {kProperties, 168, 8, 0},  // properties: symbol, position, atomic_number, b_factor, insertion_code, a...
-    {kType, 8, 0, 0},  // n21 type
+    {kType, 8, 0, 0},  // n22 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 381, 0, 0},  // items
-    {kType, 4, 0, 0},  // n22 type
+    {kItems, 383, 0, 0},  // items
+    {kType, 4, 0, 0},  // n23 type
     {kRequired, 182, 1, 0},  // required: atoms
     {kProperties, 184, 4, 0},  // properties: atoms, pbc, lattice_vectors, dimensionality
     {kAllOf, 196, 6, 0},  // allOf
-    {kType, 4, 0, 0},  // n23 type
+    {kType, 4, 0, 0},  // n24 type
     {kRequired, 202, 4, 0},  // required: name, seq, chain, atom_indices
     {kProperties, 214, 5, 0},  // properties: name, seq, chain, insertion_code, atom_indices
-    {kType, 4, 0, 0},  // n24 type
+    {kType, 4, 0, 0},  // n25 type
     {kRequired, 206, 4, 0},  // required: type, chain, start_seq, end_seq
     {kProperties, 224, 9, 0},  // properties: type, chain, start_seq, end_seq, start_insertion_code, end_i...
     {kAllOf, 218, 2, 0},  // allOf
-    {kProperties, 250, 12, 0},  // n25 properties: kind, members, chains, residues, secondary_structure, b_fact...
-    {kProperties, 278, 3, 0},  // n26 properties: kind, wavefunction_ref, members
-    {kType, 4, 0, 0},  // n27 type
+    {kProperties, 250, 12, 0},  // n26 properties: kind, members, chains, residues, secondary_structure, b_fact...
+    {kProperties, 278, 3, 0},  // n27 properties: kind, wavefunction_ref, members
+    {kType, 4, 0, 0},  // n28 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 284, 1, 0},  // patternProperties
     {kRequired, 223, 3, 0},  // required: origin, voxel_vectors, shape
     {kProperties, 290, 7, 0},  // properties: origin, voxel_vectors, shape, periodic, includes_endpoint, s...
-    {kProperties, 308, 5, 0},  // n28 properties: kind, wavefunction_ref, mo_index, spin, members
+    {kProperties, 308, 5, 0},  // n29 properties: kind, wavefunction_ref, mo_index, spin, members
     {kDependentRequired, 0, 2, 0},  // dependentRequired
-    {kProperties, 322, 3, 0},  // n29 properties: kind, wavefunction_ref, members
-    {kProperties, 332, 2, 0},  // n30 properties: kind, members
-    {kProperties, 340, 2, 0},  // n31 properties: kind, members
-    {kProperties, 348, 9, 0},  // n32 properties: kind, operand_a, operand_b, description, decomposition_ref, ...
+    {kProperties, 322, 3, 0},  // n30 properties: kind, wavefunction_ref, members
+    {kProperties, 332, 2, 0},  // n31 properties: kind, members
+    {kProperties, 340, 2, 0},  // n32 properties: kind, members
+    {kProperties, 348, 9, 0},  // n33 properties: kind, operand_a, operand_b, description, decomposition_ref, ...
     {kDependentRequired, 6, 5, 0},  // dependentRequired
-    {kProperties, 370, 2, 0},  // n33 properties: kind, members
-    {kProperties, 378, 2, 0},  // n34 properties: kind, members
-    {kProperties, 386, 2, 0},  // n35 properties: kind, members
-    {kProperties, 394, 2, 0},  // n36 properties: kind, members
-    {kProperties, 402, 2, 0},  // n37 properties: kind, members
-    {kProperties, 412, 2, 0},  // n38 properties: kind, members
-    {kType, 4, 0, 0},  // n39 type
+    {kProperties, 370, 2, 0},  // n34 properties: kind, members
+    {kProperties, 378, 2, 0},  // n35 properties: kind, members
+    {kProperties, 386, 2, 0},  // n36 properties: kind, members
+    {kProperties, 394, 2, 0},  // n37 properties: kind, members
+    {kProperties, 402, 2, 0},  // n38 properties: kind, members
+    {kProperties, 412, 2, 0},  // n39 properties: kind, members
+    {kType, 4, 0, 0},  // n40 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 416, 1, 0},  // patternProperties
     {kRequired, 268, 2, 0},  // required: kind, values
     {kProperties, 418, 5, 0},  // properties: kind, values, units, labels, trajectory_ref
     {kAllOf, 275, 1, 0},  // allOf
-    {kAllOf, 276, 2, 0},  // n40 allOf
-    {kAllOf, 280, 2, 0},  // n41 allOf
-    {kType, 4, 0, 0},  // n42 type
+    {kAllOf, 276, 2, 0},  // n41 allOf
+    {kAllOf, 280, 2, 0},  // n42 allOf
+    {kType, 4, 0, 0},  // n43 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 440, 1, 0},  // patternProperties
     {kRequired, 282, 3, 0},  // required: units, description, kind
     {kProperties, 442, 3, 0},  // properties: units, description, kind
-    {kType, 4, 0, 0},  // n43 type
+    {kType, 4, 0, 0},  // n44 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 448, 2, 0},  // patternProperties
-    {kProperties, 506, 2, 0},  // n44 properties: kind, members
-    {kAllOf, 293, 2, 0},  // n45 allOf
-    {kAllOf, 298, 2, 0},  // n46 allOf
-    {kAllOf, 300, 2, 0},  // n47 allOf
-    {kAllOf, 309, 2, 0},  // n48 allOf
-    {kProperties, 544, 2, 0},  // n49 properties: kind, members
-    {kType, 4, 0, 0},  // n50 type
+    {kProperties, 506, 2, 0},  // n45 properties: kind, members
+    {kAllOf, 293, 2, 0},  // n46 allOf
+    {kAllOf, 298, 2, 0},  // n47 allOf
+    {kAllOf, 300, 2, 0},  // n48 allOf
+    {kAllOf, 309, 2, 0},  // n49 allOf
+    {kProperties, 544, 2, 0},  // n50 properties: kind, members
+    {kType, 4, 0, 0},  // n51 type
     {kRequired, 313, 2, 0},  // required: symbol, atomic_number
     {kProperties, 548, 2, 0},  // properties: symbol, atomic_number
-    {kType, 4, 0, 0},  // n51 type
+    {kType, 4, 0, 0},  // n52 type
     {kAnyOf, 318, 3, 0},  // anyOf
     {kProperties, 564, 11, 0},  // properties: symbols, atomic_numbers, atoms, n_frames, energies, kind, pb...
-    {kType, 4, 0, 0},  // n52 type
+    {kType, 4, 0, 0},  // n53 type
     {kAllOf, 334, 1, 0},  // allOf
     {kProperties, 592, 1, 0},  // properties: units
-    {kProperties, 612, 2, 0},  // n53 properties: kind, members
-    {kType, 4, 0, 0},  // n54 type
+    {kProperties, 612, 2, 0},  // n54 properties: kind, members
+    {kType, 4, 0, 0},  // n55 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 616, 1, 0},  // patternProperties
     {kRequired, 337, 3, 0},  // required: frame_index, label, kind
     {kProperties, 618, 4, 0},  // properties: frame_index, label, kind, energy_eh
-    {kType, 4, 0, 0},  // n55 type
+    {kType, 4, 0, 0},  // n56 type
     {kAllOf, 345, 1, 0},  // allOf
     {kProperties, 628, 10, 0},  // properties: waypoints, reaction_coordinate, reaction_coordinate_label, r...
-    {kAllOf, 353, 2, 0},  // n56 allOf
-    {kProperties, 662, 2, 0},  // n57 properties: kind, members
-    {kType, 4, 0, 0},  // n58 type
+    {kAllOf, 353, 2, 0},  // n57 allOf
+    {kProperties, 662, 2, 0},  // n58 properties: kind, members
+    {kType, 4, 0, 0},  // n59 type
     {kRequired, 359, 1, 0},  // required: label
     {kProperties, 666, 3, 0},  // properties: label, unit, atoms
-    {kType, 4, 0, 0},  // n59 type
+    {kType, 4, 0, 0},  // n60 type
     {kProperties, 672, 11, 0},  // properties: axis_a, axis_b, axis_a_label, axis_b_label, coordinate_a_lab...
-    {kProperties, 696, 3, 0},  // n60 properties: kind, trajectory_ref, members
+    {kProperties, 696, 3, 0},  // n61 properties: kind, trajectory_ref, members
     {kRequired, 361, 4, 0},  // required: id, kind, members, trajectory_ref
-    {kType, 4, 0, 0},  // n61 type
+    {kType, 4, 0, 0},  // n62 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 702, 1, 0},  // patternProperties
     {kRequired, 365, 1, 0},  // required: waypoints
     {kProperties, 704, 2, 0},  // properties: waypoints, reaction_coordinate
-    {kProperties, 710, 2, 0},  // n62 properties: kind, members
+    {kProperties, 710, 2, 0},  // n63 properties: kind, members
     {kRequired, 367, 3, 0},  // required: id, kind, members
-    {kType, 4, 0, 0},  // n63 type
+    {kType, 4, 0, 0},  // n64 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 714, 1, 0},  // patternProperties
     {kRequired, 370, 1, 0},  // required: steps
     {kProperties, 716, 1, 0},  // properties: steps
-    {kType, 4, 0, 0},  // n64 type
+    {kType, 4, 0, 0},  // n65 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 718, 1, 0},  // patternProperties
     {kRequired, 371, 3, 0},  // required: id, reactants, products
     {kProperties, 720, 10, 0},  // properties: id, label, reactants, products, reagents, arrow, conditions,...
-    {kType, 4, 0, 0},  // n65 type
+    {kType, 4, 0, 0},  // n66 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 740, 1, 0},  // patternProperties
     {kRequired, 378, 1, 0},  // required: structure_ref
     {kProperties, 742, 2, 0},  // properties: structure_ref, coefficient
-    {kType, 4, 0, 0},  // n66 type
+    {kType, 4, 0, 0},  // n67 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 746, 1, 0},  // patternProperties
     {kRequired, 379, 3, 0},  // required: version, deltas, terms
     {kAllOf, 389, 1, 0},  // allOf
     {kProperties, 758, 5, 0},  // properties: version, deltas, temperature_k, pressure_atm, terms
-    {kType, 4, 0, 0},  // n67 type
+    {kType, 4, 0, 0},  // n68 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 768, 1, 0},  // patternProperties
     {kRequired, 390, 1, 0},  // required: value_eh
     {kProperties, 770, 2, 0},  // properties: value_eh, kcal_mol
-    {kType, 4, 0, 0},  // n68 type
+    {kType, 4, 0, 0},  // n69 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 774, 1, 0},  // patternProperties
     {kRequired, 391, 3, 0},  // required: structure_ref, coefficient, method
     {kAnyOf, 396, 2, 0},  // anyOf
     {kProperties, 776, 10, 0},  // properties: structure_ref, coefficient, energy_eh, enthalpy_eh, gibbs_fr...
-    {kType, 4, 0, 0},  // n69 type
+    {kType, 4, 0, 0},  // n70 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 796, 1, 0},  // patternProperties
     {kRequired, 398, 3, 0},  // required: program, program_version, specification
     {kProperties, 798, 3, 0},  // properties: program, program_version, specification
-    {kType, 4, 0, 0},  // n70 type
+    {kType, 4, 0, 0},  // n71 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 804, 1, 0},  // patternProperties
     {kRequired, 401, 3, 0},  // required: name, sha256, parser
     {kProperties, 818, 5, 0},  // properties: name, sha256, parser, input_sha256, locations
-    {kAllOf, 404, 2, 0},  // n71 allOf
-    {kProperties, 836, 3, 0},  // n72 properties: kind, hessian_ref, members
-    {kType, 4, 0, 0},  // n73 type
+    {kAllOf, 404, 2, 0},  // n72 allOf
+    {kProperties, 836, 3, 0},  // n73 properties: kind, hessian_ref, members
+    {kType, 4, 0, 0},  // n74 type
     {kRequired, 408, 1, 0},  // required: frequencies
     {kProperties, 842, 10, 0},  // properties: frequencies, ir_intensities, raman_activities, reduced_masse...
-    {kProperties, 864, 2, 0},  // n74 properties: kind, members
-    {kType, 4, 0, 0},  // n75 type
+    {kProperties, 864, 2, 0},  // n75 properties: kind, members
+    {kType, 4, 0, 0},  // n76 type
     {kRequired, 410, 2, 0},  // required: frequencies, intensities
     {kProperties, 880, 12, 0},  // properties: frequencies, intensities, x, x_units, y_units, peaks, broade...
     {kAllOf, 426, 2, 0},  // allOf
-    {kType, 4, 0, 0},  // n76 type
+    {kType, 4, 0, 0},  // n77 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 914, 1, 0},  // patternProperties
     {kRequired, 428, 1, 0},  // required: edge
     {kProperties, 916, 7, 0},  // properties: edge, element, atom_indices, core_orbital, line, intensity, ...
-    {kType, 4, 0, 0},  // n77 type
+    {kType, 4, 0, 0},  // n78 type
     {kRequired, 433, 1, 0},  // required: x
     {kProperties, 936, 5, 0},  // properties: x, y, width, label, assignment
-    {kProperties, 948, 2, 0},  // n78 properties: kind, members
-    {kAllOf, 435, 2, 0},  // n79 allOf
-    {kProperties, 958, 2, 0},  // n80 properties: kind, members
-    {kProperties, 964, 2, 0},  // n81 properties: kind, members
-    {kProperties, 970, 2, 0},  // n82 properties: kind, members
-    {kProperties, 976, 2, 0},  // n83 properties: kind, members
-    {kType, 4, 0, 0},  // n84 type
+    {kProperties, 948, 2, 0},  // n79 properties: kind, members
+    {kAllOf, 435, 2, 0},  // n80 allOf
+    {kProperties, 958, 2, 0},  // n81 properties: kind, members
+    {kProperties, 964, 2, 0},  // n82 properties: kind, members
+    {kProperties, 970, 2, 0},  // n83 properties: kind, members
+    {kProperties, 976, 2, 0},  // n84 properties: kind, members
+    {kType, 4, 0, 0},  // n85 type
     {kProperties, 1006, 6, 0},  // properties: isotope, reference, solvent, chemical_shifts, shielding_tens...
-    {kProperties, 1020, 2, 0},  // n85 properties: kind, members
-    {kType, 4, 0, 0},  // n86 type
+    {kProperties, 1020, 2, 0},  // n86 properties: kind, members
+    {kType, 4, 0, 0},  // n87 type
     {kProperties, 1048, 3, 0},  // properties: g_tensor, hyperfine, zero_field_splitting
-    {kProperties, 1056, 2, 0},  // n87 properties: kind, members
-    {kProperties, 1062, 2, 0},  // n88 properties: kind, members
-    {kProperties, 1068, 2, 0},  // n89 properties: kind, members
-    {kType, 4, 0, 0},  // n90 type
+    {kProperties, 1056, 2, 0},  // n88 properties: kind, members
+    {kProperties, 1062, 2, 0},  // n89 properties: kind, members
+    {kProperties, 1068, 2, 0},  // n90 properties: kind, members
+    {kType, 4, 0, 0},  // n91 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1072, 1, 0},  // patternProperties
     {kRequired, 451, 1, 0},  // required: sites
     {kProperties, 1084, 5, 0},  // properties: isotope, reference, temperature_k, calibration, sites
-    {kType, 4, 0, 0},  // n91 type
+    {kType, 4, 0, 0},  // n92 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1094, 1, 0},  // patternProperties
     {kRequired, 454, 1, 0},  // required: atom_index
     {kProperties, 1096, 11, 0},  // properties: atom_index, symbol, label, isomer_shift_mm_s, quadrupole_spl...
-    {kProperties, 1120, 2, 0},  // n92 properties: kind, members
-    {kAllOf, 456, 2, 0},  // n93 allOf
-    {kProperties, 1146, 2, 0},  // n94 properties: kind, members
-    {kAllOf, 470, 2, 0},  // n95 allOf
-    {kType, 4, 0, 0},  // n96 type
+    {kProperties, 1120, 2, 0},  // n93 properties: kind, members
+    {kAllOf, 456, 2, 0},  // n94 allOf
+    {kProperties, 1146, 2, 0},  // n95 properties: kind, members
+    {kAllOf, 470, 2, 0},  // n96 allOf
+    {kType, 4, 0, 0},  // n97 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1154, 1, 0},  // patternProperties
     {kRequired, 472, 4, 0},  // required: center, l, exponents, coefficients
     {kProperties, 1156, 5, 0},  // properties: center, l, exponents, coefficients, pure
-    {kType, 4, 0, 0},  // n97 type
+    {kType, 4, 0, 0},  // n98 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1166, 1, 0},  // patternProperties
     {kRequired, 476, 4, 0},  // required: l, exponents, coefficients, powers
     {kProperties, 1168, 5, 0},  // properties: l, exponents, coefficients, powers, local
-    {kType, 4, 0, 0},  // n98 type
+    {kType, 4, 0, 0},  // n99 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1178, 1, 0},  // patternProperties
     {kRequired, 480, 2, 0},  // required: center, n_core_electrons
     {kProperties, 1180, 4, 0},  // properties: center, n_core_electrons, label, projectors
-    {kType, 4, 0, 0},  // n99 type
+    {kType, 4, 0, 0},  // n100 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1188, 1, 0},  // patternProperties
     {kRequired, 482, 2, 0},  // required: structure_ref, shells
     {kProperties, 1190, 6, 0},  // properties: structure_ref, pure, n_ao, shells, ecp, n_electrons
-    {kType, 4, 0, 0},  // n100 type
+    {kType, 4, 0, 0},  // n101 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1202, 1, 0},  // patternProperties
     {kRequired, 484, 2, 0},  // required: energies, occupations
     {kProperties, 1204, 4, 0},  // properties: n_mo, energies, occupations, symmetry_labels
-    {kType, 4, 0, 0},  // n101 type
+    {kType, 4, 0, 0},  // n102 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1212, 1, 0},  // patternProperties
     {kRequired, 486, 1, 0},  // required: spin
     {kProperties, 1214, 25, 0},  // properties: spin, orbital_kind, n_ao, n_mo, energies, occupations, symme...
     {kAllOf, 535, 3, 0},  // allOf
-    {kProperties, 1288, 2, 0},  // n102 properties: kind, members
+    {kProperties, 1288, 2, 0},  // n103 properties: kind, members
     {kRequired, 544, 3, 0},  // required: id, kind, members
-    {kAllOf, 552, 2, 0},  // n103 allOf
-    {kAllOf, 554, 2, 0},  // n104 allOf
-    {kAllOf, 556, 2, 0},  // n105 allOf
-    {kType, 4, 0, 0},  // n106 type
+    {kAllOf, 552, 2, 0},  // n104 allOf
+    {kAllOf, 554, 2, 0},  // n105 allOf
+    {kAllOf, 556, 2, 0},  // n106 allOf
+    {kType, 4, 0, 0},  // n107 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1304, 1, 0},  // patternProperties
     {kRequired, 558, 1, 0},  // required: kpoints
     {kProperties, 1312, 7, 0},  // properties: kpoints, weights, labels, mesh, shift, time_reversal, units
-    {kType, 4, 0, 0},  // n107 type
+    {kType, 4, 0, 0},  // n108 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1326, 1, 0},  // patternProperties
     {kRequired, 559, 6, 0},  // required: spin, n_spin, n_mo, n_ao, complex, k_point_convention
     {kProperties, 1330, 10, 0},  // properties: spin, n_spin, n_mo, n_ao, orbital_kind, complex, k_point_con...
     {kAllOf, 580, 2, 0},  // allOf
-    {kProperties, 1366, 2, 0},  // n108 properties: kind, members
-    {kAllOf, 584, 2, 0},  // n109 allOf
-    {kAllOf, 586, 2, 0},  // n110 allOf
-    {kType, 4, 0, 0},  // n111 type
+    {kProperties, 1366, 2, 0},  // n109 properties: kind, members
+    {kAllOf, 584, 2, 0},  // n110 allOf
+    {kAllOf, 586, 2, 0},  // n111 allOf
+    {kType, 4, 0, 0},  // n112 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1378, 1, 0},  // patternProperties
     {kProperties, 1380, 7, 0},  // properties: start, end, n_points, label_start, label_end, k_start, k_end
-    {kType, 4, 0, 0},  // n112 type
+    {kType, 4, 0, 0},  // n113 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1394, 1, 0},  // patternProperties
     {kProperties, 1402, 15, 0},  // properties: kpoints, labels, segments, fermi, fermi_energy_ev, spinor, n...
-    {kProperties, 1436, 7, 0},  // n113 properties: kind, members, n_spin, smearing, smearing_type, fermi_energy...
-    {kProperties, 1464, 8, 0},  // n114 properties: kind, members, n_spin, smearing, smearing_type, fermi_energy...
-    {kAllOf, 600, 2, 0},  // n115 allOf
-    {kProperties, 1490, 2, 0},  // n116 properties: kind, members
-    {kProperties, 1502, 2, 0},  // n117 properties: kind, members
-    {kType, 4, 0, 0},  // n118 type
+    {kProperties, 1436, 7, 0},  // n114 properties: kind, members, n_spin, smearing, smearing_type, fermi_energy...
+    {kProperties, 1464, 8, 0},  // n115 properties: kind, members, n_spin, smearing, smearing_type, fermi_energy...
+    {kAllOf, 600, 2, 0},  // n116 allOf
+    {kProperties, 1490, 2, 0},  // n117 properties: kind, members
+    {kProperties, 1502, 2, 0},  // n118 properties: kind, members
+    {kType, 4, 0, 0},  // n119 type
     {kRequired, 610, 1, 0},  // required: label
     {kProperties, 1506, 5, 0},  // properties: atom, l, m, spin, label
-    {kType, 4, 0, 0},  // n119 type
+    {kType, 4, 0, 0},  // n120 type
     {kProperties, 1536, 9, 0},  // properties: method, n_spin, fermi_energy_ev, smearing, smearing_type, pa...
-    {kProperties, 1556, 2, 0},  // n120 properties: kind, members
-    {kType, 4, 0, 0},  // n121 type
-    {kProperties, 1564, 11, 0},  // properties: spacegroup_number, international, hall, point_group, hermann...
-    {kProperties, 1588, 2, 0},  // n122 properties: kind, members
-    {kType, 4, 0, 0},  // n123 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1592, 1, 0},  // patternProperties
-    {kRequired, 620, 1, 0},  // required: pairs
-    {kProperties, 1602, 1, 0},  // properties: pairs
-    {kProperties, 1606, 2, 0},  // n124 properties: kind, members
-    {kType, 4, 0, 0},  // n125 type
+    {kProperties, 1556, 2, 0},  // n121 properties: kind, members
+    {kType, 4, 0, 0},  // n122 type
+    {kProperties, 1574, 15, 0},  // properties: spacegroup_number, international, hall, point_group, hermann...
+    {kProperties, 1606, 2, 0},  // n123 properties: kind, members
+    {kType, 4, 0, 0},  // n124 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1610, 1, 0},  // patternProperties
-    {kRequired, 624, 2, 0},  // required: method, pairs
-    {kProperties, 1626, 2, 0},  // properties: method, pairs
-    {kProperties, 1632, 2, 0},  // n126 properties: kind, members
-    {kType, 4, 0, 0},  // n127 type
+    {kRequired, 625, 1, 0},  // required: pairs
+    {kProperties, 1622, 1, 0},  // properties: pairs
+    {kProperties, 1626, 2, 0},  // n125 properties: kind, members
+    {kType, 4, 0, 0},  // n126 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1636, 1, 0},  // patternProperties
-    {kRequired, 630, 1, 0},  // required: iterations
-    {kProperties, 1650, 2, 0},  // properties: iterations, converged
+    {kPatternProperties, 1630, 1, 0},  // patternProperties
+    {kRequired, 629, 2, 0},  // required: method, pairs
+    {kProperties, 1648, 2, 0},  // properties: method, pairs
+    {kProperties, 1654, 2, 0},  // n127 properties: kind, members
     {kType, 4, 0, 0},  // n128 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 633, 3, 0},  // required: path, format, sha256
-    {kProperties, 1654, 5, 0},  // properties: path, format, sha256, size, media_type
-    {kProperties, 1666, 2, 0},  // n129 properties: kind, members
-    {kType, 4, 0, 0},  // n130 type
+    {kPatternProperties, 1658, 1, 0},  // patternProperties
+    {kRequired, 635, 1, 0},  // required: iterations
+    {kProperties, 1672, 2, 0},  // properties: iterations, converged
+    {kType, 4, 0, 0},  // n129 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 637, 3, 0},  // required: path, format, sha256
-    {kProperties, 1670, 5, 0},  // properties: path, format, sha256, size, media_type
-    {kProperties, 1688, 11, 0},  // n131 properties: kind, program, program_version, command, exit_status, starte...
-    {kRequired, 647, 4, 0},  // required: id, kind, members, program
-    {kType, 4, 0, 0},  // n132 type
+    {kRequired, 638, 3, 0},  // required: path, format, sha256
+    {kProperties, 1676, 5, 0},  // properties: path, format, sha256, size, media_type
+    {kProperties, 1688, 2, 0},  // n130 properties: kind, members
+    {kType, 4, 0, 0},  // n131 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1720, 1, 0},  // patternProperties
-    {kProperties, 1724, 2, 0},  // n133 properties: kind, members
-    {kRequired, 652, 3, 0},  // required: id, kind, members
-    {kType, 4, 0, 0},  // n134 type
-    {kRequired, 655, 1, 0},  // required: job_type
-    {kProperties, 1728, 16, 0},  // properties: job_type, method, basis, functional, charge, multiplicity, k...
+    {kRequired, 642, 3, 0},  // required: path, format, sha256
+    {kProperties, 1692, 5, 0},  // properties: path, format, sha256, size, media_type
+    {kProperties, 1710, 11, 0},  // n132 properties: kind, program, program_version, command, exit_status, starte...
+    {kRequired, 652, 4, 0},  // required: id, kind, members, program
+    {kType, 4, 0, 0},  // n133 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 1742, 1, 0},  // patternProperties
+    {kProperties, 1746, 2, 0},  // n134 properties: kind, members
+    {kRequired, 657, 3, 0},  // required: id, kind, members
     {kType, 4, 0, 0},  // n135 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1760, 1, 0},  // patternProperties
-    {kRequired, 664, 1, 0},  // required: model
-    {kProperties, 1762, 3, 0},  // properties: model, solvent, epsilon
+    {kRequired, 660, 1, 0},  // required: job_type
+    {kProperties, 1750, 16, 0},  // properties: job_type, method, basis, functional, charge, multiplicity, k...
     {kType, 4, 0, 0},  // n136 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1768, 1, 0},  // patternProperties
-    {kProperties, 1770, 4, 0},  // properties: convergence, max_iterations, guess, damping
+    {kPatternProperties, 1782, 1, 0},  // patternProperties
+    {kRequired, 669, 1, 0},  // required: model
+    {kProperties, 1784, 3, 0},  // properties: model, solvent, epsilon
     {kType, 4, 0, 0},  // n137 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1778, 1, 0},  // patternProperties
-    {kProperties, 1780, 3, 0},  // properties: convergence, max_steps, coordinates
+    {kPatternProperties, 1790, 1, 0},  // patternProperties
+    {kProperties, 1792, 4, 0},  // properties: convergence, max_iterations, guess, damping
     {kType, 4, 0, 0},  // n138 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1786, 1, 0},  // patternProperties
-    {kProperties, 1788, 3, 0},  // properties: n_cores, memory_mb, walltime_s
-    {kProperties, 1824, 3, 0},  // n139 properties: kind, ao_metadata, members
-    {kProperties, 1836, 2, 0},  // n140 properties: kind, members
-    {kType, 4, 0, 0},  // n141 type
+    {kPatternProperties, 1800, 1, 0},  // patternProperties
+    {kProperties, 1802, 3, 0},  // properties: convergence, max_steps, coordinates
+    {kType, 4, 0, 0},  // n139 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1840, 1, 0},  // patternProperties
-    {kRequired, 691, 1, 0},  // required: model
-    {kProperties, 1842, 11, 0},  // properties: model, V0, E0, B0, B0_prime, residual_rms, n_points, pressur...
-    {kProperties, 1868, 2, 0},  // n142 properties: kind, members
-    {kType, 4, 0, 0},  // n143 type
+    {kPatternProperties, 1808, 1, 0},  // patternProperties
+    {kProperties, 1810, 3, 0},  // properties: n_cores, memory_mb, walltime_s
+    {kProperties, 1846, 3, 0},  // n140 properties: kind, ao_metadata, members
+    {kProperties, 1858, 2, 0},  // n141 properties: kind, members
+    {kType, 4, 0, 0},  // n142 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1872, 1, 0},  // patternProperties
-    {kProperties, 1882, 13, 0},  // properties: shape, nk1, nk2, nk3, shift, symmetry_expanded, kpoints, fer...
-    {kProperties, 1918, 2, 0},  // n144 properties: kind, members
-    {kType, 4, 0, 0},  // n145 type
+    {kPatternProperties, 1862, 1, 0},  // patternProperties
+    {kRequired, 696, 1, 0},  // required: model
+    {kProperties, 1864, 11, 0},  // properties: model, V0, E0, B0, B0_prime, residual_rms, n_points, pressur...
+    {kProperties, 1890, 2, 0},  // n143 properties: kind, members
+    {kType, 4, 0, 0},  // n144 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1922, 1, 0},  // patternProperties
-    {kProperties, 1926, 10, 0},  // properties: kpoints, labels, segments, n_kpoints, n_atoms, n_modes, has_...
-    {kProperties, 1958, 2, 0},  // n146 properties: kind, members
-    {kType, 4, 0, 0},  // n147 type
-    {kProperties, 1964, 6, 0},  // properties: n_atoms, n_modes, smearing, smearing_type, channels, units
-    {kProperties, 1978, 2, 0},  // n148 properties: kind, members
-    {kType, 4, 0, 0},  // n149 type
-    {kRequired, 720, 1, 0},  // required: points
-    {kProperties, 2002, 3, 0},  // properties: points, bond_paths, units
-    {kProperties, 2014, 2, 0},  // n150 properties: kind, members
-    {kRequired, 728, 3, 0},  // required: id, kind, members
-    {kAllOf, 733, 2, 0},  // n151 allOf
-    {kAllOf, 737, 2, 0},  // n152 allOf
-    {kType, 4, 0, 0},  // n153 type
+    {kPatternProperties, 1894, 1, 0},  // patternProperties
+    {kProperties, 1904, 13, 0},  // properties: shape, nk1, nk2, nk3, shift, symmetry_expanded, kpoints, fer...
+    {kProperties, 1940, 2, 0},  // n145 properties: kind, members
+    {kType, 4, 0, 0},  // n146 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2026, 1, 0},  // patternProperties
-    {kProperties, 2028, 4, 0},  // properties: structure_ref, method, convention, units
+    {kPatternProperties, 1944, 1, 0},  // patternProperties
+    {kProperties, 1948, 10, 0},  // properties: kpoints, labels, segments, n_kpoints, n_atoms, n_modes, has_...
+    {kProperties, 1980, 2, 0},  // n147 properties: kind, members
+    {kType, 4, 0, 0},  // n148 type
+    {kProperties, 1986, 6, 0},  // properties: n_atoms, n_modes, smearing, smearing_type, channels, units
+    {kProperties, 2000, 2, 0},  // n149 properties: kind, members
+    {kType, 4, 0, 0},  // n150 type
+    {kRequired, 725, 1, 0},  // required: points
+    {kProperties, 2024, 3, 0},  // properties: points, bond_paths, units
+    {kProperties, 2036, 2, 0},  // n151 properties: kind, members
+    {kRequired, 733, 3, 0},  // required: id, kind, members
+    {kAllOf, 738, 2, 0},  // n152 allOf
+    {kAllOf, 742, 2, 0},  // n153 allOf
     {kType, 4, 0, 0},  // n154 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2036, 1, 0},  // patternProperties
-    {kProperties, 2038, 2, 0},  // properties: energy, length
-    {kProperties, 2046, 2, 0},  // n155 properties: kind, members
-    {kRequired, 741, 3, 0},  // required: id, kind, members
-    {kAllOf, 744, 2, 0},  // n156 allOf
-    {kType, 4, 0, 0},  // n157 type
+    {kPatternProperties, 2048, 1, 0},  // patternProperties
+    {kProperties, 2050, 4, 0},  // properties: structure_ref, method, convention, units
+    {kType, 4, 0, 0},  // n155 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2054, 1, 0},  // patternProperties
-    {kProperties, 2056, 5, 0},  // properties: structure_ref, mass_weighted, projected, atom_masses_amu, un...
-    {kIf, 1646, 1648, -1},  // if
-    {kProperties, 2070, 3, 0},  // n158 properties: kind, wavefunction_ref, members
-    {kRequired, 749, 3, 0},  // required: id, kind, members
-    {kProperties, 2078, 2, 0},  // n159 properties: kind, members
-    {kRequired, 753, 3, 0},  // required: id, kind, members
-    {kType, 4, 0, 0},  // n160 type
+    {kPatternProperties, 2058, 1, 0},  // patternProperties
+    {kProperties, 2060, 2, 0},  // properties: energy, length
+    {kProperties, 2068, 2, 0},  // n156 properties: kind, members
+    {kRequired, 746, 3, 0},  // required: id, kind, members
+    {kAllOf, 749, 2, 0},  // n157 allOf
+    {kType, 4, 0, 0},  // n158 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2082, 1, 0},  // patternProperties
-    {kRequired, 756, 1, 0},  // required: states
-    {kProperties, 2084, 2, 0},  // properties: states, meta
+    {kPatternProperties, 2076, 1, 0},  // patternProperties
+    {kProperties, 2078, 5, 0},  // properties: structure_ref, mass_weighted, projected, atom_masses_amu, un...
+    {kIf, 1661, 1663, -1},  // if
+    {kProperties, 2092, 3, 0},  // n159 properties: kind, wavefunction_ref, members
+    {kRequired, 754, 3, 0},  // required: id, kind, members
+    {kProperties, 2100, 2, 0},  // n160 properties: kind, members
+    {kRequired, 758, 3, 0},  // required: id, kind, members
     {kType, 4, 0, 0},  // n161 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2088, 1, 0},  // patternProperties
-    {kRequired, 757, 2, 0},  // required: index, excitation_energy
-    {kProperties, 2090, 12, 0},  // properties: index, excitation_energy, total_energy, multiplicity, symmet...
+    {kPatternProperties, 2104, 1, 0},  // patternProperties
+    {kRequired, 761, 1, 0},  // required: states
+    {kProperties, 2106, 2, 0},  // properties: states, meta
     {kType, 4, 0, 0},  // n162 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2114, 1, 0},  // patternProperties
-    {kRequired, 759, 3, 0},  // required: from_mo, to_mo, weight
-    {kProperties, 2116, 4, 0},  // properties: from_mo, to_mo, spin, weight
+    {kPatternProperties, 2110, 1, 0},  // patternProperties
+    {kRequired, 762, 2, 0},  // required: index, excitation_energy
+    {kProperties, 2112, 12, 0},  // properties: index, excitation_energy, total_energy, multiplicity, symmet...
     {kType, 4, 0, 0},  // n163 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2124, 1, 0},  // patternProperties
-    {kProperties, 2134, 6, 0},  // properties: method, reference_state, n_states, tda, spin_flip, units
-    {kProperties, 2148, 2, 0},  // n164 properties: kind, members
-    {kRequired, 765, 3, 0},  // required: id, kind, members
-    {kProperties, 2154, 2, 0},  // n165 properties: kind, members
-    {kRequired, 769, 3, 0},  // required: id, kind, members
-    {kType, 8, 0, 0},  // n166 type
-    {kMinItems, 3, 0, 0},  // minItems
-    {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1697, 0, 0},  // items
+    {kPatternProperties, 2136, 1, 0},  // patternProperties
+    {kRequired, 764, 3, 0},  // required: from_mo, to_mo, weight
+    {kProperties, 2138, 4, 0},  // properties: from_mo, to_mo, spin, weight
+    {kType, 4, 0, 0},  // n164 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 2146, 1, 0},  // patternProperties
+    {kProperties, 2156, 6, 0},  // properties: method, reference_state, n_states, tda, spin_flip, units
+    {kProperties, 2170, 2, 0},  // n165 properties: kind, members
+    {kRequired, 770, 3, 0},  // required: id, kind, members
+    {kProperties, 2176, 2, 0},  // n166 properties: kind, members
+    {kRequired, 774, 3, 0},  // required: id, kind, members
     {kType, 8, 0, 0},  // n167 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1698, 0, 0},  // items
+    {kItems, 1712, 0, 0},  // items
     {kType, 8, 0, 0},  // n168 type
+    {kMinItems, 3, 0, 0},  // minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
+    {kItems, 1713, 0, 0},  // items
+    {kType, 8, 0, 0},  // n169 type
     {kMinItems, 6, 0, 0},  // minItems
     {kMaxItems, 6, 0, 0},  // maxItems
-    {kItems, 1700, 0, 0},  // items
-    {kType, 8, 0, 0},  // n169 type
+    {kItems, 1715, 0, 0},  // items
+    {kType, 8, 0, 0},  // n170 type
     {kMinItems, 27, 0, 0},  // minItems
     {kMaxItems, 27, 0, 0},  // maxItems
-    {kItems, 1702, 0, 0},  // items
-    {kType, 4, 0, 0},  // n170 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2158, 1, 0},  // patternProperties
-    {kAnyOf, 777, 5, 0},  // anyOf
-    {kProperties, 2214, 7, 0},  // properties: origin, dipole, quadrupole, octupole, polarizability, hyperp...
+    {kItems, 1717, 0, 0},  // items
     {kType, 4, 0, 0},  // n171 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2228, 1, 0},  // patternProperties
-    {kRequired, 796, 1, 0},  // required: stiffness
-    {kProperties, 2244, 8, 0},  // properties: stiffness, compliance, bulk_modulus_gpa, shear_modulus_gpa, ...
+    {kPatternProperties, 2180, 1, 0},  // patternProperties
+    {kAnyOf, 782, 5, 0},  // anyOf
+    {kProperties, 2236, 7, 0},  // properties: origin, dipole, quadrupole, octupole, polarizability, hyperp...
     {kType, 4, 0, 0},  // n172 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2260, 1, 0},  // patternProperties
-    {kRequired, 800, 1, 0},  // required: electronic
-    {kProperties, 2274, 6, 0},  // properties: electronic, ionic, static, born_charges, piezoelectric, unit...
-    {kProperties, 2290, 4, 0},  // n173 properties: kind, excited_states_ref, state_index, members
-    {kDependentRequired, 21, 1, 0},  // dependentRequired
-    {kProperties, 2302, 2, 0},  // n174 properties: kind, members
-    {kRequired, 805, 3, 0},  // required: id, kind, members
-    {kType, 4, 0, 0},  // n175 type
+    {kPatternProperties, 2250, 1, 0},  // patternProperties
+    {kRequired, 801, 1, 0},  // required: stiffness
+    {kProperties, 2266, 8, 0},  // properties: stiffness, compliance, bulk_modulus_gpa, shear_modulus_gpa, ...
+    {kType, 4, 0, 0},  // n173 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 808, 4, 0},  // required: path, format, sha256, media_type
-    {kProperties, 2306, 5, 0},  // properties: path, format, sha256, size, media_type
+    {kPatternProperties, 2282, 1, 0},  // patternProperties
+    {kRequired, 805, 1, 0},  // required: electronic
+    {kProperties, 2296, 6, 0},  // properties: electronic, ionic, static, born_charges, piezoelectric, unit...
+    {kProperties, 2312, 4, 0},  // n174 properties: kind, excited_states_ref, state_index, members
+    {kDependentRequired, 21, 1, 0},  // dependentRequired
+    {kProperties, 2324, 2, 0},  // n175 properties: kind, members
+    {kRequired, 810, 3, 0},  // required: id, kind, members
     {kType, 4, 0, 0},  // n176 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 814, 4, 0},  // required: path, format, sha256, media_type
-    {kProperties, 2316, 5, 0},  // properties: path, format, sha256, size, media_type
-    {kProperties, 2328, 3, 0},  // n177 properties: kind, wavefunction_ref, members
-    {kRequired, 822, 3, 0},  // required: id, kind, members
-    {kType, 4, 0, 0},  // n178 type
+    {kRequired, 813, 4, 0},  // required: path, format, sha256, media_type
+    {kProperties, 2328, 5, 0},  // properties: path, format, sha256, size, media_type
+    {kType, 4, 0, 0},  // n177 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2334, 1, 0},  // patternProperties
-    {kRequired, 825, 3, 0},  // required: scheme, fragments, terms
-    {kProperties, 2340, 10, 0},  // properties: scheme, variant, method, fragments, energies, terms, sum_rul...
+    {kRequired, 819, 4, 0},  // required: path, format, sha256, media_type
+    {kProperties, 2338, 5, 0},  // properties: path, format, sha256, size, media_type
+    {kProperties, 2350, 3, 0},  // n178 properties: kind, wavefunction_ref, members
+    {kRequired, 827, 3, 0},  // required: id, kind, members
     {kType, 4, 0, 0},  // n179 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2360, 1, 0},  // patternProperties
-    {kRequired, 838, 0, 0},  // required: 
-    {kProperties, 2362, 4, 0},  // properties: method, functional, basis, dispersion
+    {kPatternProperties, 2356, 1, 0},  // patternProperties
+    {kRequired, 830, 3, 0},  // required: scheme, fragments, terms
+    {kProperties, 2362, 10, 0},  // properties: scheme, variant, method, fragments, energies, terms, sum_rul...
     {kType, 4, 0, 0},  // n180 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2370, 1, 0},  // patternProperties
-    {kRequired, 838, 2, 0},  // required: label, atoms
-    {kProperties, 2372, 9, 0},  // properties: label, atoms, parent, charge, multiplicity, spin_flip, basis...
+    {kPatternProperties, 2382, 1, 0},  // patternProperties
+    {kRequired, 843, 0, 0},  // required: 
+    {kProperties, 2384, 4, 0},  // properties: method, functional, basis, dispersion
     {kType, 4, 0, 0},  // n181 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2390, 1, 0},  // patternProperties
-    {kRequired, 844, 2, 0},  // required: name, energy
-    {kProperties, 2392, 8, 0},  // properties: name, energy, fragments, directed, spin, parent, order, labe...
+    {kPatternProperties, 2392, 1, 0},  // patternProperties
+    {kRequired, 843, 2, 0},  // required: label, atoms
+    {kProperties, 2394, 9, 0},  // properties: label, atoms, parent, charge, multiplicity, spin_flip, basis...
     {kType, 4, 0, 0},  // n182 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2408, 1, 0},  // patternProperties
-    {kRequired, 872, 2, 0},  // required: total, parts
-    {kProperties, 2412, 3, 0},  // properties: total, parts, tolerance
+    {kPatternProperties, 2412, 1, 0},  // patternProperties
+    {kRequired, 849, 2, 0},  // required: name, energy
+    {kProperties, 2414, 8, 0},  // properties: name, energy, fragments, directed, spin, parent, order, labe...
     {kType, 4, 0, 0},  // n183 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2418, 1, 0},  // patternProperties
-    {kRequired, 876, 2, 0},  // required: type, pairs
-    {kProperties, 2420, 5, 0},  // properties: type, eigenvalue_convention, threshold, total, pairs
+    {kPatternProperties, 2430, 1, 0},  // patternProperties
+    {kRequired, 877, 2, 0},  // required: total, parts
+    {kProperties, 2434, 3, 0},  // properties: total, parts, tolerance
     {kType, 4, 0, 0},  // n184 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2430, 1, 0},  // patternProperties
-    {kRequired, 884, 3, 0},  // required: index, eigenvalue, energy
-    {kProperties, 2432, 10, 0},  // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
+    {kPatternProperties, 2440, 1, 0},  // patternProperties
+    {kRequired, 881, 2, 0},  // required: type, pairs
+    {kProperties, 2442, 5, 0},  // properties: type, eigenvalue_convention, threshold, total, pairs
     {kType, 4, 0, 0},  // n185 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 2452, 1, 0},  // patternProperties
-    {kRequired, 890, 1, 0},  // required: kpoints
-    {kProperties, 2454, 3, 0},  // properties: kpoints, mesh, orbital_pairs_gamma_only
-    {kProperties, 2460, 2, 0},  // n186 properties: kind, members
-    {kType, 4, 0, 0},  // n187 type
+    {kRequired, 889, 3, 0},  // required: index, eigenvalue, energy
+    {kProperties, 2454, 10, 0},  // properties: index, spin, eigenvalue, energy, donor, acceptor, kpoint_eig...
+    {kType, 4, 0, 0},  // n186 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2464, 1, 0},  // patternProperties
-    {kProperties, 2466, 11, 0},  // properties: title, description, created_utc, modified_utc, uuid, authors...
+    {kPatternProperties, 2474, 1, 0},  // patternProperties
+    {kRequired, 895, 1, 0},  // required: kpoints
+    {kProperties, 2476, 3, 0},  // properties: kpoints, mesh, orbital_pairs_gamma_only
+    {kProperties, 2482, 2, 0},  // n187 properties: kind, members
     {kType, 4, 0, 0},  // n188 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2488, 1, 0},  // patternProperties
-    {kRequired, 894, 1, 0},  // required: name
-    {kProperties, 2490, 4, 0},  // properties: name, orcid, affiliation, email
+    {kPatternProperties, 2486, 1, 0},  // patternProperties
+    {kProperties, 2488, 11, 0},  // properties: title, description, created_utc, modified_utc, uuid, authors...
     {kType, 4, 0, 0},  // n189 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2498, 1, 0},  // patternProperties
-    {kRequired, 895, 1, 0},  // required: name
-    {kProperties, 2500, 3, 0},  // properties: name, version, url
+    {kPatternProperties, 2510, 1, 0},  // patternProperties
+    {kRequired, 899, 1, 0},  // required: name
+    {kProperties, 2512, 4, 0},  // properties: name, orcid, affiliation, email
     {kType, 4, 0, 0},  // n190 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kProperties, 2506, 6, 0},  // properties: zpve_eh, enthalpy_eh, entropy_cal_mol_k, gibbs_free_energy_e...
+    {kPatternProperties, 2520, 1, 0},  // patternProperties
+    {kRequired, 900, 1, 0},  // required: name
+    {kProperties, 2522, 3, 0},  // properties: name, version, url
     {kType, 4, 0, 0},  // n191 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kProperties, 2518, 3, 0},  // properties: total_debye, vector_debye, origin
+    {kProperties, 2528, 6, 0},  // properties: zpve_eh, enthalpy_eh, entropy_cal_mol_k, gibbs_free_energy_e...
     {kType, 4, 0, 0},  // n192 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kProperties, 2528, 2, 0},  // properties: frozen_atoms, distance_constraints
+    {kProperties, 2540, 3, 0},  // properties: total_debye, vector_debye, origin
     {kType, 4, 0, 0},  // n193 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2532, 1, 0},  // patternProperties
-    {kRequired, 900, 1, 0},  // required: total
-    {kProperties, 2534, 5, 0},  // properties: total, method, components, by_method, units_note
+    {kProperties, 2550, 2, 0},  // properties: frozen_atoms, distance_constraints
     {kType, 4, 0, 0},  // n194 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2544, 1, 0},  // patternProperties
-    {kProperties, 2546, 12, 0},  // properties: nuclear_repulsion, electronic, one_electron, two_electron, e...
+    {kPatternProperties, 2554, 1, 0},  // patternProperties
+    {kRequired, 905, 1, 0},  // required: total
+    {kProperties, 2556, 5, 0},  // properties: total, method, components, by_method, units_note
     {kType, 4, 0, 0},  // n195 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2570, 1, 0},  // patternProperties
-    {kRequired, 901, 2, 0},  // required: method, total
-    {kProperties, 2572, 3, 0},  // properties: method, total, components
+    {kPatternProperties, 2566, 1, 0},  // patternProperties
+    {kProperties, 2568, 12, 0},  // properties: nuclear_repulsion, electronic, one_electron, two_electron, e...
     {kType, 4, 0, 0},  // n196 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2584, 1, 0},  // patternProperties
-    {kType, 64, 0, 0},  // n197 type
+    {kPatternProperties, 2592, 1, 0},  // patternProperties
+    {kRequired, 906, 2, 0},  // required: method, total
+    {kProperties, 2594, 3, 0},  // properties: method, total, components
+    {kType, 4, 0, 0},  // n197 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 2606, 1, 0},  // patternProperties
+    {kType, 64, 0, 0},  // n198 type
     {kConst, 0, 0, 0},  // const 1
-    {kType, 32, 0, 0},  // n198 type
-    {kConst, 1, 0, 0},  // n199 const "little"
-    {kType, 4, 0, 0},  // n200 type
+    {kType, 32, 0, 0},  // n199 type
+    {kConst, 1, 0, 0},  // n200 const "little"
+    {kType, 4, 0, 0},  // n201 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 3, 3, 0},  // required: program, version, calculation
     {kProperties, 0, 3, 0},  // properties: program, version, calculation
-    {kType, 32, 0, 0},  // n201 type
-    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n202 type
     {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n203 type
-    {kType, 4, 0, 0},  // n204 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n204 type
+    {kType, 4, 0, 0},  // n205 type
     {kProperties, 6, 21, 0},  // properties: method, functional, basis, charge, multiplicity, n_electrons...
-    {kType, 32, 0, 0},  // n205 type
     {kType, 32, 0, 0},  // n206 type
     {kType, 32, 0, 0},  // n207 type
-    {kType, 64, 0, 0},  // n208 type
+    {kType, 32, 0, 0},  // n208 type
     {kType, 64, 0, 0},  // n209 type
     {kType, 64, 0, 0},  // n210 type
+    {kType, 64, 0, 0},  // n211 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n211 type
-    {kType, 64, 0, 0},  // n212 type
+    {kType, 2, 0, 0},  // n212 type
+    {kType, 64, 0, 0},  // n213 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 1, 0, 0},  // n213 $ref #/$defs/ValueWithUnits
     {kRef, 1, 0, 0},  // n214 $ref #/$defs/ValueWithUnits
-    {kType, 16, 0, 0},  // n215 type
+    {kRef, 1, 0, 0},  // n215 $ref #/$defs/ValueWithUnits
+    {kType, 16, 0, 0},  // n216 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n216 type
-    {kType, 64, 0, 0},  // n217 type
+    {kType, 32, 0, 0},  // n217 type
+    {kType, 64, 0, 0},  // n218 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 1, 0, 0},  // maximum
-    {kEnum, 6, 4, 0},  // n218 enum
-    {kType, 8, 0, 0},  // n219 type
-    {kItems, 220, 0, 0},  // items
-    {kRef, 189, 0, 0},  // n220 $ref #/$defs/ProvenanceSoftware
-    {kType, 32, 0, 0},  // n221 type
+    {kEnum, 6, 4, 0},  // n219 enum
+    {kType, 8, 0, 0},  // n220 type
+    {kItems, 221, 0, 0},  // items
+    {kRef, 190, 0, 0},  // n221 $ref #/$defs/ProvenanceSoftware
+    {kType, 32, 0, 0},  // n222 type
     {kPattern, 0, 0, 0},  // pattern ^[0-9a-fA-F]{7,64}$
-    {kType, 64, 0, 0},  // n222 type
-    {kMinimum, 2, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n223 type
     {kMinimum, 2, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n224 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n225 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n225 type
-    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
     {kType, 32, 0, 0},  // n226 type
     {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
-    {kRef, 187, 0, 0},  // n227 $ref #/$defs/Metadata
-    {kType, 4, 0, 0},  // n228 type
-    {kAdditionalProperties, 229, 0, 0},  // additionalProperties
+    {kType, 32, 0, 0},  // n227 type
+    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
+    {kRef, 188, 0, 0},  // n228 $ref #/$defs/Metadata
+    {kType, 4, 0, 0},  // n229 type
+    {kAdditionalProperties, 230, 0, 0},  // additionalProperties
     {kProperties, 48, 4, 0},  // properties: auto_open, bookmarks, camera, crossfade
-    {kRef, 4, 0, 0},  // n229 $ref #/$defs/ViewerHint
-    {kType, 8, 0, 0},  // n230 type
-    {kItems, 231, 0, 0},  // items
-    {kType, 32, 0, 0},  // n231 type
-    {kType, 8, 0, 0},  // n232 type
-    {kItems, 233, 0, 0},  // items
-    {kRef, 7, 0, 0},  // n233 $ref #/$defs/Bookmark
-    {kRef, 190, 0, 0},  // n236 $ref #/$defs/Thermochemistry
-    {kRef, 191, 0, 0},  // n237 $ref #/$defs/DipoleMoment
-    {kRef, 192, 0, 0},  // n238 $ref #/$defs/Constraints
-    {kRef, 193, 0, 0},  // n239 $ref #/$defs/Energies
-    {kRef, 196, 0, 0},  // n240 $ref #/$defs/Extensions
-    {kType, 8, 0, 0},  // n241 type
-    {kItems, 242, 0, 0},  // items
-    {kRef, 15, 0, 0},  // n242 $ref #/$defs/Section
-    {kType, 16, 0, 0},  // n243 type
-    {kOneOf, 12, 2, 0},  // n244 oneOf
-    {kRef, 2, 0, 0},  // n245 $ref #/$defs/UnitName
-    {kRef, 3, 0, 0},  // n246 $ref #/$defs/LegacyUnitName
-    {kType, 16, 0, 0},  // n247 type
-    {kType, 32, 0, 0},  // n248 type
-    {kType, 16, 0, 0},  // n249 type
+    {kRef, 4, 0, 0},  // n230 $ref #/$defs/ViewerHint
+    {kType, 8, 0, 0},  // n231 type
+    {kItems, 232, 0, 0},  // items
+    {kType, 32, 0, 0},  // n232 type
+    {kType, 8, 0, 0},  // n233 type
+    {kItems, 234, 0, 0},  // items
+    {kRef, 8, 0, 0},  // n234 $ref #/$defs/Bookmark
+    {kRef, 191, 0, 0},  // n237 $ref #/$defs/Thermochemistry
+    {kRef, 192, 0, 0},  // n238 $ref #/$defs/DipoleMoment
+    {kRef, 193, 0, 0},  // n239 $ref #/$defs/Constraints
+    {kRef, 194, 0, 0},  // n240 $ref #/$defs/Energies
+    {kRef, 197, 0, 0},  // n241 $ref #/$defs/Extensions
+    {kType, 8, 0, 0},  // n242 type
+    {kItems, 243, 0, 0},  // items
+    {kRef, 16, 0, 0},  // n243 $ref #/$defs/Section
+    {kType, 16, 0, 0},  // n244 type
+    {kOneOf, 12, 2, 0},  // n245 oneOf
+    {kRef, 2, 0, 0},  // n246 $ref #/$defs/UnitName
+    {kRef, 3, 0, 0},  // n247 $ref #/$defs/LegacyUnitName
+    {kType, 16, 0, 0},  // n248 type
+    {kType, 32, 0, 0},  // n249 type
+    {kType, 16, 0, 0},  // n250 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 2, 0, 0},  // maximum
-    {kType, 8, 0, 0},  // n250 type
-    {kItems, 251, 0, 0},  // items
+    {kType, 8, 0, 0},  // n251 type
+    {kItems, 252, 0, 0},  // items
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n251 type
+    {kType, 64, 0, 0},  // n252 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n252 type
-    {kRef, 5, 0, 0},  // n253 $ref #/$defs/Vec3
-    {kRef, 5, 0, 0},  // n254 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n253 type
+    {kType, 64, 0, 0},  // n254 type
     {kRef, 5, 0, 0},  // n255 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n256 type
+    {kRef, 5, 0, 0},  // n256 $ref #/$defs/Vec3
+    {kRef, 5, 0, 0},  // n257 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n258 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kExclusiveMaximum, 3, 0, 0},  // exclusiveMaximum
-    {kType, 16, 0, 0},  // n257 type
+    {kType, 16, 0, 0},  // n259 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kRequired, 65, 1, 0},  // n258 required: view_angle
-    {kNot, 259, 0, 0},  // not
-    {kRequired, 66, 1, 0},  // n259 required: parallel_scale
-    {kRequired, 67, 1, 0},  // n260 required: parallel_scale
+    {kRequired, 65, 1, 0},  // n260 required: view_angle
     {kNot, 261, 0, 0},  // not
-    {kRequired, 68, 1, 0},  // n261 required: view_angle
-    {kType, 32, 0, 0},  // n262 type
+    {kRequired, 66, 1, 0},  // n261 required: parallel_scale
+    {kRequired, 67, 1, 0},  // n262 required: parallel_scale
+    {kNot, 263, 0, 0},  // not
+    {kRequired, 68, 1, 0},  // n263 required: view_angle
+    {kType, 32, 0, 0},  // n264 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n263 type
-    {kRef, 6, 0, 0},  // n264 $ref #/$defs/Camera
-    {kPattern, 4, 0, 0},  // n265 pattern (^|/)\.\.(/|$)
-    {kRef, 9, 0, 0},  // n266 $ref #/$defs/ZipPath
-    {kConst, 64, 0, 0},  // n267 const "binary"
-    {kRef, 10, 0, 0},  // n268 $ref #/$defs/NumpyDtype
-    {kType, 8, 0, 0},  // n269 type
-    {kItems, 270, 0, 0},  // items
+    {kType, 32, 0, 0},  // n265 type
+    {kRef, 7, 0, 0},  // n266 $ref #/$defs/Camera
+    {kPattern, 4, 0, 0},  // n267 pattern (^|/)\.\.(/|$)
+    {kRef, 10, 0, 0},  // n268 $ref #/$defs/ZipPath
+    {kConst, 64, 0, 0},  // n269 const "binary"
+    {kRef, 11, 0, 0},  // n270 $ref #/$defs/NumpyDtype
+    {kType, 8, 0, 0},  // n271 type
+    {kItems, 272, 0, 0},  // items
     {kMinItems, 1, 0, 0},  // minItems
-    {kType, 64, 0, 0},  // n270 type
+    {kType, 64, 0, 0},  // n272 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 8, 0, 0},  // n271 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n272 $ref #/$defs/MemberSize
-    {kRef, 12, 0, 0},  // n273 $ref #/$defs/MediaType
-    {kRef, 9, 0, 0},  // n274 $ref #/$defs/ZipPath
-    {kConst, 65, 0, 0},  // n275 const "json"
-    {kRef, 8, 0, 0},  // n276 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n277 $ref #/$defs/MemberSize
-    {kRef, 12, 0, 0},  // n278 $ref #/$defs/MediaType
-    {kType, 32, 0, 0},  // n279 type
+    {kRef, 9, 0, 0},  // n273 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n274 $ref #/$defs/MemberSize
+    {kRef, 13, 0, 0},  // n275 $ref #/$defs/MediaType
+    {kRef, 10, 0, 0},  // n276 $ref #/$defs/ZipPath
+    {kConst, 65, 0, 0},  // n277 const "json"
+    {kRef, 9, 0, 0},  // n278 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n279 $ref #/$defs/MemberSize
+    {kRef, 13, 0, 0},  // n280 $ref #/$defs/MediaType
+    {kType, 32, 0, 0},  // n281 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 6, 0, 0},  // pattern ^[A-Za-z0-9_.-]+$
-    {kType, 32, 0, 0},  // n280 type
-    {kType, 32, 0, 0},  // n281 type
     {kType, 32, 0, 0},  // n282 type
-    {kType, 2, 0, 0},  // n283 type
+    {kType, 32, 0, 0},  // n283 type
     {kType, 32, 0, 0},  // n284 type
-    {kType, 32, 0, 0},  // n285 type
+    {kType, 2, 0, 0},  // n285 type
     {kType, 32, 0, 0},  // n286 type
-    {kType, 4, 0, 0},  // n287 type
-    {kRef, 25, 0, 0},  // n288 $ref #/$defs/SectionStructure
-    {kRef, 26, 0, 0},  // n289 $ref #/$defs/SectionVolumeDensity
-    {kRef, 28, 0, 0},  // n290 $ref #/$defs/SectionVolumeOrbital
-    {kRef, 29, 0, 0},  // n291 $ref #/$defs/SectionVolumeSpin
-    {kRef, 30, 0, 0},  // n292 $ref #/$defs/SectionVolumeELF
-    {kRef, 32, 0, 0},  // n293 $ref #/$defs/SectionVolumeDifference
-    {kRef, 33, 0, 0},  // n294 $ref #/$defs/SectionVolumePotential
-    {kRef, 34, 0, 0},  // n295 $ref #/$defs/SectionVolumeRDG
-    {kRef, 31, 0, 0},  // n296 $ref #/$defs/SectionVolumeGeneric
-    {kRef, 35, 0, 0},  // n297 $ref #/$defs/SectionVolumeLaplacian
-    {kRef, 36, 0, 0},  // n298 $ref #/$defs/SectionVolumeVector
-    {kRef, 37, 0, 0},  // n299 $ref #/$defs/SectionVolumeComplex
-    {kRef, 38, 0, 0},  // n300 $ref #/$defs/SectionVolumeSeries
-    {kRef, 94, 0, 0},  // n301 $ref #/$defs/SectionWavefunctionGTO
-    {kRef, 102, 0, 0},  // n302 $ref #/$defs/SectionWavefunctionBloch
-    {kRef, 44, 0, 0},  // n303 $ref #/$defs/SectionAtomProperties
-    {kRef, 49, 0, 0},  // n304 $ref #/$defs/SectionTrajectory
-    {kRef, 53, 0, 0},  // n305 $ref #/$defs/SectionReactionPath
-    {kRef, 60, 0, 0},  // n306 $ref #/$defs/SectionReactionWaypoints
-    {kRef, 62, 0, 0},  // n307 $ref #/$defs/SectionReactionScheme
-    {kRef, 57, 0, 0},  // n308 $ref #/$defs/SectionScanSurface
-    {kRef, 72, 0, 0},  // n309 $ref #/$defs/SectionVibrations
-    {kRef, 74, 0, 0},  // n310 $ref #/$defs/SectionSpectraIR
-    {kRef, 78, 0, 0},  // n311 $ref #/$defs/SectionSpectraRaman
-    {kRef, 80, 0, 0},  // n312 $ref #/$defs/SectionSpectraUVVis
-    {kRef, 81, 0, 0},  // n313 $ref #/$defs/SectionSpectraECD
-    {kRef, 82, 0, 0},  // n314 $ref #/$defs/SectionSpectraVCD
-    {kRef, 83, 0, 0},  // n315 $ref #/$defs/SectionSpectraNMR
-    {kRef, 85, 0, 0},  // n316 $ref #/$defs/SectionSpectraEPR
-    {kRef, 87, 0, 0},  // n317 $ref #/$defs/SectionSpectraXAS
-    {kRef, 88, 0, 0},  // n318 $ref #/$defs/SectionSpectraXES
-    {kRef, 89, 0, 0},  // n319 $ref #/$defs/SectionSpectraMossbauer
-    {kRef, 92, 0, 0},  // n320 $ref #/$defs/SectionSpectraGeneric
-    {kRef, 108, 0, 0},  // n321 $ref #/$defs/SectionBands
-    {kRef, 113, 0, 0},  // n322 $ref #/$defs/SectionDOSTotal
-    {kRef, 114, 0, 0},  // n323 $ref #/$defs/SectionDOSProjected
-    {kRef, 116, 0, 0},  // n324 $ref #/$defs/SectionDOSCOOP
-    {kRef, 117, 0, 0},  // n325 $ref #/$defs/SectionDOSCOHP
-    {kRef, 120, 0, 0},  // n326 $ref #/$defs/SectionStructureSymmetry
-    {kRef, 122, 0, 0},  // n327 $ref #/$defs/SectionBonds
-    {kRef, 124, 0, 0},  // n328 $ref #/$defs/SectionBondOrders
-    {kRef, 126, 0, 0},  // n329 $ref #/$defs/SectionSCFHistory
-    {kRef, 129, 0, 0},  // n330 $ref #/$defs/SectionCitations
-    {kRef, 131, 0, 0},  // n331 $ref #/$defs/SectionRunRecord
-    {kRef, 133, 0, 0},  // n332 $ref #/$defs/SectionJobSpec
-    {kRef, 139, 0, 0},  // n333 $ref #/$defs/SectionBasisAO
-    {kRef, 140, 0, 0},  // n334 $ref #/$defs/SectionEquationOfState
-    {kRef, 142, 0, 0},  // n335 $ref #/$defs/SectionFermiSurface
-    {kRef, 144, 0, 0},  // n336 $ref #/$defs/SectionPhononBands
-    {kRef, 146, 0, 0},  // n337 $ref #/$defs/SectionPhononDOS
-    {kRef, 148, 0, 0},  // n338 $ref #/$defs/SectionTopologyQTAIM
-    {kRef, 150, 0, 0},  // n339 $ref #/$defs/SectionForces
-    {kRef, 155, 0, 0},  // n340 $ref #/$defs/SectionHessian
-    {kRef, 158, 0, 0},  // n341 $ref #/$defs/SectionExcitedStates
-    {kRef, 173, 0, 0},  // n342 $ref #/$defs/SectionVolumeTransitionDensity
-    {kRef, 174, 0, 0},  // n343 $ref #/$defs/SectionPreview
-    {kRef, 177, 0, 0},  // n344 $ref #/$defs/SectionEnergyDecomposition
-    {kRef, 159, 0, 0},  // n345 $ref #/$defs/SectionPropertiesElectric
-    {kRef, 164, 0, 0},  // n346 $ref #/$defs/SectionPropertiesElastic
-    {kRef, 165, 0, 0},  // n347 $ref #/$defs/SectionPropertiesDielectric
-    {kRef, 186, 0, 0},  // n348 $ref #/$defs/SectionVendor
-    {kRef, 13, 0, 0},  // n349 $ref #/$defs/BinaryMember
-    {kProperties, 152, 2, 0},  // n350 properties: dtype, shape
-    {kEnum, 155, 2, 0},  // n351 enum
-    {kMinItems, 3, 0, 0},  // n352 minItems
+    {kType, 32, 0, 0},  // n287 type
+    {kType, 32, 0, 0},  // n288 type
+    {kType, 4, 0, 0},  // n289 type
+    {kRef, 26, 0, 0},  // n290 $ref #/$defs/SectionStructure
+    {kRef, 27, 0, 0},  // n291 $ref #/$defs/SectionVolumeDensity
+    {kRef, 29, 0, 0},  // n292 $ref #/$defs/SectionVolumeOrbital
+    {kRef, 30, 0, 0},  // n293 $ref #/$defs/SectionVolumeSpin
+    {kRef, 31, 0, 0},  // n294 $ref #/$defs/SectionVolumeELF
+    {kRef, 33, 0, 0},  // n295 $ref #/$defs/SectionVolumeDifference
+    {kRef, 34, 0, 0},  // n296 $ref #/$defs/SectionVolumePotential
+    {kRef, 35, 0, 0},  // n297 $ref #/$defs/SectionVolumeRDG
+    {kRef, 32, 0, 0},  // n298 $ref #/$defs/SectionVolumeGeneric
+    {kRef, 36, 0, 0},  // n299 $ref #/$defs/SectionVolumeLaplacian
+    {kRef, 37, 0, 0},  // n300 $ref #/$defs/SectionVolumeVector
+    {kRef, 38, 0, 0},  // n301 $ref #/$defs/SectionVolumeComplex
+    {kRef, 39, 0, 0},  // n302 $ref #/$defs/SectionVolumeSeries
+    {kRef, 95, 0, 0},  // n303 $ref #/$defs/SectionWavefunctionGTO
+    {kRef, 103, 0, 0},  // n304 $ref #/$defs/SectionWavefunctionBloch
+    {kRef, 45, 0, 0},  // n305 $ref #/$defs/SectionAtomProperties
+    {kRef, 50, 0, 0},  // n306 $ref #/$defs/SectionTrajectory
+    {kRef, 54, 0, 0},  // n307 $ref #/$defs/SectionReactionPath
+    {kRef, 61, 0, 0},  // n308 $ref #/$defs/SectionReactionWaypoints
+    {kRef, 63, 0, 0},  // n309 $ref #/$defs/SectionReactionScheme
+    {kRef, 58, 0, 0},  // n310 $ref #/$defs/SectionScanSurface
+    {kRef, 73, 0, 0},  // n311 $ref #/$defs/SectionVibrations
+    {kRef, 75, 0, 0},  // n312 $ref #/$defs/SectionSpectraIR
+    {kRef, 79, 0, 0},  // n313 $ref #/$defs/SectionSpectraRaman
+    {kRef, 81, 0, 0},  // n314 $ref #/$defs/SectionSpectraUVVis
+    {kRef, 82, 0, 0},  // n315 $ref #/$defs/SectionSpectraECD
+    {kRef, 83, 0, 0},  // n316 $ref #/$defs/SectionSpectraVCD
+    {kRef, 84, 0, 0},  // n317 $ref #/$defs/SectionSpectraNMR
+    {kRef, 86, 0, 0},  // n318 $ref #/$defs/SectionSpectraEPR
+    {kRef, 88, 0, 0},  // n319 $ref #/$defs/SectionSpectraXAS
+    {kRef, 89, 0, 0},  // n320 $ref #/$defs/SectionSpectraXES
+    {kRef, 90, 0, 0},  // n321 $ref #/$defs/SectionSpectraMossbauer
+    {kRef, 93, 0, 0},  // n322 $ref #/$defs/SectionSpectraGeneric
+    {kRef, 109, 0, 0},  // n323 $ref #/$defs/SectionBands
+    {kRef, 114, 0, 0},  // n324 $ref #/$defs/SectionDOSTotal
+    {kRef, 115, 0, 0},  // n325 $ref #/$defs/SectionDOSProjected
+    {kRef, 117, 0, 0},  // n326 $ref #/$defs/SectionDOSCOOP
+    {kRef, 118, 0, 0},  // n327 $ref #/$defs/SectionDOSCOHP
+    {kRef, 121, 0, 0},  // n328 $ref #/$defs/SectionStructureSymmetry
+    {kRef, 123, 0, 0},  // n329 $ref #/$defs/SectionBonds
+    {kRef, 125, 0, 0},  // n330 $ref #/$defs/SectionBondOrders
+    {kRef, 127, 0, 0},  // n331 $ref #/$defs/SectionSCFHistory
+    {kRef, 130, 0, 0},  // n332 $ref #/$defs/SectionCitations
+    {kRef, 132, 0, 0},  // n333 $ref #/$defs/SectionRunRecord
+    {kRef, 134, 0, 0},  // n334 $ref #/$defs/SectionJobSpec
+    {kRef, 140, 0, 0},  // n335 $ref #/$defs/SectionBasisAO
+    {kRef, 141, 0, 0},  // n336 $ref #/$defs/SectionEquationOfState
+    {kRef, 143, 0, 0},  // n337 $ref #/$defs/SectionFermiSurface
+    {kRef, 145, 0, 0},  // n338 $ref #/$defs/SectionPhononBands
+    {kRef, 147, 0, 0},  // n339 $ref #/$defs/SectionPhononDOS
+    {kRef, 149, 0, 0},  // n340 $ref #/$defs/SectionTopologyQTAIM
+    {kRef, 151, 0, 0},  // n341 $ref #/$defs/SectionForces
+    {kRef, 156, 0, 0},  // n342 $ref #/$defs/SectionHessian
+    {kRef, 159, 0, 0},  // n343 $ref #/$defs/SectionExcitedStates
+    {kRef, 174, 0, 0},  // n344 $ref #/$defs/SectionVolumeTransitionDensity
+    {kRef, 175, 0, 0},  // n345 $ref #/$defs/SectionPreview
+    {kRef, 178, 0, 0},  // n346 $ref #/$defs/SectionEnergyDecomposition
+    {kRef, 160, 0, 0},  // n347 $ref #/$defs/SectionPropertiesElectric
+    {kRef, 165, 0, 0},  // n348 $ref #/$defs/SectionPropertiesElastic
+    {kRef, 166, 0, 0},  // n349 $ref #/$defs/SectionPropertiesDielectric
+    {kRef, 187, 0, 0},  // n350 $ref #/$defs/SectionVendor
+    {kRef, 14, 0, 0},  // n351 $ref #/$defs/BinaryMember
+    {kProperties, 152, 2, 0},  // n352 properties: dtype, shape
+    {kEnum, 155, 2, 0},  // n353 enum
+    {kMinItems, 3, 0, 0},  // n354 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n353 $ref #/$defs/BinaryMember
-    {kProperties, 156, 2, 0},  // n354 properties: dtype, shape
-    {kEnum, 159, 2, 0},  // n355 enum
-    {kMinItems, 4, 0, 0},  // n356 minItems
+    {kRef, 14, 0, 0},  // n355 $ref #/$defs/BinaryMember
+    {kProperties, 156, 2, 0},  // n356 properties: dtype, shape
+    {kEnum, 159, 2, 0},  // n357 enum
+    {kMinItems, 4, 0, 0},  // n358 minItems
     {kMaxItems, 4, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n357 $ref #/$defs/BinaryMember
-    {kProperties, 160, 2, 0},  // n358 properties: dtype, shape
-    {kEnum, 163, 2, 0},  // n359 enum
-    {kMinItems, 4, 0, 0},  // n360 minItems
+    {kRef, 14, 0, 0},  // n359 $ref #/$defs/BinaryMember
+    {kProperties, 160, 2, 0},  // n360 properties: dtype, shape
+    {kEnum, 163, 2, 0},  // n361 enum
+    {kMinItems, 4, 0, 0},  // n362 minItems
     {kMaxItems, 4, 0, 0},  // maxItems
     {kPrefixItems, 165, 4, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n364 const 3
-    {kRef, 13, 0, 0},  // n365 $ref #/$defs/BinaryMember
-    {kProperties, 164, 2, 0},  // n366 properties: dtype, shape
-    {kEnum, 171, 2, 0},  // n367 enum
-    {kMinItems, 4, 0, 0},  // n368 minItems
+    {kConst, 66, 0, 0},  // n366 const 3
+    {kRef, 14, 0, 0},  // n367 $ref #/$defs/BinaryMember
+    {kProperties, 164, 2, 0},  // n368 properties: dtype, shape
+    {kEnum, 171, 2, 0},  // n369 enum
+    {kMinItems, 4, 0, 0},  // n370 minItems
     {kMaxItems, 4, 0, 0},  // maxItems
     {kPrefixItems, 173, 4, 0},  // prefixItems
-    {kConst, 67, 0, 0},  // n372 const 2
-    {kType, 32, 0, 0},  // n373 type
+    {kConst, 67, 0, 0},  // n374 const 2
+    {kType, 32, 0, 0},  // n375 type
     {kMinLength, 1, 0, 0},  // minLength
     {kMaxLength, 3, 0, 0},  // maxLength
-    {kRef, 5, 0, 0},  // n374 $ref #/$defs/Vec3
-    {kType, 64, 0, 0},  // n375 type
+    {kRef, 5, 0, 0},  // n376 $ref #/$defs/Vec3
+    {kType, 64, 0, 0},  // n377 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n376 type
-    {kType, 32, 0, 0},  // n377 type
+    {kType, 16, 0, 0},  // n378 type
+    {kType, 32, 0, 0},  // n379 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 7, 0, 0},  // pattern ^\S+$
-    {kType, 32, 0, 0},  // n378 type
+    {kType, 32, 0, 0},  // n380 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 7, 0, 0},  // pattern ^\S+$
-    {kType, 16, 0, 0},  // n379 type
+    {kType, 16, 0, 0},  // n381 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 2, 0, 0},  // maximum
-    {kType, 2, 0, 0},  // n380 type
-    {kRef, 5, 0, 0},  // n381 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n382 type
-    {kItems, 383, 0, 0},  // items
-    {kRef, 20, 0, 0},  // n383 $ref #/$defs/StructureAtom
+    {kType, 2, 0, 0},  // n382 type
+    {kRef, 5, 0, 0},  // n383 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n384 type
+    {kItems, 385, 0, 0},  // items
+    {kRef, 21, 0, 0},  // n385 $ref #/$defs/StructureAtom
+    {kType, 8, 0, 0},  // n386 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 385, 0, 0},  // items
-    {kType, 2, 0, 0},  // n385 type
-    {kOneOf, 183, 2, 0},  // n386 oneOf
-    {kRef, 21, 0, 0},  // n387 $ref #/$defs/Lattice3x3
-    {kType, 1, 0, 0},  // n388 type
-    {kType, 64, 0, 0},  // n389 type
+    {kItems, 387, 0, 0},  // items
+    {kType, 2, 0, 0},  // n387 type
+    {kOneOf, 183, 2, 0},  // n388 oneOf
+    {kRef, 22, 0, 0},  // n389 $ref #/$defs/Lattice3x3
+    {kType, 1, 0, 0},  // n390 type
+    {kType, 64, 0, 0},  // n391 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 1, 0, 0},  // maximum
-    {kIf, 391, 393, -1},  // n390 if
-    {kRequired, 185, 1, 0},  // n391 required: lattice_vectors
+    {kIf, 393, 395, -1},  // n392 if
+    {kRequired, 185, 1, 0},  // n393 required: lattice_vectors
     {kProperties, 192, 1, 0},  // properties: lattice_vectors
-    {kType, 8, 0, 0},  // n392 type
-    {kRequired, 186, 1, 0},  // n393 required: pbc
-    {kIf, 395, 398, -1},  // n394 if
-    {kRequired, 187, 1, 0},  // n395 required: pbc
+    {kType, 8, 0, 0},  // n394 type
+    {kRequired, 186, 1, 0},  // n395 required: pbc
+    {kIf, 397, 400, -1},  // n396 if
+    {kRequired, 187, 1, 0},  // n397 required: pbc
     {kProperties, 194, 1, 0},  // properties: pbc
-    {kContains, 397, 1, -1},  // n396 contains
-    {kConst, 68, 0, 0},  // n397 const true
-    {kRequired, 188, 1, 0},  // n398 required: lattice_vectors
+    {kContains, 399, 1, -1},  // n398 contains
+    {kConst, 68, 0, 0},  // n399 const true
+    {kRequired, 188, 1, 0},  // n400 required: lattice_vectors
     {kProperties, 196, 1, 0},  // properties: lattice_vectors
-    {kType, 8, 0, 0},  // n399 type
-    {kIf, 401, 403, -1},  // n400 if
-    {kRequired, 189, 1, 0},  // n401 required: dimensionality
+    {kType, 8, 0, 0},  // n401 type
+    {kIf, 403, 405, -1},  // n402 if
+    {kRequired, 189, 1, 0},  // n403 required: dimensionality
     {kProperties, 198, 1, 0},  // properties: dimensionality
-    {kConst, 69, 0, 0},  // n402 const 0
-    {kProperties, 200, 1, 0},  // n403 properties: pbc
-    {kNot, 405, 0, 0},  // n404 not
-    {kContains, 406, 1, -1},  // n405 contains
-    {kConst, 68, 0, 0},  // n406 const true
-    {kIf, 408, 410, -1},  // n407 if
-    {kRequired, 190, 1, 0},  // n408 required: dimensionality
+    {kConst, 69, 0, 0},  // n404 const 0
+    {kProperties, 200, 1, 0},  // n405 properties: pbc
+    {kNot, 407, 0, 0},  // n406 not
+    {kContains, 408, 1, -1},  // n407 contains
+    {kConst, 68, 0, 0},  // n408 const true
+    {kIf, 410, 412, -1},  // n409 if
+    {kRequired, 190, 1, 0},  // n410 required: dimensionality
     {kProperties, 202, 1, 0},  // properties: dimensionality
-    {kConst, 0, 0, 0},  // n409 const 1
-    {kRequired, 191, 1, 0},  // n410 required: pbc
+    {kConst, 0, 0, 0},  // n411 const 1
+    {kRequired, 191, 1, 0},  // n412 required: pbc
     {kProperties, 204, 1, 0},  // properties: pbc
-    {kContains, 412, 1, 1},  // n411 contains
-    {kConst, 68, 0, 0},  // n412 const true
-    {kIf, 414, 416, -1},  // n413 if
-    {kRequired, 192, 1, 0},  // n414 required: dimensionality
+    {kContains, 414, 1, 1},  // n413 contains
+    {kConst, 68, 0, 0},  // n414 const true
+    {kIf, 416, 418, -1},  // n415 if
+    {kRequired, 192, 1, 0},  // n416 required: dimensionality
     {kProperties, 206, 1, 0},  // properties: dimensionality
-    {kConst, 67, 0, 0},  // n415 const 2
-    {kRequired, 193, 1, 0},  // n416 required: pbc
+    {kConst, 67, 0, 0},  // n417 const 2
+    {kRequired, 193, 1, 0},  // n418 required: pbc
     {kProperties, 208, 1, 0},  // properties: pbc
-    {kContains, 418, 2, 2},  // n417 contains
-    {kConst, 68, 0, 0},  // n418 const true
-    {kIf, 420, 422, -1},  // n419 if
-    {kRequired, 194, 1, 0},  // n420 required: dimensionality
+    {kContains, 420, 2, 2},  // n419 contains
+    {kConst, 68, 0, 0},  // n420 const true
+    {kIf, 422, 424, -1},  // n421 if
+    {kRequired, 194, 1, 0},  // n422 required: dimensionality
     {kProperties, 210, 1, 0},  // properties: dimensionality
-    {kConst, 66, 0, 0},  // n421 const 3
-    {kRequired, 195, 1, 0},  // n422 required: pbc
+    {kConst, 66, 0, 0},  // n423 const 3
+    {kRequired, 195, 1, 0},  // n424 required: pbc
     {kProperties, 212, 1, 0},  // properties: pbc
-    {kContains, 424, 3, 3},  // n423 contains
-    {kConst, 68, 0, 0},  // n424 const true
-    {kType, 32, 0, 0},  // n425 type
-    {kType, 64, 0, 0},  // n426 type
+    {kContains, 426, 3, 3},  // n425 contains
+    {kConst, 68, 0, 0},  // n426 const true
     {kType, 32, 0, 0},  // n427 type
-    {kType, 32, 0, 0},  // n428 type
+    {kType, 64, 0, 0},  // n428 type
+    {kType, 32, 0, 0},  // n429 type
+    {kType, 32, 0, 0},  // n430 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 7, 0, 0},  // pattern ^\S+$
-    {kType, 8, 0, 0},  // n429 type
-    {kItems, 430, 0, 0},  // items
-    {kType, 64, 0, 0},  // n430 type
+    {kType, 8, 0, 0},  // n431 type
+    {kItems, 432, 0, 0},  // items
+    {kType, 64, 0, 0},  // n432 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kEnum, 210, 3, 0},  // n431 enum
-    {kType, 32, 0, 0},  // n432 type
-    {kType, 64, 0, 0},  // n433 type
-    {kType, 64, 0, 0},  // n434 type
-    {kType, 32, 0, 0},  // n435 type
+    {kEnum, 210, 3, 0},  // n433 enum
+    {kType, 32, 0, 0},  // n434 type
+    {kType, 64, 0, 0},  // n435 type
+    {kType, 64, 0, 0},  // n436 type
+    {kType, 32, 0, 0},  // n437 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 7, 0, 0},  // pattern ^\S+$
-    {kType, 32, 0, 0},  // n436 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kPattern, 7, 0, 0},  // pattern ^\S+$
-    {kType, 64, 0, 0},  // n437 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kMaximum, 4, 0, 0},  // maximum
     {kType, 32, 0, 0},  // n438 type
     {kMinLength, 1, 0, 0},  // minLength
     {kPattern, 7, 0, 0},  // pattern ^\S+$
     {kType, 64, 0, 0},  // n439 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kIf, 441, 442, -1},  // n440 if
-    {kRequired, 213, 1, 0},  // n441 required: helix_class
-    {kProperties, 242, 1, 0},  // n442 properties: type
-    {kConst, 70, 0, 0},  // n443 const "helix"
-    {kIf, 445, 448, -1},  // n444 if
-    {kAnyOf, 216, 2, 0},  // n445 anyOf
-    {kRequired, 214, 1, 0},  // n446 required: sheet_id
-    {kRequired, 215, 1, 0},  // n447 required: strand
-    {kProperties, 244, 1, 0},  // n448 properties: type
-    {kConst, 71, 0, 0},  // n449 const "sheet"
-    {kConst, 73, 0, 0},  // n450 const "structure"
-    {kType, 4, 0, 0},  // n451 type
+    {kMaximum, 4, 0, 0},  // maximum
+    {kType, 32, 0, 0},  // n440 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kPattern, 7, 0, 0},  // pattern ^\S+$
+    {kType, 64, 0, 0},  // n441 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kIf, 443, 444, -1},  // n442 if
+    {kRequired, 213, 1, 0},  // n443 required: helix_class
+    {kProperties, 242, 1, 0},  // n444 properties: type
+    {kConst, 70, 0, 0},  // n445 const "helix"
+    {kIf, 447, 450, -1},  // n446 if
+    {kAnyOf, 216, 2, 0},  // n447 anyOf
+    {kRequired, 214, 1, 0},  // n448 required: sheet_id
+    {kRequired, 215, 1, 0},  // n449 required: strand
+    {kProperties, 244, 1, 0},  // n450 properties: type
+    {kConst, 71, 0, 0},  // n451 const "sheet"
+    {kConst, 73, 0, 0},  // n452 const "structure"
+    {kType, 4, 0, 0},  // n453 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 220, 1, 0},  // required: structure
     {kProperties, 246, 2, 0},  // properties: structure, bonds
-    {kRef, 14, 0, 0},  // n452 $ref #/$defs/JsonMember
-    {kRef, 14, 0, 0},  // n453 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n454 type
-    {kItems, 455, 0, 0},  // items
-    {kType, 32, 0, 0},  // n455 type
+    {kRef, 15, 0, 0},  // n454 $ref #/$defs/JsonMember
+    {kRef, 15, 0, 0},  // n455 $ref #/$defs/JsonMember
     {kType, 8, 0, 0},  // n456 type
     {kItems, 457, 0, 0},  // items
-    {kRef, 23, 0, 0},  // n457 $ref #/$defs/BiomoleculeResidue
+    {kType, 32, 0, 0},  // n457 type
     {kType, 8, 0, 0},  // n458 type
     {kItems, 459, 0, 0},  // items
-    {kRef, 24, 0, 0},  // n459 $ref #/$defs/BiomoleculeSecondaryStructure
+    {kRef, 24, 0, 0},  // n459 $ref #/$defs/BiomoleculeResidue
     {kType, 8, 0, 0},  // n460 type
     {kItems, 461, 0, 0},  // items
-    {kType, 16, 0, 0},  // n461 type
-    {kType, 64, 0, 0},  // n462 type
-    {kType, 64, 0, 0},  // n463 type
+    {kRef, 25, 0, 0},  // n461 $ref #/$defs/BiomoleculeSecondaryStructure
+    {kType, 8, 0, 0},  // n462 type
+    {kItems, 463, 0, 0},  // items
+    {kType, 16, 0, 0},  // n463 type
+    {kType, 64, 0, 0},  // n464 type
+    {kType, 64, 0, 0},  // n465 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n464 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n465 type
-    {kPattern, 7, 0, 0},  // pattern ^\S+$
     {kType, 32, 0, 0},  // n466 type
-    {kPattern, 8, 0, 0},  // pattern ^InChI=\S+$
+    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n467 type
-    {kPattern, 9, 0, 0},  // pattern ^[A-Z]{14}-[A-Z]{10}-[A-Z]$
-    {kConst, 74, 0, 0},  // n468 const "volume.density"
+    {kPattern, 7, 0, 0},  // pattern ^\S+$
+    {kType, 32, 0, 0},  // n468 type
+    {kPattern, 8, 0, 0},  // pattern ^InChI=\S+$
     {kType, 32, 0, 0},  // n469 type
-    {kType, 4, 0, 0},  // n470 type
+    {kPattern, 9, 0, 0},  // pattern ^[A-Z]{14}-[A-Z]{10}-[A-Z]$
+    {kConst, 74, 0, 0},  // n470 const "volume.density"
+    {kType, 32, 0, 0},  // n471 type
+    {kType, 4, 0, 0},  // n472 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 221, 2, 0},  // required: grid, data
     {kProperties, 274, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n471 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n472 $ref #/$defs/Volume3DBinary
-    {kRef, 5, 0, 0},  // n474 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n475 type
-    {kMinItems, 3, 0, 0},  // minItems
-    {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 476, 0, 0},  // items
+    {kRef, 15, 0, 0},  // n473 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n474 $ref #/$defs/Volume3DBinary
     {kRef, 5, 0, 0},  // n476 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n477 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
     {kItems, 478, 0, 0},  // items
-    {kType, 64, 0, 0},  // n478 type
-    {kMinimum, 2, 0, 0},  // minimum
+    {kRef, 5, 0, 0},  // n478 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n479 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
     {kItems, 480, 0, 0},  // items
-    {kType, 2, 0, 0},  // n480 type
-    {kType, 2, 0, 0},  // n481 type
-    {kType, 32, 0, 0},  // n482 type
-    {kType, 4, 0, 0},  // n483 type
-    {kAdditionalProperties, 484, 0, 0},  // additionalProperties
+    {kType, 64, 0, 0},  // n480 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n481 type
+    {kMinItems, 3, 0, 0},  // minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
+    {kItems, 482, 0, 0},  // items
+    {kType, 2, 0, 0},  // n482 type
+    {kType, 2, 0, 0},  // n483 type
+    {kType, 32, 0, 0},  // n484 type
+    {kType, 4, 0, 0},  // n485 type
+    {kAdditionalProperties, 486, 0, 0},  // additionalProperties
     {kProperties, 286, 2, 0},  // properties: origin, voxel_vectors
-    {kRef, 2, 0, 0},  // n484 $ref #/$defs/UnitName
-    {kConst, 7, 0, 0},  // n485 const "bohr"
-    {kConst, 7, 0, 0},  // n486 const "bohr"
-    {kConst, 75, 0, 0},  // n487 const "volume.orbital"
-    {kType, 32, 0, 0},  // n488 type
-    {kType, 64, 0, 0},  // n489 type
+    {kRef, 2, 0, 0},  // n486 $ref #/$defs/UnitName
+    {kConst, 7, 0, 0},  // n487 const "bohr"
+    {kConst, 7, 0, 0},  // n488 const "bohr"
+    {kConst, 75, 0, 0},  // n489 const "volume.orbital"
+    {kType, 32, 0, 0},  // n490 type
+    {kType, 64, 0, 0},  // n491 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kEnum, 226, 2, 0},  // n490 enum
-    {kType, 4, 0, 0},  // n491 type
+    {kEnum, 226, 2, 0},  // n492 enum
+    {kType, 4, 0, 0},  // n493 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 228, 2, 0},  // required: grid, data
     {kProperties, 304, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n492 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n493 $ref #/$defs/Volume3DBinary
-    {kConst, 78, 0, 0},  // n494 const "volume.spin"
-    {kType, 32, 0, 0},  // n495 type
-    {kType, 4, 0, 0},  // n496 type
+    {kRef, 15, 0, 0},  // n494 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n495 $ref #/$defs/Volume3DBinary
+    {kConst, 78, 0, 0},  // n496 const "volume.spin"
+    {kType, 32, 0, 0},  // n497 type
+    {kType, 4, 0, 0},  // n498 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 232, 2, 0},  // required: grid, data
     {kProperties, 318, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n497 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n498 $ref #/$defs/Volume3DBinary
-    {kConst, 79, 0, 0},  // n499 const "volume.elf"
-    {kType, 4, 0, 0},  // n500 type
+    {kRef, 15, 0, 0},  // n499 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n500 $ref #/$defs/Volume3DBinary
+    {kConst, 79, 0, 0},  // n501 const "volume.elf"
+    {kType, 4, 0, 0},  // n502 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 234, 2, 0},  // required: grid, data
     {kProperties, 328, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n501 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n502 $ref #/$defs/Volume3DBinary
-    {kConst, 80, 0, 0},  // n503 const "volume.generic"
-    {kType, 4, 0, 0},  // n504 type
+    {kRef, 15, 0, 0},  // n503 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n504 $ref #/$defs/Volume3DBinary
+    {kConst, 80, 0, 0},  // n505 const "volume.generic"
+    {kType, 4, 0, 0},  // n506 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 236, 2, 0},  // required: grid, data
     {kProperties, 336, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n505 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n506 $ref #/$defs/Volume3DBinary
-    {kConst, 81, 0, 0},  // n507 const "volume.difference"
-    {kType, 32, 0, 0},  // n508 type
-    {kType, 32, 0, 0},  // n509 type
+    {kRef, 15, 0, 0},  // n507 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n508 $ref #/$defs/Volume3DBinary
+    {kConst, 81, 0, 0},  // n509 const "volume.difference"
     {kType, 32, 0, 0},  // n510 type
     {kType, 32, 0, 0},  // n511 type
-    {kOneOf, 243, 2, 0},  // n512 oneOf
-    {kEnum, 238, 5, 0},  // n513 enum
-    {kType, 32, 0, 0},  // n514 type
+    {kType, 32, 0, 0},  // n512 type
+    {kType, 32, 0, 0},  // n513 type
+    {kOneOf, 243, 2, 0},  // n514 oneOf
+    {kEnum, 238, 5, 0},  // n515 enum
+    {kType, 32, 0, 0},  // n516 type
     {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kType, 64, 0, 0},  // n515 type
+    {kType, 64, 0, 0},  // n517 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 245, 3, 0},  // n516 enum
-    {kType, 4, 0, 0},  // n517 type
+    {kEnum, 245, 3, 0},  // n518 enum
+    {kType, 4, 0, 0},  // n519 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 248, 2, 0},  // required: grid, data
     {kProperties, 344, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n518 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n519 $ref #/$defs/Volume3DBinary
-    {kConst, 88, 0, 0},  // n520 const "volume.potential"
-    {kType, 4, 0, 0},  // n521 type
+    {kRef, 15, 0, 0},  // n520 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n521 $ref #/$defs/Volume3DBinary
+    {kConst, 88, 0, 0},  // n522 const "volume.potential"
+    {kType, 4, 0, 0},  // n523 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 255, 2, 0},  // required: grid, data
     {kProperties, 366, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n522 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n523 $ref #/$defs/Volume3DBinary
-    {kConst, 89, 0, 0},  // n524 const "volume.rdg"
-    {kType, 4, 0, 0},  // n525 type
+    {kRef, 15, 0, 0},  // n524 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n525 $ref #/$defs/Volume3DBinary
+    {kConst, 89, 0, 0},  // n526 const "volume.rdg"
+    {kType, 4, 0, 0},  // n527 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 257, 2, 0},  // required: grid, data
     {kProperties, 374, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n526 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n527 $ref #/$defs/Volume3DBinary
-    {kConst, 90, 0, 0},  // n528 const "volume.laplacian"
-    {kType, 4, 0, 0},  // n529 type
+    {kRef, 15, 0, 0},  // n528 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n529 $ref #/$defs/Volume3DBinary
+    {kConst, 90, 0, 0},  // n530 const "volume.laplacian"
+    {kType, 4, 0, 0},  // n531 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 259, 2, 0},  // required: grid, data
     {kProperties, 382, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n530 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n531 $ref #/$defs/Volume3DBinary
-    {kConst, 91, 0, 0},  // n532 const "volume.vector"
-    {kType, 4, 0, 0},  // n533 type
+    {kRef, 15, 0, 0},  // n532 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n533 $ref #/$defs/Volume3DBinary
+    {kConst, 91, 0, 0},  // n534 const "volume.vector"
+    {kType, 4, 0, 0},  // n535 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 261, 2, 0},  // required: grid, data
     {kProperties, 390, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n534 $ref #/$defs/JsonMember
-    {kRef, 18, 0, 0},  // n535 $ref #/$defs/Volume4DVectorBinary
-    {kConst, 92, 0, 0},  // n536 const "volume.complex"
-    {kType, 4, 0, 0},  // n537 type
+    {kRef, 15, 0, 0},  // n536 $ref #/$defs/JsonMember
+    {kRef, 19, 0, 0},  // n537 $ref #/$defs/Volume4DVectorBinary
+    {kConst, 92, 0, 0},  // n538 const "volume.complex"
+    {kType, 4, 0, 0},  // n539 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 263, 2, 0},  // required: grid, data
     {kProperties, 398, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n538 $ref #/$defs/JsonMember
-    {kRef, 19, 0, 0},  // n539 $ref #/$defs/Volume4DComplexBinary
-    {kConst, 93, 0, 0},  // n540 const "volume.series"
-    {kType, 4, 0, 0},  // n541 type
+    {kRef, 15, 0, 0},  // n540 $ref #/$defs/JsonMember
+    {kRef, 20, 0, 0},  // n541 $ref #/$defs/Volume4DComplexBinary
+    {kConst, 93, 0, 0},  // n542 const "volume.series"
+    {kType, 4, 0, 0},  // n543 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 265, 3, 0},  // required: grid, data, axis
     {kProperties, 406, 3, 0},  // properties: grid, data, axis
-    {kRef, 14, 0, 0},  // n542 $ref #/$defs/JsonMember
-    {kRef, 17, 0, 0},  // n543 $ref #/$defs/Volume4DBinary
-    {kRef, 14, 0, 0},  // n544 $ref #/$defs/JsonMember
-    {kEnum, 270, 4, 0},  // n546 enum
-    {kType, 8, 0, 0},  // n547 type
-    {kItems, 548, 0, 0},  // items
-    {kType, 16, 0, 0},  // n548 type
-    {kRef, 2, 0, 0},  // n549 $ref #/$defs/UnitName
-    {kType, 8, 0, 0},  // n550 type
-    {kItems, 551, 0, 0},  // items
-    {kType, 32, 0, 0},  // n551 type
-    {kType, 32, 0, 0},  // n552 type
-    {kIf, 554, 556, -1},  // n553 if
-    {kRequired, 274, 1, 0},  // n554 required: kind
+    {kRef, 15, 0, 0},  // n544 $ref #/$defs/JsonMember
+    {kRef, 18, 0, 0},  // n545 $ref #/$defs/Volume4DBinary
+    {kRef, 15, 0, 0},  // n546 $ref #/$defs/JsonMember
+    {kEnum, 270, 4, 0},  // n548 enum
+    {kType, 8, 0, 0},  // n549 type
+    {kItems, 550, 0, 0},  // items
+    {kType, 16, 0, 0},  // n550 type
+    {kRef, 2, 0, 0},  // n551 $ref #/$defs/UnitName
+    {kType, 8, 0, 0},  // n552 type
+    {kItems, 553, 0, 0},  // items
+    {kType, 32, 0, 0},  // n553 type
+    {kType, 32, 0, 0},  // n554 type
+    {kIf, 556, 558, -1},  // n555 if
+    {kRequired, 274, 1, 0},  // n556 required: kind
     {kProperties, 428, 1, 0},  // properties: kind
-    {kConst, 95, 0, 0},  // n555 const "frame"
-    {kProperties, 430, 1, 0},  // n556 properties: values
-    {kItems, 558, 0, 0},  // n557 items
-    {kType, 64, 0, 0},  // n558 type
+    {kConst, 95, 0, 0},  // n557 const "frame"
+    {kProperties, 430, 1, 0},  // n558 properties: values
+    {kItems, 560, 0, 0},  // n559 items
+    {kType, 64, 0, 0},  // n560 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 13, 0, 0},  // n559 $ref #/$defs/BinaryMember
-    {kProperties, 432, 2, 0},  // n560 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n561 const "float64"
-    {kMinItems, 1, 0, 0},  // n562 minItems
+    {kRef, 14, 0, 0},  // n561 $ref #/$defs/BinaryMember
+    {kProperties, 432, 2, 0},  // n562 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n563 const "float64"
+    {kMinItems, 1, 0, 0},  // n564 minItems
     {kMaxItems, 1, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n563 $ref #/$defs/BinaryMember
-    {kProperties, 436, 2, 0},  // n564 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n565 const "float64"
-    {kMinItems, 2, 0, 0},  // n566 minItems
+    {kRef, 14, 0, 0},  // n565 $ref #/$defs/BinaryMember
+    {kProperties, 436, 2, 0},  // n566 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n567 const "float64"
+    {kMinItems, 2, 0, 0},  // n568 minItems
     {kMaxItems, 2, 0, 0},  // maxItems
     {kPrefixItems, 278, 2, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n568 const 3
-    {kRef, 2, 0, 0},  // n570 $ref #/$defs/UnitName
+    {kConst, 66, 0, 0},  // n570 const 3
+    {kRef, 2, 0, 0},  // n572 $ref #/$defs/UnitName
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n571 type
+    {kType, 32, 0, 0},  // n573 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kEnum, 285, 2, 0},  // n572 enum
-    {kRef, 42, 0, 0},  // n573 $ref #/$defs/AtomPropertyMetaEntry
-    {kConst, 100, 0, 0},  // n575 const "atom_properties"
-    {kType, 4, 0, 0},  // n576 type
+    {kEnum, 285, 2, 0},  // n574 enum
+    {kRef, 43, 0, 0},  // n575 $ref #/$defs/AtomPropertyMetaEntry
+    {kConst, 100, 0, 0},  // n577 const "atom_properties"
+    {kType, 4, 0, 0},  // n578 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kMinProperties, 1, 0, 0},  // minProperties
-    {kNot, 577, 0, 0},  // not
-    {kIf, 578, 581, -1},  // if
+    {kNot, 579, 0, 0},  // not
+    {kIf, 580, 583, -1},  // if
     {kProperties, 454, 25, 0},  // properties: mulliken_charge, loewdin_charge, hirshfeld_charge, iao_charg...
     {kPatternProperties, 504, 1, 0},  // patternProperties
-    {kRequired, 287, 1, 0},  // n577 required: meta
+    {kRequired, 287, 1, 0},  // n579 required: meta
     {kMaxProperties, 1, 0, 0},  // maxProperties
-    {kNot, 579, 0, 0},  // n578 not
-    {kPatternProperties, 452, 1, 0},  // n579 patternProperties
-    {kFalse, 0, 0, 0},  // n580 false
-    {kRequired, 288, 1, 0},  // n581 required: meta
-    {kRef, 40, 0, 0},  // n582 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n583 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n584 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n585 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n586 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n587 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n588 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n589 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n590 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n591 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n592 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n593 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n594 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n595 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n596 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n597 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n598 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n599 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n600 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n601 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n602 $ref #/$defs/AtomChargeBinary
-    {kRef, 40, 0, 0},  // n603 $ref #/$defs/AtomChargeBinary
-    {kRef, 41, 0, 0},  // n604 $ref #/$defs/AtomVectorBinary
-    {kRef, 41, 0, 0},  // n605 $ref #/$defs/AtomVectorBinary
-    {kRef, 14, 0, 0},  // n606 $ref #/$defs/JsonMember
-    {kAnyOf, 289, 2, 0},  // n607 anyOf
-    {kRef, 40, 0, 0},  // n608 $ref #/$defs/AtomChargeBinary
-    {kRef, 41, 0, 0},  // n609 $ref #/$defs/AtomVectorBinary
-    {kRef, 13, 0, 0},  // n610 $ref #/$defs/BinaryMember
-    {kProperties, 510, 2, 0},  // n611 properties: dtype, shape
-    {kEnum, 291, 2, 0},  // n612 enum
-    {kMinItems, 3, 0, 0},  // n613 minItems
+    {kNot, 581, 0, 0},  // n580 not
+    {kPatternProperties, 452, 1, 0},  // n581 patternProperties
+    {kFalse, 0, 0, 0},  // n582 false
+    {kRequired, 288, 1, 0},  // n583 required: meta
+    {kRef, 41, 0, 0},  // n584 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n585 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n586 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n587 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n588 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n589 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n590 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n591 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n592 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n593 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n594 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n595 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n596 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n597 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n598 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n599 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n600 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n601 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n602 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n603 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n604 $ref #/$defs/AtomChargeBinary
+    {kRef, 41, 0, 0},  // n605 $ref #/$defs/AtomChargeBinary
+    {kRef, 42, 0, 0},  // n606 $ref #/$defs/AtomVectorBinary
+    {kRef, 42, 0, 0},  // n607 $ref #/$defs/AtomVectorBinary
+    {kRef, 15, 0, 0},  // n608 $ref #/$defs/JsonMember
+    {kAnyOf, 289, 2, 0},  // n609 anyOf
+    {kRef, 41, 0, 0},  // n610 $ref #/$defs/AtomChargeBinary
+    {kRef, 42, 0, 0},  // n611 $ref #/$defs/AtomVectorBinary
+    {kRef, 14, 0, 0},  // n612 $ref #/$defs/BinaryMember
+    {kProperties, 510, 2, 0},  // n613 properties: dtype, shape
+    {kEnum, 291, 2, 0},  // n614 enum
+    {kMinItems, 3, 0, 0},  // n615 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n614 $ref #/$defs/BinaryMember
-    {kProperties, 514, 2, 0},  // n615 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n616 const "float64"
-    {kMinItems, 3, 0, 0},  // n617 minItems
+    {kRef, 14, 0, 0},  // n616 $ref #/$defs/BinaryMember
+    {kProperties, 514, 2, 0},  // n617 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n618 const "float64"
+    {kMinItems, 3, 0, 0},  // n619 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
     {kPrefixItems, 295, 3, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n620 const 3
-    {kRef, 13, 0, 0},  // n621 $ref #/$defs/BinaryMember
-    {kProperties, 518, 2, 0},  // n622 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n623 const "float64"
-    {kMinItems, 1, 0, 0},  // n624 minItems
+    {kConst, 66, 0, 0},  // n622 const 3
+    {kRef, 14, 0, 0},  // n623 $ref #/$defs/BinaryMember
+    {kProperties, 518, 2, 0},  // n624 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n625 const "float64"
+    {kMinItems, 1, 0, 0},  // n626 minItems
     {kMaxItems, 1, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n625 $ref #/$defs/BinaryMember
-    {kProperties, 522, 2, 0},  // n626 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n627 const "float64"
-    {kOneOf, 307, 2, 0},  // n628 oneOf
-    {kType, 8, 0, 0},  // n629 type
+    {kRef, 14, 0, 0},  // n627 $ref #/$defs/BinaryMember
+    {kProperties, 522, 2, 0},  // n628 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n629 const "float64"
+    {kOneOf, 307, 2, 0},  // n630 oneOf
+    {kType, 8, 0, 0},  // n631 type
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
     {kPrefixItems, 302, 2, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n630 const 3
-    {kConst, 66, 0, 0},  // n631 const 3
-    {kType, 8, 0, 0},  // n632 type
+    {kConst, 66, 0, 0},  // n632 const 3
+    {kConst, 66, 0, 0},  // n633 const 3
+    {kType, 8, 0, 0},  // n634 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
     {kPrefixItems, 304, 3, 0},  // prefixItems
-    {kType, 64, 0, 0},  // n633 type
+    {kType, 64, 0, 0},  // n635 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kConst, 66, 0, 0},  // n634 const 3
-    {kConst, 66, 0, 0},  // n635 const 3
-    {kConst, 101, 0, 0},  // n636 const "trajectory"
-    {kType, 4, 0, 0},  // n637 type
+    {kConst, 66, 0, 0},  // n636 const 3
+    {kConst, 66, 0, 0},  // n637 const 3
+    {kConst, 101, 0, 0},  // n638 const "trajectory"
+    {kType, 4, 0, 0},  // n639 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 311, 2, 0},  // required: metadata, coords
     {kProperties, 526, 9, 0},  // properties: metadata, coords, lattice, velocities, gradient, times, ener...
-    {kRef, 14, 0, 0},  // n638 $ref #/$defs/JsonMember
-    {kRef, 45, 0, 0},  // n639 $ref #/$defs/TrajectoryCoords
-    {kRef, 48, 0, 0},  // n640 $ref #/$defs/TrajectoryLattice
-    {kRef, 46, 0, 0},  // n641 $ref #/$defs/TrajectoryFrameVectors
-    {kRef, 46, 0, 0},  // n642 $ref #/$defs/TrajectoryFrameVectors
-    {kRef, 47, 0, 0},  // n643 $ref #/$defs/TrajectoryFrameScalars
-    {kRef, 47, 0, 0},  // n644 $ref #/$defs/TrajectoryFrameScalars
-    {kRef, 47, 0, 0},  // n645 $ref #/$defs/TrajectoryFrameScalars
-    {kRef, 47, 0, 0},  // n646 $ref #/$defs/TrajectoryFrameScalars
-    {kType, 32, 0, 0},  // n647 type
+    {kRef, 15, 0, 0},  // n640 $ref #/$defs/JsonMember
+    {kRef, 46, 0, 0},  // n641 $ref #/$defs/TrajectoryCoords
+    {kRef, 49, 0, 0},  // n642 $ref #/$defs/TrajectoryLattice
+    {kRef, 47, 0, 0},  // n643 $ref #/$defs/TrajectoryFrameVectors
+    {kRef, 47, 0, 0},  // n644 $ref #/$defs/TrajectoryFrameVectors
+    {kRef, 48, 0, 0},  // n645 $ref #/$defs/TrajectoryFrameScalars
+    {kRef, 48, 0, 0},  // n646 $ref #/$defs/TrajectoryFrameScalars
+    {kRef, 48, 0, 0},  // n647 $ref #/$defs/TrajectoryFrameScalars
+    {kRef, 48, 0, 0},  // n648 $ref #/$defs/TrajectoryFrameScalars
+    {kType, 32, 0, 0},  // n649 type
     {kMinLength, 1, 0, 0},  // minLength
     {kMaxLength, 3, 0, 0},  // maxLength
-    {kType, 64, 0, 0},  // n648 type
+    {kType, 64, 0, 0},  // n650 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRequired, 315, 1, 0},  // n649 required: symbols
-    {kRequired, 316, 1, 0},  // n650 required: atomic_numbers
-    {kRequired, 317, 1, 0},  // n651 required: atoms
-    {kType, 8, 0, 0},  // n652 type
-    {kItems, 653, 0, 0},  // items
-    {kType, 32, 0, 0},  // n653 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kMaxLength, 3, 0, 0},  // maxLength
+    {kRequired, 315, 1, 0},  // n651 required: symbols
+    {kRequired, 316, 1, 0},  // n652 required: atomic_numbers
+    {kRequired, 317, 1, 0},  // n653 required: atoms
     {kType, 8, 0, 0},  // n654 type
     {kItems, 655, 0, 0},  // items
-    {kType, 64, 0, 0},  // n655 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n655 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kMaxLength, 3, 0, 0},  // maxLength
     {kType, 8, 0, 0},  // n656 type
     {kItems, 657, 0, 0},  // items
-    {kRef, 50, 0, 0},  // n657 $ref #/$defs/TrajectoryAtom
-    {kType, 64, 0, 0},  // n658 type
+    {kType, 64, 0, 0},  // n657 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n659 type
-    {kItems, 660, 0, 0},  // items
-    {kType, 16, 0, 0},  // n660 type
-    {kEnum, 321, 6, 0},  // n661 enum
-    {kType, 8, 0, 0},  // n662 type
+    {kType, 8, 0, 0},  // n658 type
+    {kItems, 659, 0, 0},  // items
+    {kRef, 51, 0, 0},  // n659 $ref #/$defs/TrajectoryAtom
+    {kType, 64, 0, 0},  // n660 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n661 type
+    {kItems, 662, 0, 0},  // items
+    {kType, 16, 0, 0},  // n662 type
+    {kEnum, 321, 6, 0},  // n663 enum
+    {kType, 8, 0, 0},  // n664 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 663, 0, 0},  // items
-    {kType, 2, 0, 0},  // n663 type
-    {kEnum, 327, 5, 0},  // n664 enum
-    {kType, 16, 0, 0},  // n665 type
+    {kItems, 665, 0, 0},  // items
+    {kType, 2, 0, 0},  // n665 type
+    {kEnum, 327, 5, 0},  // n666 enum
+    {kType, 16, 0, 0},  // n667 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kEnum, 332, 2, 0},  // n666 enum
-    {kType, 4, 0, 0},  // n667 type
-    {kAdditionalProperties, 668, 0, 0},  // additionalProperties
+    {kEnum, 332, 2, 0},  // n668 enum
+    {kType, 4, 0, 0},  // n669 type
+    {kAdditionalProperties, 670, 0, 0},  // additionalProperties
     {kProperties, 552, 6, 0},  // properties: energies, coords, times, timestep_fs, velocities, gradient
-    {kRef, 2, 0, 0},  // n668 $ref #/$defs/UnitName
-    {kConst, 8, 0, 0},  // n669 const "hartree"
-    {kConst, 6, 0, 0},  // n670 const "angstrom"
-    {kConst, 22, 0, 0},  // n671 const "fs"
-    {kConst, 22, 0, 0},  // n672 const "fs"
-    {kConst, 33, 0, 0},  // n673 const "angstrom_per_fs"
-    {kConst, 34, 0, 0},  // n674 const "hartree_per_bohr"
-    {kRef, 51, 0, 0},  // n675 $ref #/$defs/TrajectoryMetadataCommon
-    {kType, 4, 0, 0},  // n676 type
-    {kAdditionalProperties, 677, 0, 0},  // additionalProperties
+    {kRef, 2, 0, 0},  // n670 $ref #/$defs/UnitName
+    {kConst, 8, 0, 0},  // n671 const "hartree"
+    {kConst, 6, 0, 0},  // n672 const "angstrom"
+    {kConst, 22, 0, 0},  // n673 const "fs"
+    {kConst, 22, 0, 0},  // n674 const "fs"
+    {kConst, 33, 0, 0},  // n675 const "angstrom_per_fs"
+    {kConst, 34, 0, 0},  // n676 const "hartree_per_bohr"
+    {kRef, 52, 0, 0},  // n677 $ref #/$defs/TrajectoryMetadataCommon
+    {kType, 4, 0, 0},  // n678 type
+    {kAdditionalProperties, 679, 0, 0},  // additionalProperties
     {kProperties, 586, 3, 0},  // properties: lattice, cell_volumes, temperatures
-    {kRef, 2, 0, 0},  // n677 $ref #/$defs/UnitName
-    {kConst, 6, 0, 0},  // n678 const "angstrom"
-    {kConst, 19, 0, 0},  // n679 const "a3"
-    {kConst, 24, 0, 0},  // n680 const "kelvin"
-    {kConst, 111, 0, 0},  // n681 const "reaction.path"
-    {kType, 4, 0, 0},  // n682 type
+    {kRef, 2, 0, 0},  // n679 $ref #/$defs/UnitName
+    {kConst, 6, 0, 0},  // n680 const "angstrom"
+    {kConst, 19, 0, 0},  // n681 const "a3"
+    {kConst, 24, 0, 0},  // n682 const "kelvin"
+    {kConst, 111, 0, 0},  // n683 const "reaction.path"
+    {kType, 4, 0, 0},  // n684 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 335, 2, 0},  // required: metadata, coords
     {kProperties, 594, 9, 0},  // properties: metadata, coords, frame_volumes, volume_grid, lattice, veloc...
-    {kRef, 14, 0, 0},  // n683 $ref #/$defs/JsonMember
-    {kRef, 45, 0, 0},  // n684 $ref #/$defs/TrajectoryCoords
-    {kRef, 17, 0, 0},  // n685 $ref #/$defs/Volume4DBinary
-    {kRef, 14, 0, 0},  // n686 $ref #/$defs/JsonMember
-    {kRef, 56, 0, 0},  // n687 $ref #/$defs/ReactionPathLattice
-    {kRef, 46, 0, 0},  // n688 $ref #/$defs/TrajectoryFrameVectors
-    {kRef, 46, 0, 0},  // n689 $ref #/$defs/TrajectoryFrameVectors
-    {kRef, 47, 0, 0},  // n690 $ref #/$defs/TrajectoryFrameScalars
-    {kRef, 47, 0, 0},  // n691 $ref #/$defs/TrajectoryFrameScalars
-    {kType, 64, 0, 0},  // n693 type
+    {kRef, 15, 0, 0},  // n685 $ref #/$defs/JsonMember
+    {kRef, 46, 0, 0},  // n686 $ref #/$defs/TrajectoryCoords
+    {kRef, 18, 0, 0},  // n687 $ref #/$defs/Volume4DBinary
+    {kRef, 15, 0, 0},  // n688 $ref #/$defs/JsonMember
+    {kRef, 57, 0, 0},  // n689 $ref #/$defs/ReactionPathLattice
+    {kRef, 47, 0, 0},  // n690 $ref #/$defs/TrajectoryFrameVectors
+    {kRef, 47, 0, 0},  // n691 $ref #/$defs/TrajectoryFrameVectors
+    {kRef, 48, 0, 0},  // n692 $ref #/$defs/TrajectoryFrameScalars
+    {kRef, 48, 0, 0},  // n693 $ref #/$defs/TrajectoryFrameScalars
+    {kType, 64, 0, 0},  // n695 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n694 type
-    {kEnum, 340, 5, 0},  // n695 enum
-    {kType, 16, 0, 0},  // n696 type
-    {kRef, 51, 0, 0},  // n697 $ref #/$defs/TrajectoryMetadataCommon
-    {kType, 8, 0, 0},  // n698 type
-    {kItems, 699, 0, 0},  // items
-    {kRef, 54, 0, 0},  // n699 $ref #/$defs/ReactionWaypoint
+    {kType, 32, 0, 0},  // n696 type
+    {kEnum, 340, 5, 0},  // n697 enum
+    {kType, 16, 0, 0},  // n698 type
+    {kRef, 52, 0, 0},  // n699 $ref #/$defs/TrajectoryMetadataCommon
     {kType, 8, 0, 0},  // n700 type
     {kItems, 701, 0, 0},  // items
-    {kType, 16, 0, 0},  // n701 type
-    {kType, 32, 0, 0},  // n702 type
-    {kType, 32, 0, 0},  // n703 type
-    {kType, 64, 0, 0},  // n704 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kMaximum, 1, 0, 0},  // maximum
-    {kType, 8, 0, 0},  // n705 type
-    {kItems, 706, 0, 0},  // items
+    {kRef, 55, 0, 0},  // n701 $ref #/$defs/ReactionWaypoint
+    {kType, 8, 0, 0},  // n702 type
+    {kItems, 703, 0, 0},  // items
+    {kType, 16, 0, 0},  // n703 type
+    {kType, 32, 0, 0},  // n704 type
+    {kType, 32, 0, 0},  // n705 type
     {kType, 64, 0, 0},  // n706 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 1, 0, 0},  // maximum
@@ -13015,199 +13090,201 @@ inline constexpr Op kOps[3136] = {
     {kItems, 708, 0, 0},  // items
     {kType, 64, 0, 0},  // n708 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n709 type
-    {kType, 16, 0, 0},  // n710 type
-    {kType, 4, 0, 0},  // n711 type
+    {kMaximum, 1, 0, 0},  // maximum
+    {kType, 8, 0, 0},  // n709 type
+    {kItems, 710, 0, 0},  // items
+    {kType, 64, 0, 0},  // n710 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n711 type
+    {kType, 16, 0, 0},  // n712 type
+    {kType, 4, 0, 0},  // n713 type
     {kProperties, 626, 1, 0},  // properties: lattice
-    {kConst, 7, 0, 0},  // n712 const "bohr"
-    {kRef, 13, 0, 0},  // n713 $ref #/$defs/BinaryMember
-    {kProperties, 648, 2, 0},  // n714 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n715 const "float64"
-    {kOneOf, 351, 2, 0},  // n716 oneOf
-    {kType, 8, 0, 0},  // n717 type
+    {kConst, 7, 0, 0},  // n714 const "bohr"
+    {kRef, 14, 0, 0},  // n715 $ref #/$defs/BinaryMember
+    {kProperties, 648, 2, 0},  // n716 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n717 const "float64"
+    {kOneOf, 351, 2, 0},  // n718 oneOf
+    {kType, 8, 0, 0},  // n719 type
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
     {kPrefixItems, 346, 2, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n718 const 3
-    {kConst, 66, 0, 0},  // n719 const 3
-    {kType, 8, 0, 0},  // n720 type
+    {kConst, 66, 0, 0},  // n720 const 3
+    {kConst, 66, 0, 0},  // n721 const 3
+    {kType, 8, 0, 0},  // n722 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
     {kPrefixItems, 348, 3, 0},  // prefixItems
-    {kType, 64, 0, 0},  // n721 type
+    {kType, 64, 0, 0},  // n723 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kConst, 66, 0, 0},  // n722 const 3
-    {kConst, 66, 0, 0},  // n723 const 3
-    {kConst, 117, 0, 0},  // n724 const "scan.surface"
-    {kType, 4, 0, 0},  // n725 type
+    {kConst, 66, 0, 0},  // n724 const 3
+    {kConst, 66, 0, 0},  // n725 const 3
+    {kConst, 117, 0, 0},  // n726 const "scan.surface"
+    {kType, 4, 0, 0},  // n727 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 355, 4, 0},  // required: metadata, axis_a, axis_b, energies
     {kProperties, 652, 5, 0},  // properties: metadata, axis_a, axis_b, energies, geometries
-    {kRef, 14, 0, 0},  // n726 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n727 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n728 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n729 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n730 $ref #/$defs/BinaryMember
-    {kType, 32, 0, 0},  // n731 type
-    {kType, 32, 0, 0},  // n732 type
-    {kType, 8, 0, 0},  // n733 type
-    {kItems, 734, 0, 0},  // items
-    {kType, 64, 0, 0},  // n734 type
+    {kRef, 15, 0, 0},  // n728 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n729 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n730 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n731 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n732 $ref #/$defs/BinaryMember
+    {kType, 32, 0, 0},  // n733 type
+    {kType, 32, 0, 0},  // n734 type
+    {kType, 8, 0, 0},  // n735 type
+    {kItems, 736, 0, 0},  // items
+    {kType, 64, 0, 0},  // n736 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 58, 0, 0},  // n735 $ref #/$defs/ScanSurfaceAxis
-    {kRef, 58, 0, 0},  // n736 $ref #/$defs/ScanSurfaceAxis
-    {kType, 32, 0, 0},  // n737 type
-    {kType, 32, 0, 0},  // n738 type
+    {kRef, 59, 0, 0},  // n737 $ref #/$defs/ScanSurfaceAxis
+    {kRef, 59, 0, 0},  // n738 $ref #/$defs/ScanSurfaceAxis
     {kType, 32, 0, 0},  // n739 type
     {kType, 32, 0, 0},  // n740 type
     {kType, 32, 0, 0},  // n741 type
     {kType, 32, 0, 0},  // n742 type
-    {kType, 8, 0, 0},  // n743 type
-    {kItems, 744, 0, 0},  // items
-    {kRef, 50, 0, 0},  // n744 $ref #/$defs/TrajectoryAtom
-    {kType, 32, 0, 0},  // n745 type
-    {kType, 4, 0, 0},  // n746 type
-    {kAdditionalProperties, 747, 0, 0},  // additionalProperties
-    {kRef, 2, 0, 0},  // n747 $ref #/$defs/UnitName
-    {kConst, 118, 0, 0},  // n748 const "reaction.waypoints"
-    {kType, 32, 0, 0},  // n749 type
-    {kType, 4, 0, 0},  // n750 type
+    {kType, 32, 0, 0},  // n743 type
+    {kType, 32, 0, 0},  // n744 type
+    {kType, 8, 0, 0},  // n745 type
+    {kItems, 746, 0, 0},  // items
+    {kRef, 51, 0, 0},  // n746 $ref #/$defs/TrajectoryAtom
+    {kType, 32, 0, 0},  // n747 type
+    {kType, 4, 0, 0},  // n748 type
+    {kAdditionalProperties, 749, 0, 0},  // additionalProperties
+    {kRef, 2, 0, 0},  // n749 $ref #/$defs/UnitName
+    {kConst, 118, 0, 0},  // n750 const "reaction.waypoints"
+    {kType, 32, 0, 0},  // n751 type
+    {kType, 4, 0, 0},  // n752 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 360, 1, 0},  // required: waypoints
     {kProperties, 694, 1, 0},  // properties: waypoints
-    {kRef, 14, 0, 0},  // n751 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n753 type
-    {kItems, 754, 0, 0},  // items
-    {kRef, 54, 0, 0},  // n754 $ref #/$defs/ReactionWaypoint
+    {kRef, 15, 0, 0},  // n753 $ref #/$defs/JsonMember
     {kType, 8, 0, 0},  // n755 type
     {kItems, 756, 0, 0},  // items
-    {kType, 16, 0, 0},  // n756 type
-    {kConst, 119, 0, 0},  // n757 const "reaction.scheme"
-    {kType, 4, 0, 0},  // n758 type
+    {kRef, 55, 0, 0},  // n756 $ref #/$defs/ReactionWaypoint
+    {kType, 8, 0, 0},  // n757 type
+    {kItems, 758, 0, 0},  // items
+    {kType, 16, 0, 0},  // n758 type
+    {kConst, 119, 0, 0},  // n759 const "reaction.scheme"
+    {kType, 4, 0, 0},  // n760 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 366, 1, 0},  // required: scheme
     {kProperties, 708, 1, 0},  // properties: scheme
-    {kRef, 14, 0, 0},  // n759 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n761 type
+    {kRef, 15, 0, 0},  // n761 $ref #/$defs/JsonMember
+    {kType, 8, 0, 0},  // n763 type
     {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 762, 0, 0},  // items
-    {kRef, 64, 0, 0},  // n762 $ref #/$defs/ReactionStep
-    {kType, 32, 0, 0},  // n764 type
+    {kItems, 764, 0, 0},  // items
+    {kRef, 65, 0, 0},  // n764 $ref #/$defs/ReactionStep
+    {kType, 32, 0, 0},  // n766 type
     {kPattern, 6, 0, 0},  // pattern ^[A-Za-z0-9_.-]+$
-    {kType, 32, 0, 0},  // n765 type
-    {kType, 8, 0, 0},  // n766 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 767, 0, 0},  // items
-    {kRef, 65, 0, 0},  // n767 $ref #/$defs/ReactionParticipant
+    {kType, 32, 0, 0},  // n767 type
     {kType, 8, 0, 0},  // n768 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 769, 0, 0},  // items
-    {kRef, 65, 0, 0},  // n769 $ref #/$defs/ReactionParticipant
+    {kRef, 66, 0, 0},  // n769 $ref #/$defs/ReactionParticipant
     {kType, 8, 0, 0},  // n770 type
+    {kMinItems, 1, 0, 0},  // minItems
     {kItems, 771, 0, 0},  // items
-    {kRef, 65, 0, 0},  // n771 $ref #/$defs/ReactionParticipant
-    {kEnum, 374, 4, 0},  // n772 enum
-    {kType, 8, 0, 0},  // n773 type
-    {kItems, 774, 0, 0},  // items
-    {kType, 32, 0, 0},  // n774 type
-    {kType, 16, 0, 0},  // n775 type
+    {kRef, 66, 0, 0},  // n771 $ref #/$defs/ReactionParticipant
+    {kType, 8, 0, 0},  // n772 type
+    {kItems, 773, 0, 0},  // items
+    {kRef, 66, 0, 0},  // n773 $ref #/$defs/ReactionParticipant
+    {kEnum, 374, 4, 0},  // n774 enum
+    {kType, 8, 0, 0},  // n775 type
+    {kItems, 776, 0, 0},  // items
+    {kType, 32, 0, 0},  // n776 type
+    {kType, 16, 0, 0},  // n777 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 5, 0, 0},  // maximum
-    {kType, 32, 0, 0},  // n776 type
-    {kRef, 66, 0, 0},  // n777 $ref #/$defs/ReactionStepEnergies
-    {kType, 32, 0, 0},  // n779 type
+    {kType, 32, 0, 0},  // n778 type
+    {kRef, 67, 0, 0},  // n779 $ref #/$defs/ReactionStepEnergies
+    {kType, 32, 0, 0},  // n781 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 16, 0, 0},  // n780 type
+    {kType, 16, 0, 0},  // n782 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kIf, 783, 787, -1},  // n782 if
-    {kRequired, 382, 1, 0},  // n783 required: deltas
+    {kIf, 785, 789, -1},  // n784 if
+    {kRequired, 382, 1, 0},  // n785 required: deltas
     {kProperties, 748, 1, 0},  // properties: deltas
-    {kAnyOf, 385, 2, 0},  // n784 anyOf
-    {kRequired, 383, 1, 0},  // n785 required: enthalpy
-    {kRequired, 384, 1, 0},  // n786 required: gibbs_free_energy
-    {kRequired, 387, 2, 0},  // n787 required: temperature_k, pressure_atm
-    {kConst, 0, 0, 0},  // n788 const 1
-    {kType, 4, 0, 0},  // n789 type
+    {kAnyOf, 385, 2, 0},  // n786 anyOf
+    {kRequired, 383, 1, 0},  // n787 required: enthalpy
+    {kRequired, 384, 1, 0},  // n788 required: gibbs_free_energy
+    {kRequired, 387, 2, 0},  // n789 required: temperature_k, pressure_atm
+    {kConst, 0, 0, 0},  // n790 const 1
+    {kType, 4, 0, 0},  // n791 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 750, 1, 0},  // patternProperties
     {kMinProperties, 1, 0, 0},  // minProperties
     {kProperties, 752, 3, 0},  // properties: energy, enthalpy, gibbs_free_energy
-    {kRef, 67, 0, 0},  // n791 $ref #/$defs/ReactionEnergyDelta
-    {kRef, 67, 0, 0},  // n792 $ref #/$defs/ReactionEnergyDelta
-    {kRef, 67, 0, 0},  // n793 $ref #/$defs/ReactionEnergyDelta
-    {kType, 16, 0, 0},  // n794 type
+    {kRef, 68, 0, 0},  // n793 $ref #/$defs/ReactionEnergyDelta
+    {kRef, 68, 0, 0},  // n794 $ref #/$defs/ReactionEnergyDelta
+    {kRef, 68, 0, 0},  // n795 $ref #/$defs/ReactionEnergyDelta
+    {kType, 16, 0, 0},  // n796 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n795 type
+    {kType, 16, 0, 0},  // n797 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 8, 0, 0},  // n796 type
+    {kType, 8, 0, 0},  // n798 type
     {kMinItems, 2, 0, 0},  // minItems
-    {kItems, 797, 0, 0},  // items
-    {kRef, 68, 0, 0},  // n797 $ref #/$defs/ReactionEnergyTerm
-    {kType, 16, 0, 0},  // n799 type
-    {kType, 16, 0, 0},  // n800 type
-    {kRequired, 394, 1, 0},  // n802 required: run_ref
-    {kRequired, 395, 1, 0},  // n803 required: source
-    {kType, 32, 0, 0},  // n804 type
+    {kItems, 799, 0, 0},  // items
+    {kRef, 69, 0, 0},  // n799 $ref #/$defs/ReactionEnergyTerm
+    {kType, 16, 0, 0},  // n801 type
+    {kType, 16, 0, 0},  // n802 type
+    {kRequired, 394, 1, 0},  // n804 required: run_ref
+    {kRequired, 395, 1, 0},  // n805 required: source
+    {kType, 32, 0, 0},  // n806 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 16, 0, 0},  // n805 type
-    {kNot, 806, 0, 0},  // not
-    {kConst, 69, 0, 0},  // n806 const 0
     {kType, 16, 0, 0},  // n807 type
-    {kType, 16, 0, 0},  // n808 type
+    {kNot, 808, 0, 0},  // not
+    {kConst, 69, 0, 0},  // n808 const 0
     {kType, 16, 0, 0},  // n809 type
-    {kRef, 69, 0, 0},  // n810 $ref #/$defs/ReactionEnergyMethod
-    {kType, 32, 0, 0},  // n811 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n812 type
-    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 16, 0, 0},  // n810 type
+    {kType, 16, 0, 0},  // n811 type
+    {kRef, 70, 0, 0},  // n812 $ref #/$defs/ReactionEnergyMethod
     {kType, 32, 0, 0},  // n813 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 70, 0, 0},  // n814 $ref #/$defs/ReactionEnergySource
-    {kType, 32, 0, 0},  // n816 type
+    {kType, 32, 0, 0},  // n814 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n817 type
+    {kType, 32, 0, 0},  // n815 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 4, 0, 0},  // n818 type
-    {kType, 32, 0, 0},  // n820 type
+    {kRef, 71, 0, 0},  // n816 $ref #/$defs/ReactionEnergySource
+    {kType, 32, 0, 0},  // n818 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kPattern, 14, 0, 0},  // pattern ^[^/\\]+$
-    {kType, 32, 0, 0},  // n821 type
-    {kPattern, 15, 0, 0},  // pattern ^[0-9a-f]{64}$
+    {kType, 32, 0, 0},  // n819 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 4, 0, 0},  // n820 type
     {kType, 32, 0, 0},  // n822 type
     {kMinLength, 1, 0, 0},  // minLength
+    {kPattern, 14, 0, 0},  // pattern ^[^/\\]+$
     {kType, 32, 0, 0},  // n823 type
     {kPattern, 15, 0, 0},  // pattern ^[0-9a-f]{64}$
-    {kType, 4, 0, 0},  // n824 type
+    {kType, 32, 0, 0},  // n824 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n825 type
+    {kPattern, 15, 0, 0},  // pattern ^[0-9a-f]{64}$
+    {kType, 4, 0, 0},  // n826 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 806, 1, 0},  // patternProperties
     {kProperties, 808, 5, 0},  // properties: energy_eh, enthalpy_eh, gibbs_free_energy_eh, temperature_k,...
-    {kType, 32, 0, 0},  // n826 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n827 type
-    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n828 type
     {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n829 type
     {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n830 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 13, 0, 0},  // n831 $ref #/$defs/BinaryMember
-    {kProperties, 828, 2, 0},  // n832 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n833 const "float64"
-    {kMinItems, 3, 0, 0},  // n834 minItems
-    {kMaxItems, 3, 0, 0},  // maxItems
-    {kConst, 124, 0, 0},  // n835 const "vibrations"
-    {kType, 32, 0, 0},  // n836 type
+    {kType, 32, 0, 0},  // n831 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 4, 0, 0},  // n837 type
+    {kType, 32, 0, 0},  // n832 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kRef, 14, 0, 0},  // n833 $ref #/$defs/BinaryMember
+    {kProperties, 828, 2, 0},  // n834 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n835 const "float64"
+    {kMinItems, 3, 0, 0},  // n836 minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
+    {kConst, 124, 0, 0},  // n837 const "vibrations"
+    {kType, 32, 0, 0},  // n838 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 4, 0, 0},  // n839 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 406, 2, 0},  // required: metadata, displacements
     {kProperties, 832, 2, 0},  // properties: metadata, displacements
-    {kRef, 14, 0, 0},  // n838 $ref #/$defs/JsonMember
-    {kRef, 71, 0, 0},  // n839 $ref #/$defs/VibrationsDisplacements
-    {kType, 8, 0, 0},  // n840 type
-    {kItems, 841, 0, 0},  // items
-    {kType, 16, 0, 0},  // n841 type
+    {kRef, 15, 0, 0},  // n840 $ref #/$defs/JsonMember
+    {kRef, 72, 0, 0},  // n841 $ref #/$defs/VibrationsDisplacements
     {kType, 8, 0, 0},  // n842 type
     {kItems, 843, 0, 0},  // items
     {kType, 16, 0, 0},  // n843 type
@@ -13222,1872 +13299,1899 @@ inline constexpr Op kOps[3136] = {
     {kType, 16, 0, 0},  // n849 type
     {kType, 8, 0, 0},  // n850 type
     {kItems, 851, 0, 0},  // items
-    {kType, 32, 0, 0},  // n851 type
+    {kType, 16, 0, 0},  // n851 type
     {kType, 8, 0, 0},  // n852 type
     {kItems, 853, 0, 0},  // items
-    {kType, 2, 0, 0},  // n853 type
-    {kType, 64, 0, 0},  // n854 type
+    {kType, 32, 0, 0},  // n853 type
+    {kType, 8, 0, 0},  // n854 type
+    {kItems, 855, 0, 0},  // items
+    {kType, 2, 0, 0},  // n855 type
+    {kType, 64, 0, 0},  // n856 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n855 type
-    {kItems, 856, 0, 0},  // items
-    {kType, 32, 0, 0},  // n856 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kMaxLength, 3, 0, 0},  // maxLength
     {kType, 8, 0, 0},  // n857 type
     {kItems, 858, 0, 0},  // items
-    {kRef, 20, 0, 0},  // n858 $ref #/$defs/StructureAtom
-    {kConst, 125, 0, 0},  // n859 const "spectra.ir"
-    {kType, 4, 0, 0},  // n860 type
+    {kType, 32, 0, 0},  // n858 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kMaxLength, 3, 0, 0},  // maxLength
+    {kType, 8, 0, 0},  // n859 type
+    {kItems, 860, 0, 0},  // items
+    {kRef, 21, 0, 0},  // n860 $ref #/$defs/StructureAtom
+    {kConst, 125, 0, 0},  // n861 const "spectra.ir"
+    {kType, 4, 0, 0},  // n862 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 409, 1, 0},  // required: spectrum
     {kProperties, 862, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n861 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n862 type
-    {kItems, 863, 0, 0},  // items
-    {kType, 16, 0, 0},  // n863 type
+    {kRef, 15, 0, 0},  // n863 $ref #/$defs/JsonMember
     {kType, 8, 0, 0},  // n864 type
     {kItems, 865, 0, 0},  // items
     {kType, 16, 0, 0},  // n865 type
     {kType, 8, 0, 0},  // n866 type
     {kItems, 867, 0, 0},  // items
     {kType, 16, 0, 0},  // n867 type
-    {kRef, 2, 0, 0},  // n868 $ref #/$defs/UnitName
-    {kRef, 2, 0, 0},  // n869 $ref #/$defs/UnitName
-    {kType, 8, 0, 0},  // n870 type
-    {kItems, 871, 0, 0},  // items
-    {kRef, 77, 0, 0},  // n871 $ref #/$defs/SpectrumPeak
-    {kType, 4, 0, 0},  // n872 type
+    {kType, 8, 0, 0},  // n868 type
+    {kItems, 869, 0, 0},  // items
+    {kType, 16, 0, 0},  // n869 type
+    {kRef, 2, 0, 0},  // n870 $ref #/$defs/UnitName
+    {kRef, 2, 0, 0},  // n871 $ref #/$defs/UnitName
+    {kType, 8, 0, 0},  // n872 type
+    {kItems, 873, 0, 0},  // items
+    {kRef, 78, 0, 0},  // n873 $ref #/$defs/SpectrumPeak
+    {kType, 4, 0, 0},  // n874 type
     {kRequired, 412, 1, 0},  // required: type
     {kProperties, 868, 3, 0},  // properties: type, fwhm, units
-    {kEnum, 413, 3, 0},  // n873 enum
-    {kType, 16, 0, 0},  // n874 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kRef, 2, 0, 0},  // n875 $ref #/$defs/UnitName
+    {kEnum, 413, 3, 0},  // n875 enum
     {kType, 16, 0, 0},  // n876 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 4, 0, 0},  // n877 type
-    {kProperties, 874, 2, 0},  // properties: laser_nm, depolarization_ratios
+    {kRef, 2, 0, 0},  // n877 $ref #/$defs/UnitName
     {kType, 16, 0, 0},  // n878 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 8, 0, 0},  // n879 type
-    {kItems, 880, 0, 0},  // items
+    {kType, 4, 0, 0},  // n879 type
+    {kProperties, 874, 2, 0},  // properties: laser_nm, depolarization_ratios
     {kType, 16, 0, 0},  // n880 type
-    {kType, 4, 0, 0},  // n881 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 8, 0, 0},  // n881 type
+    {kItems, 882, 0, 0},  // items
+    {kType, 16, 0, 0},  // n882 type
+    {kType, 4, 0, 0},  // n883 type
     {kProperties, 878, 1, 0},  // properties: x_axis
-    {kEnum, 416, 2, 0},  // n882 enum
-    {kRef, 76, 0, 0},  // n883 $ref #/$defs/XraySpectrumBlock
-    {kType, 32, 0, 0},  // n884 type
-    {kIf, 886, 889, -1},  // n885 if
-    {kRequired, 418, 1, 0},  // n886 required: xray
+    {kEnum, 416, 2, 0},  // n884 enum
+    {kRef, 77, 0, 0},  // n885 $ref #/$defs/XraySpectrumBlock
+    {kType, 32, 0, 0},  // n886 type
+    {kIf, 888, 891, -1},  // n887 if
+    {kRequired, 418, 1, 0},  // n888 required: xray
     {kProperties, 906, 1, 0},  // properties: xray
-    {kRequired, 419, 1, 0},  // n887 required: intensity
+    {kRequired, 419, 1, 0},  // n889 required: intensity
     {kProperties, 904, 1, 0},  // properties: intensity
-    {kConst, 131, 0, 0},  // n888 const "cross_section_mb"
-    {kNot, 890, 0, 0},  // n889 not
-    {kRequired, 420, 1, 0},  // n890 required: y_units
-    {kIf, 892, 895, -1},  // n891 if
-    {kRequired, 421, 1, 0},  // n892 required: xray
+    {kConst, 131, 0, 0},  // n890 const "cross_section_mb"
+    {kNot, 892, 0, 0},  // n891 not
+    {kRequired, 420, 1, 0},  // n892 required: y_units
+    {kIf, 894, 897, -1},  // n893 if
+    {kRequired, 421, 1, 0},  // n894 required: xray
     {kProperties, 910, 1, 0},  // properties: xray
-    {kRequired, 422, 1, 0},  // n893 required: intensity
+    {kRequired, 422, 1, 0},  // n895 required: intensity
     {kProperties, 908, 1, 0},  // properties: intensity
-    {kEnum, 423, 3, 0},  // n894 enum
-    {kProperties, 912, 1, 0},  // n895 properties: y_units
-    {kConst, 30, 0, 0},  // n896 const "dimensionless"
-    {kType, 32, 0, 0},  // n898 type
+    {kEnum, 423, 3, 0},  // n896 enum
+    {kProperties, 912, 1, 0},  // n897 properties: y_units
+    {kConst, 30, 0, 0},  // n898 const "dimensionless"
+    {kType, 32, 0, 0},  // n900 type
     {kPattern, 16, 0, 0},  // pattern ^(K|L[1-3]|L2,3|M[1-5]|M2,3|M4,5|N[1-7]|N2,3|N4,5|N6,7|O[1-5]|O2,3|O4,5)$
-    {kType, 32, 0, 0},  // n899 type
+    {kType, 32, 0, 0},  // n901 type
     {kPattern, 17, 0, 0},  // pattern ^[A-Z][a-z]{0,2}$
-    {kType, 8, 0, 0},  // n900 type
+    {kType, 8, 0, 0},  // n902 type
     {kMinItems, 1, 0, 0},  // minItems
     {kUniqueItems, 0, 0, 0},  // uniqueItems
-    {kItems, 901, 0, 0},  // items
-    {kType, 64, 0, 0},  // n901 type
+    {kItems, 903, 0, 0},  // items
+    {kType, 64, 0, 0},  // n903 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n902 type
+    {kType, 32, 0, 0},  // n904 type
     {kPattern, 18, 0, 0},  // pattern ^[1-7][spdf]([1357]/2)?$
-    {kType, 32, 0, 0},  // n903 type
+    {kType, 32, 0, 0},  // n905 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kEnum, 429, 4, 0},  // n904 enum
-    {kType, 16, 0, 0},  // n905 type
-    {kType, 16, 0, 0},  // n906 type
+    {kEnum, 429, 4, 0},  // n906 enum
     {kType, 16, 0, 0},  // n907 type
     {kType, 16, 0, 0},  // n908 type
+    {kType, 16, 0, 0},  // n909 type
+    {kType, 16, 0, 0},  // n910 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n909 type
-    {kType, 4, 0, 0},  // n910 type
+    {kType, 32, 0, 0},  // n911 type
+    {kType, 4, 0, 0},  // n912 type
     {kProperties, 930, 3, 0},  // properties: mode_index, state_index, atom_index
-    {kType, 64, 0, 0},  // n911 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n912 type
-    {kMinimum, 0, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n913 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kConst, 135, 0, 0},  // n914 const "spectra.raman"
-    {kType, 4, 0, 0},  // n915 type
+    {kType, 64, 0, 0},  // n914 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n915 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kConst, 135, 0, 0},  // n916 const "spectra.raman"
+    {kType, 4, 0, 0},  // n917 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 434, 1, 0},  // required: spectrum
     {kProperties, 946, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n916 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n917 $ref #/$defs/BinaryMember
-    {kProperties, 952, 2, 0},  // n918 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n919 const "float64"
-    {kMinItems, 3, 0, 0},  // n920 minItems
+    {kRef, 15, 0, 0},  // n918 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n919 $ref #/$defs/BinaryMember
+    {kProperties, 952, 2, 0},  // n920 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n921 const "float64"
+    {kMinItems, 3, 0, 0},  // n922 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kConst, 136, 0, 0},  // n921 const "spectra.uvvis"
-    {kType, 4, 0, 0},  // n922 type
+    {kConst, 136, 0, 0},  // n923 const "spectra.uvvis"
+    {kType, 4, 0, 0},  // n924 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 437, 1, 0},  // required: spectrum
     {kProperties, 956, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n923 $ref #/$defs/JsonMember
-    {kConst, 137, 0, 0},  // n924 const "spectra.ecd"
-    {kType, 4, 0, 0},  // n925 type
+    {kRef, 15, 0, 0},  // n925 $ref #/$defs/JsonMember
+    {kConst, 137, 0, 0},  // n926 const "spectra.ecd"
+    {kType, 4, 0, 0},  // n927 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 438, 1, 0},  // required: spectrum
     {kProperties, 962, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n926 $ref #/$defs/JsonMember
-    {kConst, 138, 0, 0},  // n927 const "spectra.vcd"
-    {kType, 4, 0, 0},  // n928 type
+    {kRef, 15, 0, 0},  // n928 $ref #/$defs/JsonMember
+    {kConst, 138, 0, 0},  // n929 const "spectra.vcd"
+    {kType, 4, 0, 0},  // n930 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 439, 1, 0},  // required: spectrum
     {kProperties, 968, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n929 $ref #/$defs/JsonMember
-    {kConst, 139, 0, 0},  // n930 const "spectra.nmr"
-    {kType, 4, 0, 0},  // n931 type
+    {kRef, 15, 0, 0},  // n931 $ref #/$defs/JsonMember
+    {kConst, 139, 0, 0},  // n932 const "spectra.nmr"
+    {kType, 4, 0, 0},  // n933 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 440, 1, 0},  // required: spectrum
     {kProperties, 974, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n932 $ref #/$defs/JsonMember
-    {kType, 32, 0, 0},  // n933 type
-    {kType, 32, 0, 0},  // n934 type
+    {kRef, 15, 0, 0},  // n934 $ref #/$defs/JsonMember
     {kType, 32, 0, 0},  // n935 type
-    {kType, 8, 0, 0},  // n936 type
-    {kItems, 937, 0, 0},  // items
-    {kType, 4, 0, 0},  // n937 type
+    {kType, 32, 0, 0},  // n936 type
+    {kType, 32, 0, 0},  // n937 type
+    {kType, 8, 0, 0},  // n938 type
+    {kItems, 939, 0, 0},  // items
+    {kType, 4, 0, 0},  // n939 type
     {kRequired, 441, 2, 0},  // required: atom_index, isotropic_shift_ppm
     {kProperties, 980, 5, 0},  // properties: atom_index, symbol, isotropic_shift_ppm, anisotropy_ppm, asy...
-    {kType, 64, 0, 0},  // n938 type
+    {kType, 64, 0, 0},  // n940 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n939 type
-    {kType, 16, 0, 0},  // n940 type
-    {kType, 16, 0, 0},  // n941 type
+    {kType, 32, 0, 0},  // n941 type
     {kType, 16, 0, 0},  // n942 type
-    {kType, 8, 0, 0},  // n943 type
-    {kItems, 944, 0, 0},  // items
-    {kType, 4, 0, 0},  // n944 type
+    {kType, 16, 0, 0},  // n943 type
+    {kType, 16, 0, 0},  // n944 type
+    {kType, 8, 0, 0},  // n945 type
+    {kItems, 946, 0, 0},  // items
+    {kType, 4, 0, 0},  // n946 type
     {kProperties, 990, 3, 0},  // properties: atom_index, tensor, isotropic_ppm
-    {kType, 64, 0, 0},  // n945 type
+    {kType, 64, 0, 0},  // n947 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n946 type
+    {kType, 8, 0, 0},  // n948 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 947, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n947 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n948 type
-    {kType, 8, 0, 0},  // n949 type
-    {kItems, 950, 0, 0},  // items
-    {kType, 4, 0, 0},  // n950 type
+    {kItems, 949, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n949 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n950 type
+    {kType, 8, 0, 0},  // n951 type
+    {kItems, 952, 0, 0},  // items
+    {kType, 4, 0, 0},  // n952 type
     {kRequired, 443, 3, 0},  // required: i, j, value_hz
     {kProperties, 996, 5, 0},  // properties: i, j, value_hz, isotope_i, isotope_j
-    {kType, 64, 0, 0},  // n951 type
+    {kType, 64, 0, 0},  // n953 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n952 type
+    {kType, 64, 0, 0},  // n954 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n953 type
-    {kType, 32, 0, 0},  // n954 type
-    {kType, 32, 0, 0},  // n955 type
-    {kConst, 140, 0, 0},  // n956 const "spectra.epr"
-    {kType, 4, 0, 0},  // n957 type
+    {kType, 16, 0, 0},  // n955 type
+    {kType, 32, 0, 0},  // n956 type
+    {kType, 32, 0, 0},  // n957 type
+    {kConst, 140, 0, 0},  // n958 const "spectra.epr"
+    {kType, 4, 0, 0},  // n959 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 446, 1, 0},  // required: spectrum
     {kProperties, 1018, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n958 $ref #/$defs/JsonMember
-    {kType, 4, 0, 0},  // n959 type
+    {kRef, 15, 0, 0},  // n960 $ref #/$defs/JsonMember
+    {kType, 4, 0, 0},  // n961 type
     {kProperties, 1024, 3, 0},  // properties: matrix, isotropic, principal
-    {kType, 8, 0, 0},  // n960 type
+    {kType, 8, 0, 0},  // n962 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 961, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n961 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n962 type
+    {kItems, 963, 0, 0},  // items
     {kRef, 5, 0, 0},  // n963 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n964 type
-    {kItems, 965, 0, 0},  // items
-    {kType, 4, 0, 0},  // n965 type
+    {kType, 16, 0, 0},  // n964 type
+    {kRef, 5, 0, 0},  // n965 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n966 type
+    {kItems, 967, 0, 0},  // items
+    {kType, 4, 0, 0},  // n967 type
     {kRequired, 447, 1, 0},  // required: atom_index
     {kProperties, 1030, 6, 0},  // properties: atom_index, symbol, isotope, a_iso_mhz, a_tensor_mhz, a_prin...
-    {kType, 64, 0, 0},  // n966 type
+    {kType, 64, 0, 0},  // n968 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n967 type
-    {kType, 32, 0, 0},  // n968 type
-    {kType, 16, 0, 0},  // n969 type
-    {kType, 8, 0, 0},  // n970 type
+    {kType, 32, 0, 0},  // n969 type
+    {kType, 32, 0, 0},  // n970 type
+    {kType, 16, 0, 0},  // n971 type
+    {kType, 8, 0, 0},  // n972 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 971, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n971 $ref #/$defs/Vec3
-    {kRef, 5, 0, 0},  // n972 $ref #/$defs/Vec3
-    {kType, 4, 0, 0},  // n973 type
+    {kItems, 973, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n973 $ref #/$defs/Vec3
+    {kRef, 5, 0, 0},  // n974 $ref #/$defs/Vec3
+    {kType, 4, 0, 0},  // n975 type
     {kProperties, 1042, 3, 0},  // properties: d_mhz, e_mhz, tensor_mhz
-    {kType, 16, 0, 0},  // n974 type
-    {kType, 16, 0, 0},  // n975 type
-    {kType, 8, 0, 0},  // n976 type
+    {kType, 16, 0, 0},  // n976 type
+    {kType, 16, 0, 0},  // n977 type
+    {kType, 8, 0, 0},  // n978 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 977, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n977 $ref #/$defs/Vec3
-    {kConst, 141, 0, 0},  // n978 const "spectra.xas"
-    {kType, 4, 0, 0},  // n979 type
+    {kItems, 979, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n979 $ref #/$defs/Vec3
+    {kConst, 141, 0, 0},  // n980 const "spectra.xas"
+    {kType, 4, 0, 0},  // n981 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 448, 1, 0},  // required: spectrum
     {kProperties, 1054, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n980 $ref #/$defs/JsonMember
-    {kConst, 142, 0, 0},  // n981 const "spectra.xes"
-    {kType, 4, 0, 0},  // n982 type
+    {kRef, 15, 0, 0},  // n982 $ref #/$defs/JsonMember
+    {kConst, 142, 0, 0},  // n983 const "spectra.xes"
+    {kType, 4, 0, 0},  // n984 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 449, 1, 0},  // required: spectrum
     {kProperties, 1060, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n983 $ref #/$defs/JsonMember
-    {kConst, 143, 0, 0},  // n984 const "spectra.mossbauer"
-    {kType, 4, 0, 0},  // n985 type
+    {kRef, 15, 0, 0},  // n985 $ref #/$defs/JsonMember
+    {kConst, 143, 0, 0},  // n986 const "spectra.mossbauer"
+    {kType, 4, 0, 0},  // n987 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 450, 1, 0},  // required: spectrum
     {kProperties, 1066, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n986 $ref #/$defs/JsonMember
-    {kType, 32, 0, 0},  // n988 type
+    {kRef, 15, 0, 0},  // n988 $ref #/$defs/JsonMember
+    {kType, 32, 0, 0},  // n990 type
     {kPattern, 19, 0, 0},  // pattern ^[0-9]{1,3}[A-Z][a-z]{0,2}$
-    {kType, 32, 0, 0},  // n989 type
+    {kType, 32, 0, 0},  // n991 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 16, 0, 0},  // n990 type
+    {kType, 16, 0, 0},  // n992 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 4, 0, 0},  // n991 type
+    {kType, 4, 0, 0},  // n993 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1074, 1, 0},  // patternProperties
     {kRequired, 452, 2, 0},  // required: alpha, c
     {kProperties, 1076, 4, 0},  // properties: alpha, beta, c, label
-    {kType, 16, 0, 0},  // n993 type
-    {kType, 16, 0, 0},  // n994 type
     {kType, 16, 0, 0},  // n995 type
-    {kType, 32, 0, 0},  // n996 type
+    {kType, 16, 0, 0},  // n996 type
+    {kType, 16, 0, 0},  // n997 type
+    {kType, 32, 0, 0},  // n998 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 8, 0, 0},  // n997 type
+    {kType, 8, 0, 0},  // n999 type
     {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 998, 0, 0},  // items
-    {kRef, 91, 0, 0},  // n998 $ref #/$defs/MossbauerSite
-    {kType, 64, 0, 0},  // n1000 type
+    {kItems, 1000, 0, 0},  // items
+    {kRef, 92, 0, 0},  // n1000 $ref #/$defs/MossbauerSite
+    {kType, 64, 0, 0},  // n1002 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1001 type
-    {kType, 32, 0, 0},  // n1002 type
-    {kType, 16, 0, 0},  // n1003 type
-    {kType, 16, 0, 0},  // n1004 type
+    {kType, 32, 0, 0},  // n1003 type
+    {kType, 32, 0, 0},  // n1004 type
     {kType, 16, 0, 0},  // n1005 type
+    {kType, 16, 0, 0},  // n1006 type
+    {kType, 16, 0, 0},  // n1007 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 2, 0, 0},  // maximum
-    {kRef, 166, 0, 0},  // n1006 $ref #/$defs/Matrix3x3
-    {kType, 16, 0, 0},  // n1007 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n1008 type
+    {kRef, 167, 0, 0},  // n1008 $ref #/$defs/Matrix3x3
     {kType, 16, 0, 0},  // n1009 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kType, 16, 0, 0},  // n1010 type
+    {kType, 16, 0, 0},  // n1011 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 16, 0, 0},  // n1012 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 2, 0, 0},  // maximum
-    {kConst, 144, 0, 0},  // n1011 const "spectra.generic"
-    {kType, 4, 0, 0},  // n1012 type
+    {kConst, 144, 0, 0},  // n1013 const "spectra.generic"
+    {kType, 4, 0, 0},  // n1014 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 455, 1, 0},  // required: spectrum
     {kProperties, 1118, 1, 0},  // properties: spectrum
-    {kRef, 14, 0, 0},  // n1013 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1014 $ref #/$defs/BinaryMember
-    {kProperties, 1124, 2, 0},  // n1015 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1016 const "float64"
-    {kMinItems, 2, 0, 0},  // n1017 minItems
+    {kRef, 15, 0, 0},  // n1015 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1016 $ref #/$defs/BinaryMember
+    {kProperties, 1124, 2, 0},  // n1017 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1018 const "float64"
+    {kMinItems, 2, 0, 0},  // n1019 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kConst, 145, 0, 0},  // n1018 const "wavefunction.gto"
-    {kType, 4, 0, 0},  // n1019 type
+    {kConst, 145, 0, 0},  // n1020 const "wavefunction.gto"
+    {kType, 4, 0, 0},  // n1021 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 458, 2, 0},  // required: basis, mo_metadata
     {kProperties, 1128, 9, 0},  // properties: basis, mo_metadata, mo_coefficients, mo_coefficients_alpha, ...
     {kOneOf, 468, 2, 0},  // oneOf
-    {kRef, 14, 0, 0},  // n1020 $ref #/$defs/JsonMember
-    {kRef, 14, 0, 0},  // n1021 $ref #/$defs/JsonMember
-    {kRef, 93, 0, 0},  // n1022 $ref #/$defs/MoCoefficientsBinary
-    {kRef, 93, 0, 0},  // n1023 $ref #/$defs/MoCoefficientsBinary
-    {kRef, 93, 0, 0},  // n1024 $ref #/$defs/MoCoefficientsBinary
-    {kRef, 95, 0, 0},  // n1025 $ref #/$defs/WavefunctionAoMatrix
-    {kRef, 95, 0, 0},  // n1026 $ref #/$defs/WavefunctionAoMatrix
-    {kRef, 95, 0, 0},  // n1027 $ref #/$defs/WavefunctionAoMatrix
-    {kRef, 95, 0, 0},  // n1028 $ref #/$defs/WavefunctionAoMatrix
-    {kRequired, 460, 1, 0},  // n1029 required: mo_coefficients
-    {kNot, 1030, 0, 0},  // not
-    {kAnyOf, 463, 2, 0},  // n1030 anyOf
-    {kRequired, 461, 1, 0},  // n1031 required: mo_coefficients_alpha
-    {kRequired, 462, 1, 0},  // n1032 required: mo_coefficients_beta
-    {kRequired, 465, 2, 0},  // n1033 required: mo_coefficients_alpha, mo_coefficients_beta
-    {kNot, 1034, 0, 0},  // not
-    {kRequired, 467, 1, 0},  // n1034 required: mo_coefficients
-    {kRef, 13, 0, 0},  // n1035 $ref #/$defs/BinaryMember
-    {kProperties, 1150, 2, 0},  // n1036 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1037 const "float64"
-    {kMinItems, 2, 0, 0},  // n1038 minItems
+    {kRef, 15, 0, 0},  // n1022 $ref #/$defs/JsonMember
+    {kRef, 15, 0, 0},  // n1023 $ref #/$defs/JsonMember
+    {kRef, 94, 0, 0},  // n1024 $ref #/$defs/MoCoefficientsBinary
+    {kRef, 94, 0, 0},  // n1025 $ref #/$defs/MoCoefficientsBinary
+    {kRef, 94, 0, 0},  // n1026 $ref #/$defs/MoCoefficientsBinary
+    {kRef, 96, 0, 0},  // n1027 $ref #/$defs/WavefunctionAoMatrix
+    {kRef, 96, 0, 0},  // n1028 $ref #/$defs/WavefunctionAoMatrix
+    {kRef, 96, 0, 0},  // n1029 $ref #/$defs/WavefunctionAoMatrix
+    {kRef, 96, 0, 0},  // n1030 $ref #/$defs/WavefunctionAoMatrix
+    {kRequired, 460, 1, 0},  // n1031 required: mo_coefficients
+    {kNot, 1032, 0, 0},  // not
+    {kAnyOf, 463, 2, 0},  // n1032 anyOf
+    {kRequired, 461, 1, 0},  // n1033 required: mo_coefficients_alpha
+    {kRequired, 462, 1, 0},  // n1034 required: mo_coefficients_beta
+    {kRequired, 465, 2, 0},  // n1035 required: mo_coefficients_alpha, mo_coefficients_beta
+    {kNot, 1036, 0, 0},  // not
+    {kRequired, 467, 1, 0},  // n1036 required: mo_coefficients
+    {kRef, 14, 0, 0},  // n1037 $ref #/$defs/BinaryMember
+    {kProperties, 1150, 2, 0},  // n1038 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1039 const "float64"
+    {kMinItems, 2, 0, 0},  // n1040 minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1040 type
+    {kType, 64, 0, 0},  // n1042 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1041 type
+    {kType, 64, 0, 0},  // n1043 type
     {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 6, 0, 0},  // maximum
-    {kType, 8, 0, 0},  // n1042 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1043, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1043 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kType, 8, 0, 0},  // n1044 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1045, 0, 0},  // items
     {kType, 16, 0, 0},  // n1045 type
-    {kType, 2, 0, 0},  // n1046 type
-    {kType, 64, 0, 0},  // n1048 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1049 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1050, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1050 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 8, 0, 0},  // n1046 type
+    {kMinItems, 1, 0, 0},  // minItems
+    {kItems, 1047, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1047 type
+    {kType, 2, 0, 0},  // n1048 type
+    {kType, 64, 0, 0},  // n1050 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 8, 0, 0},  // n1051 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1052, 0, 0},  // items
     {kType, 16, 0, 0},  // n1052 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
     {kType, 8, 0, 0},  // n1053 type
     {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1054, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1054 type
-    {kType, 2, 0, 0},  // n1055 type
-    {kType, 64, 0, 0},  // n1057 type
+    {kType, 16, 0, 0},  // n1054 type
+    {kType, 8, 0, 0},  // n1055 type
+    {kMinItems, 1, 0, 0},  // minItems
+    {kItems, 1056, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1056 type
+    {kType, 2, 0, 0},  // n1057 type
+    {kType, 64, 0, 0},  // n1059 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1058 type
+    {kType, 64, 0, 0},  // n1060 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1059 type
-    {kType, 8, 0, 0},  // n1060 type
-    {kItems, 1061, 0, 0},  // items
-    {kRef, 97, 0, 0},  // n1061 $ref #/$defs/BasisEcpProjector
-    {kType, 32, 0, 0},  // n1063 type
+    {kType, 32, 0, 0},  // n1061 type
+    {kType, 8, 0, 0},  // n1062 type
+    {kItems, 1063, 0, 0},  // items
+    {kRef, 98, 0, 0},  // n1063 $ref #/$defs/BasisEcpProjector
+    {kType, 32, 0, 0},  // n1065 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 2, 0, 0},  // n1064 type
-    {kType, 64, 0, 0},  // n1065 type
+    {kType, 2, 0, 0},  // n1066 type
+    {kType, 64, 0, 0},  // n1067 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1066 type
-    {kItems, 1067, 0, 0},  // items
-    {kRef, 96, 0, 0},  // n1067 $ref #/$defs/BasisShell
     {kType, 8, 0, 0},  // n1068 type
     {kItems, 1069, 0, 0},  // items
-    {kRef, 98, 0, 0},  // n1069 $ref #/$defs/BasisEcpCentre
-    {kType, 64, 0, 0},  // n1070 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 97, 0, 0},  // n1069 $ref #/$defs/BasisShell
+    {kType, 8, 0, 0},  // n1070 type
+    {kItems, 1071, 0, 0},  // items
+    {kRef, 99, 0, 0},  // n1071 $ref #/$defs/BasisEcpCentre
     {kType, 64, 0, 0},  // n1072 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1073 type
-    {kItems, 1074, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1074 type
+    {kType, 64, 0, 0},  // n1074 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 8, 0, 0},  // n1075 type
     {kItems, 1076, 0, 0},  // items
     {kType, 16, 0, 0},  // n1076 type
     {kType, 8, 0, 0},  // n1077 type
     {kItems, 1078, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1078 type
-    {kEnum, 487, 4, 0},  // n1080 enum
-    {kEnum, 491, 10, 0},  // n1081 enum
-    {kType, 64, 0, 0},  // n1082 type
+    {kType, 16, 0, 0},  // n1078 type
+    {kType, 8, 0, 0},  // n1079 type
+    {kItems, 1080, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1080 type
+    {kEnum, 487, 4, 0},  // n1082 enum
+    {kEnum, 491, 10, 0},  // n1083 enum
+    {kType, 64, 0, 0},  // n1084 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1083 type
+    {kType, 64, 0, 0},  // n1085 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1084 type
-    {kItems, 1085, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1085 type
     {kType, 8, 0, 0},  // n1086 type
     {kItems, 1087, 0, 0},  // items
     {kType, 16, 0, 0},  // n1087 type
     {kType, 8, 0, 0},  // n1088 type
     {kItems, 1089, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1089 type
-    {kRef, 100, 0, 0},  // n1090 $ref #/$defs/MoSpinChannel
-    {kRef, 100, 0, 0},  // n1091 $ref #/$defs/MoSpinChannel
-    {kEnum, 501, 2, 0},  // n1092 enum
-    {kRef, 5, 0, 0},  // n1093 $ref #/$defs/Vec3
-    {kType, 2, 0, 0},  // n1094 type
-    {kEnum, 503, 2, 0},  // n1095 enum
-    {kType, 8, 0, 0},  // n1096 type
+    {kType, 16, 0, 0},  // n1089 type
+    {kType, 8, 0, 0},  // n1090 type
+    {kItems, 1091, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1091 type
+    {kRef, 101, 0, 0},  // n1092 $ref #/$defs/MoSpinChannel
+    {kRef, 101, 0, 0},  // n1093 $ref #/$defs/MoSpinChannel
+    {kEnum, 501, 2, 0},  // n1094 enum
+    {kRef, 5, 0, 0},  // n1095 $ref #/$defs/Vec3
+    {kType, 2, 0, 0},  // n1096 type
+    {kEnum, 503, 2, 0},  // n1097 enum
+    {kType, 8, 0, 0},  // n1098 type
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
     {kPrefixItems, 505, 2, 0},  // prefixItems
-    {kConst, 160, 0, 0},  // n1097 const "real"
-    {kConst, 162, 0, 0},  // n1098 const "imag"
-    {kType, 32, 0, 0},  // n1099 type
-    {kType, 64, 0, 0},  // n1100 type
+    {kConst, 160, 0, 0},  // n1099 const "real"
+    {kConst, 162, 0, 0},  // n1100 const "imag"
+    {kType, 32, 0, 0},  // n1101 type
+    {kType, 64, 0, 0},  // n1102 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 507, 2, 0},  // n1101 enum
-    {kType, 32, 0, 0},  // n1102 type
-    {kType, 32, 0, 0},  // n1103 type
+    {kEnum, 507, 2, 0},  // n1103 enum
+    {kType, 32, 0, 0},  // n1104 type
+    {kType, 32, 0, 0},  // n1105 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 8, 0, 0},  // n1104 type
-    {kItems, 1105, 0, 0},  // items
-    {kType, 8, 0, 0},  // n1105 type
-    {kItems, 1106, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1106 type
+    {kType, 8, 0, 0},  // n1106 type
+    {kItems, 1107, 0, 0},  // items
     {kType, 8, 0, 0},  // n1107 type
     {kItems, 1108, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1108 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n1108 type
     {kType, 8, 0, 0},  // n1109 type
     {kItems, 1110, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1110 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 5, 0, 0},  // n1110 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1111 type
     {kItems, 1112, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1112 type
-    {kType, 64, 0, 0},  // n1113 type
+    {kType, 64, 0, 0},  // n1112 type
     {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1113 type
+    {kItems, 1114, 0, 0},  // items
     {kType, 16, 0, 0},  // n1114 type
-    {kIf, 1116, 1119, -1},  // n1115 if
-    {kRequired, 509, 3, 0},  // n1116 required: spin, orbital_kind, nto_role
+    {kType, 64, 0, 0},  // n1115 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 16, 0, 0},  // n1116 type
+    {kIf, 1118, 1121, -1},  // n1117 if
+    {kRequired, 509, 3, 0},  // n1118 required: spin, orbital_kind, nto_role
     {kProperties, 1264, 2, 0},  // properties: spin, orbital_kind
-    {kConst, 146, 0, 0},  // n1117 const "unrestricted"
-    {kConst, 152, 0, 0},  // n1118 const "nto"
-    {kRequired, 512, 4, 0},  // n1119 required: occupation_semantics, state_ref, state_index, nto_role
+    {kConst, 146, 0, 0},  // n1119 const "unrestricted"
+    {kConst, 152, 0, 0},  // n1120 const "nto"
+    {kRequired, 512, 4, 0},  // n1121 required: occupation_semantics, state_ref, state_index, nto_role
     {kProperties, 1268, 1, 0},  // properties: occupation_semantics
-    {kConst, 159, 0, 0},  // n1120 const "transition_weight"
-    {kIf, 1122, 1124, 1130},  // n1121 if
-    {kRequired, 516, 1, 0},  // n1122 required: spin
+    {kConst, 159, 0, 0},  // n1122 const "transition_weight"
+    {kIf, 1124, 1126, 1132},  // n1123 if
+    {kRequired, 516, 1, 0},  // n1124 required: spin
     {kProperties, 1270, 1, 0},  // properties: spin
-    {kConst, 146, 0, 0},  // n1123 const "unrestricted"
-    {kRequired, 517, 2, 0},  // n1124 required: alpha, beta
-    {kNot, 1125, 0, 0},  // not
-    {kAnyOf, 523, 4, 0},  // n1125 anyOf
-    {kRequired, 519, 1, 0},  // n1126 required: n_mo
-    {kRequired, 520, 1, 0},  // n1127 required: energies
-    {kRequired, 521, 1, 0},  // n1128 required: occupations
-    {kRequired, 522, 1, 0},  // n1129 required: symmetry_labels
-    {kRequired, 527, 2, 0},  // n1130 required: energies, occupations
-    {kNot, 1131, 0, 0},  // not
-    {kAnyOf, 531, 2, 0},  // n1131 anyOf
-    {kRequired, 529, 1, 0},  // n1132 required: alpha
-    {kRequired, 530, 1, 0},  // n1133 required: beta
-    {kIf, 1135, 1137, -1},  // n1134 if
-    {kRequired, 533, 1, 0},  // n1135 required: spin
+    {kConst, 146, 0, 0},  // n1125 const "unrestricted"
+    {kRequired, 517, 2, 0},  // n1126 required: alpha, beta
+    {kNot, 1127, 0, 0},  // not
+    {kAnyOf, 523, 4, 0},  // n1127 anyOf
+    {kRequired, 519, 1, 0},  // n1128 required: n_mo
+    {kRequired, 520, 1, 0},  // n1129 required: energies
+    {kRequired, 521, 1, 0},  // n1130 required: occupations
+    {kRequired, 522, 1, 0},  // n1131 required: symmetry_labels
+    {kRequired, 527, 2, 0},  // n1132 required: energies, occupations
+    {kNot, 1133, 0, 0},  // not
+    {kAnyOf, 531, 2, 0},  // n1133 anyOf
+    {kRequired, 529, 1, 0},  // n1134 required: alpha
+    {kRequired, 530, 1, 0},  // n1135 required: beta
+    {kIf, 1137, 1139, -1},  // n1136 if
+    {kRequired, 533, 1, 0},  // n1137 required: spin
     {kProperties, 1272, 1, 0},  // properties: spin
-    {kConst, 148, 0, 0},  // n1136 const "generalized"
-    {kRequired, 534, 1, 0},  // n1137 required: complex
+    {kConst, 148, 0, 0},  // n1138 const "generalized"
+    {kRequired, 534, 1, 0},  // n1139 required: complex
     {kProperties, 1274, 1, 0},  // properties: complex
-    {kConst, 68, 0, 0},  // n1138 const true
-    {kConst, 165, 0, 0},  // n1139 const "wavefunction.bloch"
-    {kType, 4, 0, 0},  // n1140 type
+    {kConst, 68, 0, 0},  // n1140 const true
+    {kConst, 165, 0, 0},  // n1141 const "wavefunction.bloch"
+    {kType, 4, 0, 0},  // n1142 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 538, 6, 0},  // required: basis, kpoints, mo_metadata, mo_coefficients, energies, occu...
     {kProperties, 1276, 6, 0},  // properties: basis, kpoints, mo_metadata, mo_coefficients, energies, occu...
-    {kRef, 14, 0, 0},  // n1141 $ref #/$defs/JsonMember
-    {kRef, 14, 0, 0},  // n1142 $ref #/$defs/JsonMember
-    {kRef, 14, 0, 0},  // n1143 $ref #/$defs/JsonMember
-    {kRef, 103, 0, 0},  // n1144 $ref #/$defs/BlochMoCoefficients
-    {kRef, 104, 0, 0},  // n1145 $ref #/$defs/BlochEnergies
-    {kRef, 105, 0, 0},  // n1146 $ref #/$defs/BlochOccupations
-    {kRef, 13, 0, 0},  // n1147 $ref #/$defs/BinaryMember
-    {kProperties, 1292, 2, 0},  // n1148 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1149 const "float64"
-    {kMinItems, 5, 0, 0},  // n1150 minItems
+    {kRef, 15, 0, 0},  // n1143 $ref #/$defs/JsonMember
+    {kRef, 15, 0, 0},  // n1144 $ref #/$defs/JsonMember
+    {kRef, 15, 0, 0},  // n1145 $ref #/$defs/JsonMember
+    {kRef, 104, 0, 0},  // n1146 $ref #/$defs/BlochMoCoefficients
+    {kRef, 105, 0, 0},  // n1147 $ref #/$defs/BlochEnergies
+    {kRef, 106, 0, 0},  // n1148 $ref #/$defs/BlochOccupations
+    {kRef, 14, 0, 0},  // n1149 $ref #/$defs/BinaryMember
+    {kProperties, 1292, 2, 0},  // n1150 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1151 const "float64"
+    {kMinItems, 5, 0, 0},  // n1152 minItems
     {kMaxItems, 5, 0, 0},  // maxItems
     {kPrefixItems, 547, 5, 0},  // prefixItems
-    {kMinimum, 2, 0, 0},  // n1152 minimum
+    {kMinimum, 2, 0, 0},  // n1154 minimum
     {kMaximum, 7, 0, 0},  // maximum
-    {kConst, 67, 0, 0},  // n1155 const 2
-    {kRef, 13, 0, 0},  // n1156 $ref #/$defs/BinaryMember
-    {kProperties, 1296, 2, 0},  // n1157 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1158 const "float64"
-    {kMinItems, 3, 0, 0},  // n1159 minItems
+    {kConst, 67, 0, 0},  // n1157 const 2
+    {kRef, 14, 0, 0},  // n1158 $ref #/$defs/BinaryMember
+    {kProperties, 1296, 2, 0},  // n1159 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1160 const "float64"
+    {kMinItems, 3, 0, 0},  // n1161 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n1160 $ref #/$defs/BinaryMember
-    {kProperties, 1300, 2, 0},  // n1161 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1162 const "float64"
-    {kMinItems, 3, 0, 0},  // n1163 minItems
+    {kRef, 14, 0, 0},  // n1162 $ref #/$defs/BinaryMember
+    {kProperties, 1300, 2, 0},  // n1163 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1164 const "float64"
+    {kMinItems, 3, 0, 0},  // n1165 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kType, 8, 0, 0},  // n1165 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1166, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1166 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1167 type
+    {kMinItems, 1, 0, 0},  // minItems
     {kItems, 1168, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1168 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 5, 0, 0},  // n1168 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1169 type
     {kItems, 1170, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1170 type
+    {kType, 16, 0, 0},  // n1170 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 8, 0, 0},  // n1171 type
+    {kItems, 1172, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1172 type
+    {kType, 8, 0, 0},  // n1173 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1172, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1172 type
+    {kItems, 1174, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1174 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kRef, 5, 0, 0},  // n1173 $ref #/$defs/Vec3
-    {kType, 2, 0, 0},  // n1174 type
-    {kType, 4, 0, 0},  // n1175 type
-    {kAdditionalProperties, 1176, 0, 0},  // additionalProperties
+    {kRef, 5, 0, 0},  // n1175 $ref #/$defs/Vec3
+    {kType, 2, 0, 0},  // n1176 type
+    {kType, 4, 0, 0},  // n1177 type
+    {kAdditionalProperties, 1178, 0, 0},  // additionalProperties
     {kProperties, 1306, 3, 0},  // properties: kpoints, weights, shift
-    {kRef, 2, 0, 0},  // n1176 $ref #/$defs/UnitName
-    {kConst, 30, 0, 0},  // n1177 const "dimensionless"
-    {kConst, 30, 0, 0},  // n1178 const "dimensionless"
+    {kRef, 2, 0, 0},  // n1178 $ref #/$defs/UnitName
     {kConst, 30, 0, 0},  // n1179 const "dimensionless"
-    {kEnum, 565, 2, 0},  // n1181 enum
-    {kType, 64, 0, 0},  // n1182 type
+    {kConst, 30, 0, 0},  // n1180 const "dimensionless"
+    {kConst, 30, 0, 0},  // n1181 const "dimensionless"
+    {kEnum, 565, 2, 0},  // n1183 enum
+    {kType, 64, 0, 0},  // n1184 type
     {kMinimum, 2, 0, 0},  // minimum
     {kMaximum, 7, 0, 0},  // maximum
-    {kType, 64, 0, 0},  // n1183 type
+    {kType, 64, 0, 0},  // n1185 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1184 type
+    {kType, 64, 0, 0},  // n1186 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kEnum, 567, 10, 0},  // n1185 enum
-    {kConst, 68, 0, 0},  // n1186 const true
-    {kEnum, 577, 1, 0},  // n1187 enum
-    {kType, 8, 0, 0},  // n1188 type
-    {kItems, 1189, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1189 type
+    {kEnum, 567, 10, 0},  // n1187 enum
+    {kConst, 68, 0, 0},  // n1188 const true
+    {kEnum, 577, 1, 0},  // n1189 enum
+    {kType, 8, 0, 0},  // n1190 type
+    {kItems, 1191, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1191 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 1, 0, 0},  // n1190 $ref #/$defs/ValueWithUnits
-    {kType, 4, 0, 0},  // n1191 type
-    {kAdditionalProperties, 1192, 0, 0},  // additionalProperties
+    {kRef, 1, 0, 0},  // n1192 $ref #/$defs/ValueWithUnits
+    {kType, 4, 0, 0},  // n1193 type
+    {kAdditionalProperties, 1194, 0, 0},  // additionalProperties
     {kProperties, 1328, 1, 0},  // properties: energies
-    {kRef, 2, 0, 0},  // n1192 $ref #/$defs/UnitName
-    {kConst, 8, 0, 0},  // n1193 const "hartree"
-    {kIf, 1195, 1197, -1},  // n1194 if
-    {kRequired, 578, 1, 0},  // n1195 required: spin
+    {kRef, 2, 0, 0},  // n1194 $ref #/$defs/UnitName
+    {kConst, 8, 0, 0},  // n1195 const "hartree"
+    {kIf, 1197, 1199, -1},  // n1196 if
+    {kRequired, 578, 1, 0},  // n1197 required: spin
     {kProperties, 1350, 1, 0},  // properties: spin
-    {kConst, 87, 0, 0},  // n1196 const "restricted"
-    {kProperties, 1352, 1, 0},  // n1197 properties: n_spin
-    {kConst, 0, 0, 0},  // n1198 const 1
-    {kIf, 1200, 1202, -1},  // n1199 if
-    {kRequired, 579, 1, 0},  // n1200 required: spin
+    {kConst, 87, 0, 0},  // n1198 const "restricted"
+    {kProperties, 1352, 1, 0},  // n1199 properties: n_spin
+    {kConst, 0, 0, 0},  // n1200 const 1
+    {kIf, 1202, 1204, -1},  // n1201 if
+    {kRequired, 579, 1, 0},  // n1202 required: spin
     {kProperties, 1354, 1, 0},  // properties: spin
-    {kConst, 146, 0, 0},  // n1201 const "unrestricted"
-    {kProperties, 1356, 1, 0},  // n1202 properties: n_spin
-    {kConst, 67, 0, 0},  // n1203 const 2
-    {kConst, 167, 0, 0},  // n1204 const "bands"
-    {kType, 4, 0, 0},  // n1205 type
+    {kConst, 146, 0, 0},  // n1203 const "unrestricted"
+    {kProperties, 1356, 1, 0},  // n1204 properties: n_spin
+    {kConst, 67, 0, 0},  // n1205 const 2
+    {kConst, 167, 0, 0},  // n1206 const "bands"
+    {kType, 4, 0, 0},  // n1207 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 582, 2, 0},  // required: kpath, eigenvalues
     {kProperties, 1358, 4, 0},  // properties: kpath, eigenvalues, projections, occupations
-    {kRef, 14, 0, 0},  // n1206 $ref #/$defs/JsonMember
-    {kRef, 79, 0, 0},  // n1207 $ref #/$defs/BandsEigenvalues
-    {kRef, 109, 0, 0},  // n1208 $ref #/$defs/BandsProjections
-    {kRef, 110, 0, 0},  // n1209 $ref #/$defs/BandsOccupations
-    {kRef, 13, 0, 0},  // n1210 $ref #/$defs/BinaryMember
-    {kProperties, 1370, 2, 0},  // n1211 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1212 const "float64"
-    {kMinItems, 3, 0, 0},  // n1213 minItems
+    {kRef, 15, 0, 0},  // n1208 $ref #/$defs/JsonMember
+    {kRef, 80, 0, 0},  // n1209 $ref #/$defs/BandsEigenvalues
+    {kRef, 110, 0, 0},  // n1210 $ref #/$defs/BandsProjections
+    {kRef, 111, 0, 0},  // n1211 $ref #/$defs/BandsOccupations
+    {kRef, 14, 0, 0},  // n1212 $ref #/$defs/BinaryMember
+    {kProperties, 1370, 2, 0},  // n1213 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1214 const "float64"
+    {kMinItems, 3, 0, 0},  // n1215 minItems
     {kMaxItems, 4, 0, 0},  // maxItems
-    {kRef, 13, 0, 0},  // n1214 $ref #/$defs/BinaryMember
-    {kProperties, 1374, 2, 0},  // n1215 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1216 const "float64"
-    {kMinItems, 3, 0, 0},  // n1217 minItems
+    {kRef, 14, 0, 0},  // n1216 $ref #/$defs/BinaryMember
+    {kProperties, 1374, 2, 0},  // n1217 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1218 const "float64"
+    {kMinItems, 3, 0, 0},  // n1219 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1219 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1220 type
-    {kMinimum, 0, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n1221 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1222 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1223 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1222 type
-    {kType, 32, 0, 0},  // n1223 type
-    {kRef, 5, 0, 0},  // n1224 $ref #/$defs/Vec3
-    {kRef, 5, 0, 0},  // n1225 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1227 type
-    {kItems, 1228, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1228 $ref #/$defs/Vec3
+    {kType, 32, 0, 0},  // n1224 type
+    {kType, 32, 0, 0},  // n1225 type
+    {kRef, 5, 0, 0},  // n1226 $ref #/$defs/Vec3
+    {kRef, 5, 0, 0},  // n1227 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1229 type
     {kItems, 1230, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1230 type
+    {kRef, 5, 0, 0},  // n1230 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1231 type
     {kItems, 1232, 0, 0},  // items
-    {kRef, 111, 0, 0},  // n1232 $ref #/$defs/KpathSegment
-    {kType, 16, 0, 0},  // n1233 type
-    {kType, 16, 0, 0},  // n1234 type
-    {kType, 2, 0, 0},  // n1235 type
-    {kType, 64, 0, 0},  // n1236 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kMaximum, 7, 0, 0},  // maximum
-    {kType, 64, 0, 0},  // n1237 type
-    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n1232 type
+    {kType, 8, 0, 0},  // n1233 type
+    {kItems, 1234, 0, 0},  // items
+    {kRef, 112, 0, 0},  // n1234 $ref #/$defs/KpathSegment
+    {kType, 16, 0, 0},  // n1235 type
+    {kType, 16, 0, 0},  // n1236 type
+    {kType, 2, 0, 0},  // n1237 type
     {kType, 64, 0, 0},  // n1238 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1239 type
-    {kItems, 1240, 0, 0},  // items
-    {kAnyOf, 588, 2, 0},  // n1240 anyOf
-    {kRef, 118, 0, 0},  // n1241 $ref #/$defs/DosChannel
-    {kType, 32, 0, 0},  // n1242 type
-    {kType, 32, 0, 0},  // n1243 type
-    {kType, 4, 0, 0},  // n1244 type
-    {kAdditionalProperties, 1245, 0, 0},  // additionalProperties
+    {kMaximum, 7, 0, 0},  // maximum
+    {kType, 64, 0, 0},  // n1239 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1240 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1241 type
+    {kItems, 1242, 0, 0},  // items
+    {kAnyOf, 588, 2, 0},  // n1242 anyOf
+    {kRef, 119, 0, 0},  // n1243 $ref #/$defs/DosChannel
+    {kType, 32, 0, 0},  // n1244 type
+    {kType, 32, 0, 0},  // n1245 type
+    {kType, 4, 0, 0},  // n1246 type
+    {kAdditionalProperties, 1247, 0, 0},  // additionalProperties
     {kProperties, 1396, 3, 0},  // properties: fermi, fermi_energy_ev, eigenvalues
-    {kRef, 2, 0, 0},  // n1245 $ref #/$defs/UnitName
-    {kConst, 9, 0, 0},  // n1246 const "ev"
-    {kConst, 9, 0, 0},  // n1247 const "ev"
+    {kRef, 2, 0, 0},  // n1247 $ref #/$defs/UnitName
     {kConst, 9, 0, 0},  // n1248 const "ev"
-    {kConst, 167, 0, 0},  // n1249 const "bands"
-    {kType, 32, 0, 0},  // n1250 type
-    {kType, 2, 0, 0},  // n1251 type
-    {kConst, 168, 0, 0},  // n1252 const "dos.total"
-    {kType, 4, 0, 0},  // n1253 type
+    {kConst, 9, 0, 0},  // n1249 const "ev"
+    {kConst, 9, 0, 0},  // n1250 const "ev"
+    {kConst, 167, 0, 0},  // n1251 const "bands"
+    {kType, 32, 0, 0},  // n1252 type
+    {kType, 2, 0, 0},  // n1253 type
+    {kConst, 168, 0, 0},  // n1254 const "dos.total"
+    {kType, 4, 0, 0},  // n1255 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 590, 2, 0},  // required: energies, dos
     {kProperties, 1432, 2, 0},  // properties: energies, dos
-    {kRef, 13, 0, 0},  // n1254 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1255 $ref #/$defs/BinaryMember
-    {kType, 64, 0, 0},  // n1256 type
+    {kRef, 14, 0, 0},  // n1256 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1257 $ref #/$defs/BinaryMember
+    {kType, 64, 0, 0},  // n1258 type
     {kEnum, 592, 2, 0},  // enum
-    {kType, 16, 0, 0},  // n1257 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1258 type
     {kType, 16, 0, 0},  // n1259 type
-    {kType, 16, 0, 0},  // n1260 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kConst, 169, 0, 0},  // n1261 const "dos.projected"
-    {kType, 4, 0, 0},  // n1262 type
+    {kType, 32, 0, 0},  // n1260 type
+    {kType, 16, 0, 0},  // n1261 type
+    {kType, 16, 0, 0},  // n1262 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kConst, 169, 0, 0},  // n1263 const "dos.projected"
+    {kType, 4, 0, 0},  // n1264 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 594, 2, 0},  // required: energies, projections
     {kProperties, 1450, 2, 0},  // properties: energies, projections
-    {kRef, 13, 0, 0},  // n1263 $ref #/$defs/BinaryMember
-    {kRef, 115, 0, 0},  // n1264 $ref #/$defs/DOSProjectedProjections
-    {kType, 64, 0, 0},  // n1265 type
+    {kRef, 14, 0, 0},  // n1265 $ref #/$defs/BinaryMember
+    {kRef, 116, 0, 0},  // n1266 $ref #/$defs/DOSProjectedProjections
+    {kType, 64, 0, 0},  // n1267 type
     {kEnum, 596, 2, 0},  // enum
-    {kType, 16, 0, 0},  // n1266 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1267 type
     {kType, 16, 0, 0},  // n1268 type
-    {kType, 16, 0, 0},  // n1269 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1270 type
-    {kItems, 1271, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1271 type
+    {kType, 32, 0, 0},  // n1269 type
+    {kType, 16, 0, 0},  // n1270 type
+    {kType, 16, 0, 0},  // n1271 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1272 type
+    {kItems, 1273, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1273 type
     {kProperties, 1454, 5, 0},  // properties: atom, l, m, spin, label
-    {kType, 64, 0, 0},  // n1272 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1273 type
-    {kMinimum, 0, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n1274 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n1275 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1276 type
+    {kType, 64, 0, 0},  // n1277 type
     {kEnum, 598, 2, 0},  // enum
-    {kType, 32, 0, 0},  // n1276 type
-    {kRef, 13, 0, 0},  // n1277 $ref #/$defs/BinaryMember
-    {kProperties, 1480, 1, 0},  // n1278 properties: shape
-    {kMinItems, 2, 0, 0},  // n1279 minItems
+    {kType, 32, 0, 0},  // n1278 type
+    {kRef, 14, 0, 0},  // n1279 $ref #/$defs/BinaryMember
+    {kProperties, 1480, 1, 0},  // n1280 properties: shape
+    {kMinItems, 2, 0, 0},  // n1281 minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kConst, 170, 0, 0},  // n1280 const "dos.coop"
-    {kType, 4, 0, 0},  // n1281 type
+    {kConst, 170, 0, 0},  // n1282 const "dos.coop"
+    {kType, 4, 0, 0},  // n1283 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 602, 4, 0},  // required: energies, projections, integrated, meta
     {kProperties, 1482, 4, 0},  // properties: energies, projections, integrated, meta
-    {kRef, 13, 0, 0},  // n1282 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1283 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1284 $ref #/$defs/BinaryMember
-    {kRef, 14, 0, 0},  // n1285 $ref #/$defs/JsonMember
-    {kConst, 171, 0, 0},  // n1286 const "dos.cohp"
-    {kType, 4, 0, 0},  // n1287 type
+    {kRef, 14, 0, 0},  // n1284 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1285 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1286 $ref #/$defs/BinaryMember
+    {kRef, 15, 0, 0},  // n1287 $ref #/$defs/JsonMember
+    {kConst, 171, 0, 0},  // n1288 const "dos.cohp"
+    {kType, 4, 0, 0},  // n1289 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 606, 4, 0},  // required: energies, projections, integrated, meta
     {kProperties, 1494, 4, 0},  // properties: energies, projections, integrated, meta
-    {kRef, 13, 0, 0},  // n1288 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1289 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1290 $ref #/$defs/BinaryMember
-    {kRef, 14, 0, 0},  // n1291 $ref #/$defs/JsonMember
-    {kType, 64, 0, 0},  // n1292 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1293 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 14, 0, 0},  // n1290 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1291 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1292 $ref #/$defs/BinaryMember
+    {kRef, 15, 0, 0},  // n1293 $ref #/$defs/JsonMember
     {kType, 64, 0, 0},  // n1294 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 64, 0, 0},  // n1295 type
     {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1296 type
+    {kType, 64, 0, 0},  // n1297 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kMaximum, 2, 0, 0},  // maximum
-    {kType, 32, 0, 0},  // n1296 type
-    {kType, 32, 0, 0},  // n1297 type
-    {kType, 64, 0, 0},  // n1298 type
+    {kType, 32, 0, 0},  // n1298 type
+    {kType, 32, 0, 0},  // n1299 type
+    {kType, 64, 0, 0},  // n1300 type
     {kMinimum, 2, 0, 0},  // minimum
     {kMaximum, 7, 0, 0},  // maximum
-    {kType, 16, 0, 0},  // n1299 type
-    {kType, 16, 0, 0},  // n1300 type
+    {kType, 16, 0, 0},  // n1301 type
+    {kType, 16, 0, 0},  // n1302 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1301 type
-    {kType, 8, 0, 0},  // n1302 type
-    {kItems, 1303, 0, 0},  // items
-    {kAnyOf, 613, 2, 0},  // n1303 anyOf
+    {kType, 32, 0, 0},  // n1303 type
     {kType, 8, 0, 0},  // n1304 type
+    {kItems, 1305, 0, 0},  // items
+    {kAnyOf, 613, 2, 0},  // n1305 anyOf
+    {kType, 8, 0, 0},  // n1306 type
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kItems, 1305, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1305 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 4, 0, 0},  // n1306 type
-    {kRequired, 611, 2, 0},  // required: i, j
-    {kProperties, 1516, 6, 0},  // properties: i, j, label, symbol_i, symbol_j, distance_ang
+    {kItems, 1307, 0, 0},  // items
     {kType, 64, 0, 0},  // n1307 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1308 type
+    {kType, 4, 0, 0},  // n1308 type
+    {kRequired, 611, 2, 0},  // required: i, j
+    {kProperties, 1516, 6, 0},  // properties: i, j, label, symbol_i, symbol_j, distance_ang
+    {kType, 64, 0, 0},  // n1309 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1309 type
-    {kType, 32, 0, 0},  // n1310 type
+    {kType, 64, 0, 0},  // n1310 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 32, 0, 0},  // n1311 type
-    {kType, 16, 0, 0},  // n1312 type
+    {kType, 32, 0, 0},  // n1312 type
+    {kType, 32, 0, 0},  // n1313 type
+    {kType, 16, 0, 0},  // n1314 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1313 type
-    {kItems, 1314, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1314 type
     {kType, 8, 0, 0},  // n1315 type
     {kItems, 1316, 0, 0},  // items
-    {kAllOf, 615, 2, 0},  // n1316 allOf
-    {kRef, 118, 0, 0},  // n1317 $ref #/$defs/DosChannel
-    {kProperties, 1528, 2, 0},  // n1318 properties: i, j
-    {kType, 64, 0, 0},  // n1319 type
+    {kType, 32, 0, 0},  // n1316 type
+    {kType, 8, 0, 0},  // n1317 type
+    {kItems, 1318, 0, 0},  // items
+    {kAllOf, 615, 2, 0},  // n1318 allOf
+    {kRef, 119, 0, 0},  // n1319 $ref #/$defs/DosChannel
+    {kProperties, 1528, 2, 0},  // n1320 properties: i, j
+    {kType, 64, 0, 0},  // n1321 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1320 type
+    {kType, 64, 0, 0},  // n1322 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 4, 0, 0},  // n1321 type
-    {kAdditionalProperties, 1322, 0, 0},  // additionalProperties
+    {kType, 4, 0, 0},  // n1323 type
+    {kAdditionalProperties, 1324, 0, 0},  // additionalProperties
     {kProperties, 1532, 2, 0},  // properties: fermi_energy_ev, energies
-    {kRef, 2, 0, 0},  // n1322 $ref #/$defs/UnitName
-    {kConst, 9, 0, 0},  // n1323 const "ev"
-    {kConst, 9, 0, 0},  // n1324 const "ev"
-    {kConst, 172, 0, 0},  // n1325 const "structure.symmetry"
-    {kType, 4, 0, 0},  // n1326 type
+    {kRef, 2, 0, 0},  // n1324 $ref #/$defs/UnitName
+    {kConst, 9, 0, 0},  // n1325 const "ev"
+    {kConst, 9, 0, 0},  // n1326 const "ev"
+    {kConst, 172, 0, 0},  // n1327 const "structure.symmetry"
+    {kType, 4, 0, 0},  // n1328 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kRequired, 617, 1, 0},  // required: data
     {kProperties, 1554, 1, 0},  // properties: data
-    {kRef, 14, 0, 0},  // n1327 $ref #/$defs/JsonMember
-    {kType, 64, 0, 0},  // n1328 type
+    {kRef, 15, 0, 0},  // n1329 $ref #/$defs/JsonMember
+    {kType, 64, 0, 0},  // n1330 type
     {kMinimum, 2, 0, 0},  // minimum
     {kMaximum, 8, 0, 0},  // maximum
-    {kType, 32, 0, 0},  // n1329 type
-    {kType, 32, 0, 0},  // n1330 type
     {kType, 32, 0, 0},  // n1331 type
     {kType, 32, 0, 0},  // n1332 type
-    {kType, 64, 0, 0},  // n1333 type
+    {kType, 32, 0, 0},  // n1333 type
+    {kType, 32, 0, 0},  // n1334 type
+    {kType, 64, 0, 0},  // n1335 type
     {kMinimum, 2, 0, 0},  // minimum
     {kMaximum, 8, 0, 0},  // maximum
-    {kType, 32, 0, 0},  // n1334 type
-    {kType, 8, 0, 0},  // n1335 type
-    {kItems, 1336, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1336 type
+    {kType, 32, 0, 0},  // n1336 type
+    {kType, 8, 0, 0},  // n1337 type
+    {kItems, 1338, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1338 type
     {kRequired, 618, 1, 0},  // required: rotation
     {kProperties, 1560, 2, 0},  // properties: rotation, translation
-    {kType, 8, 0, 0},  // n1337 type
+    {kType, 8, 0, 0},  // n1339 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1338, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1338 $ref #/$defs/Vec3
-    {kRef, 5, 0, 0},  // n1339 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1340 type
-    {kItems, 1341, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1341 type
+    {kItems, 1340, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n1340 $ref #/$defs/Vec3
+    {kRef, 5, 0, 0},  // n1341 $ref #/$defs/Vec3
     {kType, 8, 0, 0},  // n1342 type
     {kItems, 1343, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1343 type
+    {kType, 32, 0, 0},  // n1343 type
+    {kType, 8, 0, 0},  // n1344 type
+    {kItems, 1345, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1345 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1344 type
+    {kType, 16, 0, 0},  // n1346 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kConst, 173, 0, 0},  // n1345 const "bonds"
-    {kType, 4, 0, 0},  // n1346 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 619, 1, 0},  // required: bonds
-    {kProperties, 1586, 1, 0},  // properties: bonds
-    {kRef, 14, 0, 0},  // n1347 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n1349 type
-    {kItems, 1350, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1350 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1594, 1, 0},  // patternProperties
-    {kRequired, 621, 2, 0},  // required: i, j
-    {kProperties, 1596, 3, 0},  // properties: i, j, order
-    {kType, 64, 0, 0},  // n1352 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1353 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1354 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kConst, 174, 0, 0},  // n1355 const "bond_orders"
-    {kType, 4, 0, 0},  // n1356 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 623, 1, 0},  // required: bond_orders
-    {kProperties, 1604, 1, 0},  // properties: bond_orders
-    {kRef, 14, 0, 0},  // n1357 $ref #/$defs/JsonMember
-    {kType, 32, 0, 0},  // n1359 type
+    {kEnum, 619, 2, 0},  // n1347 enum
+    {kType, 8, 0, 0},  // n1348 type
+    {kItems, 1349, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1349 type
+    {kRequired, 621, 1, 0},  // required: position
+    {kProperties, 1564, 2, 0},  // properties: label, position
+    {kType, 32, 0, 0},  // n1350 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 8, 0, 0},  // n1360 type
-    {kItems, 1361, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1361 type
+    {kRef, 5, 0, 0},  // n1351 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n1352 type
+    {kItems, 1353, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1353 type
+    {kRequired, 622, 2, 0},  // required: site, operation
+    {kProperties, 1568, 3, 0},  // properties: site, operation, translation
+    {kType, 64, 0, 0},  // n1354 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1355 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 6, 0, 0},  // n1356 $ref #/$defs/LatticeImage
+    {kType, 16, 0, 0},  // n1357 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kConst, 175, 0, 0},  // n1358 const "bonds"
+    {kType, 4, 0, 0},  // n1359 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 624, 1, 0},  // required: bonds
+    {kProperties, 1604, 1, 0},  // properties: bonds
+    {kRef, 15, 0, 0},  // n1360 $ref #/$defs/JsonMember
+    {kType, 8, 0, 0},  // n1362 type
+    {kItems, 1363, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1363 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
     {kPatternProperties, 1612, 1, 0},  // patternProperties
-    {kRequired, 626, 3, 0},  // required: i, j, order
-    {kProperties, 1614, 6, 0},  // properties: i, j, order, distance_ang, symbol_i, symbol_j
-    {kType, 64, 0, 0},  // n1363 type
+    {kRequired, 626, 2, 0},  // required: i, j
+    {kProperties, 1614, 4, 0},  // properties: i, j, order, image
+    {kType, 64, 0, 0},  // n1365 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1364 type
+    {kType, 64, 0, 0},  // n1366 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1365 type
-    {kType, 16, 0, 0},  // n1366 type
+    {kType, 16, 0, 0},  // n1367 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1367 type
-    {kType, 32, 0, 0},  // n1368 type
-    {kConst, 175, 0, 0},  // n1369 const "scf_history"
+    {kRef, 6, 0, 0},  // n1368 $ref #/$defs/LatticeImage
+    {kConst, 176, 0, 0},  // n1369 const "bond_orders"
     {kType, 4, 0, 0},  // n1370 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 629, 1, 0},  // required: iterations
-    {kProperties, 1630, 1, 0},  // properties: iterations
-    {kRef, 14, 0, 0},  // n1371 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n1373 type
-    {kItems, 1374, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1374 type
+    {kRequired, 628, 1, 0},  // required: bond_orders
+    {kProperties, 1624, 1, 0},  // properties: bond_orders
+    {kRef, 15, 0, 0},  // n1371 $ref #/$defs/JsonMember
+    {kType, 32, 0, 0},  // n1373 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 8, 0, 0},  // n1374 type
+    {kItems, 1375, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1375 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1638, 1, 0},  // patternProperties
-    {kRequired, 631, 2, 0},  // required: iter, energy_eh
-    {kProperties, 1640, 5, 0},  // properties: iter, energy_eh, delta_e, diis_error, rms_density_change
-    {kType, 64, 0, 0},  // n1376 type
+    {kPatternProperties, 1632, 1, 0},  // patternProperties
+    {kRequired, 631, 3, 0},  // required: i, j, order
+    {kProperties, 1634, 7, 0},  // properties: i, j, order, distance_ang, symbol_i, symbol_j, image
+    {kType, 64, 0, 0},  // n1377 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1377 type
-    {kType, 16, 0, 0},  // n1378 type
+    {kType, 64, 0, 0},  // n1378 type
+    {kMinimum, 0, 0, 0},  // minimum
     {kType, 16, 0, 0},  // n1379 type
     {kType, 16, 0, 0},  // n1380 type
-    {kType, 2, 0, 0},  // n1381 type
-    {kRef, 9, 0, 0},  // n1382 $ref #/$defs/ZipPath
-    {kConst, 64, 0, 0},  // n1383 const "binary"
-    {kRef, 8, 0, 0},  // n1384 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n1385 $ref #/$defs/MemberSize
-    {kRef, 12, 0, 0},  // n1386 $ref #/$defs/MediaType
-    {kConst, 176, 0, 0},  // n1387 const "citations"
-    {kType, 4, 0, 0},  // n1388 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 636, 1, 0},  // required: references
-    {kProperties, 1664, 1, 0},  // properties: references
-    {kRef, 128, 0, 0},  // n1389 $ref #/$defs/CitationsReferences
-    {kRef, 9, 0, 0},  // n1390 $ref #/$defs/ZipPath
-    {kConst, 64, 0, 0},  // n1391 const "binary"
-    {kRef, 8, 0, 0},  // n1392 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n1393 $ref #/$defs/MemberSize
-    {kRef, 12, 0, 0},  // n1394 $ref #/$defs/MediaType
-    {kConst, 177, 0, 0},  // n1395 const "run.record"
-    {kType, 32, 0, 0},  // n1396 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1397 type
-    {kType, 32, 0, 0},  // n1398 type
-    {kType, 64, 0, 0},  // n1399 type
-    {kType, 32, 0, 0},  // n1400 type
-    {kType, 32, 0, 0},  // n1401 type
-    {kType, 64, 0, 0},  // n1402 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1403 type
-    {kEnum, 640, 3, 0},  // n1404 enum
-    {kType, 4, 0, 0},  // n1405 type
+    {kType, 32, 0, 0},  // n1381 type
+    {kType, 32, 0, 0},  // n1382 type
+    {kRef, 6, 0, 0},  // n1383 $ref #/$defs/LatticeImage
+    {kConst, 177, 0, 0},  // n1384 const "scf_history"
+    {kType, 4, 0, 0},  // n1385 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kProperties, 1680, 3, 0},  // properties: input, log, files
-    {kPatternProperties, 1686, 1, 0},  // patternProperties
-    {kAnyOf, 645, 2, 0},  // anyOf
-    {kRef, 130, 0, 0},  // n1406 $ref #/$defs/OpaqueBinaryMember
-    {kRef, 130, 0, 0},  // n1407 $ref #/$defs/OpaqueBinaryMember
-    {kRef, 14, 0, 0},  // n1408 $ref #/$defs/JsonMember
-    {kRef, 130, 0, 0},  // n1409 $ref #/$defs/OpaqueBinaryMember
-    {kRequired, 643, 1, 0},  // n1410 required: input
-    {kRequired, 644, 1, 0},  // n1411 required: log
-    {kType, 4, 0, 0},  // n1412 type
+    {kRequired, 634, 1, 0},  // required: iterations
+    {kProperties, 1652, 1, 0},  // properties: iterations
+    {kRef, 15, 0, 0},  // n1386 $ref #/$defs/JsonMember
+    {kType, 8, 0, 0},  // n1388 type
+    {kItems, 1389, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1389 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 1710, 1, 0},  // patternProperties
-    {kProperties, 1712, 4, 0},  // properties: filename, description, media_type, truncated
-    {kType, 32, 0, 0},  // n1414 type
+    {kPatternProperties, 1660, 1, 0},  // patternProperties
+    {kRequired, 636, 2, 0},  // required: iter, energy_eh
+    {kProperties, 1662, 5, 0},  // properties: iter, energy_eh, delta_e, diis_error, rms_density_change
+    {kType, 64, 0, 0},  // n1391 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 16, 0, 0},  // n1392 type
+    {kType, 16, 0, 0},  // n1393 type
+    {kType, 16, 0, 0},  // n1394 type
+    {kType, 16, 0, 0},  // n1395 type
+    {kType, 2, 0, 0},  // n1396 type
+    {kRef, 10, 0, 0},  // n1397 $ref #/$defs/ZipPath
+    {kConst, 64, 0, 0},  // n1398 const "binary"
+    {kRef, 9, 0, 0},  // n1399 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n1400 $ref #/$defs/MemberSize
+    {kRef, 13, 0, 0},  // n1401 $ref #/$defs/MediaType
+    {kConst, 178, 0, 0},  // n1402 const "citations"
+    {kType, 4, 0, 0},  // n1403 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 641, 1, 0},  // required: references
+    {kProperties, 1686, 1, 0},  // properties: references
+    {kRef, 129, 0, 0},  // n1404 $ref #/$defs/CitationsReferences
+    {kRef, 10, 0, 0},  // n1405 $ref #/$defs/ZipPath
+    {kConst, 64, 0, 0},  // n1406 const "binary"
+    {kRef, 9, 0, 0},  // n1407 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n1408 $ref #/$defs/MemberSize
+    {kRef, 13, 0, 0},  // n1409 $ref #/$defs/MediaType
+    {kConst, 179, 0, 0},  // n1410 const "run.record"
+    {kType, 32, 0, 0},  // n1411 type
     {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1412 type
+    {kType, 32, 0, 0},  // n1413 type
+    {kType, 64, 0, 0},  // n1414 type
     {kType, 32, 0, 0},  // n1415 type
     {kType, 32, 0, 0},  // n1416 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 2, 0, 0},  // n1417 type
-    {kConst, 178, 0, 0},  // n1418 const "job.spec"
-    {kType, 4, 0, 0},  // n1419 type
+    {kType, 64, 0, 0},  // n1417 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n1418 type
+    {kEnum, 645, 3, 0},  // n1419 enum
+    {kType, 4, 0, 0},  // n1420 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 651, 1, 0},  // required: spec
-    {kProperties, 1722, 1, 0},  // properties: spec
-    {kRef, 14, 0, 0},  // n1420 $ref #/$defs/JsonMember
-    {kEnum, 656, 2, 0},  // n1421 enum
-    {kType, 32, 0, 0},  // n1422 type
+    {kProperties, 1702, 3, 0},  // properties: input, log, files
+    {kPatternProperties, 1708, 1, 0},  // patternProperties
+    {kAnyOf, 650, 2, 0},  // anyOf
+    {kRef, 131, 0, 0},  // n1421 $ref #/$defs/OpaqueBinaryMember
+    {kRef, 131, 0, 0},  // n1422 $ref #/$defs/OpaqueBinaryMember
+    {kRef, 15, 0, 0},  // n1423 $ref #/$defs/JsonMember
+    {kRef, 131, 0, 0},  // n1424 $ref #/$defs/OpaqueBinaryMember
+    {kRequired, 648, 1, 0},  // n1425 required: input
+    {kRequired, 649, 1, 0},  // n1426 required: log
+    {kType, 4, 0, 0},  // n1427 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 1732, 1, 0},  // patternProperties
+    {kProperties, 1734, 4, 0},  // properties: filename, description, media_type, truncated
+    {kType, 32, 0, 0},  // n1429 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kAnyOf, 658, 3, 0},  // n1423 anyOf
-    {kType, 32, 0, 0},  // n1424 type
+    {kType, 32, 0, 0},  // n1430 type
+    {kType, 32, 0, 0},  // n1431 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 1, 0, 0},  // n1425 type
-    {kConst, 181, 0, 0},  // n1426 const ""
-    {kAnyOf, 661, 3, 0},  // n1427 anyOf
-    {kType, 32, 0, 0},  // n1428 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 1, 0, 0},  // n1429 type
-    {kConst, 181, 0, 0},  // n1430 const ""
-    {kType, 64, 0, 0},  // n1431 type
-    {kType, 64, 0, 0},  // n1432 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1433 type
-    {kMinItems, 3, 0, 0},  // minItems
-    {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1434, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1434 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1435 type
-    {kItems, 1436, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1436 type
-    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 2, 0, 0},  // n1432 type
+    {kConst, 180, 0, 0},  // n1433 const "job.spec"
+    {kType, 4, 0, 0},  // n1434 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 656, 1, 0},  // required: spec
+    {kProperties, 1744, 1, 0},  // properties: spec
+    {kRef, 15, 0, 0},  // n1435 $ref #/$defs/JsonMember
+    {kEnum, 661, 2, 0},  // n1436 enum
     {kType, 32, 0, 0},  // n1437 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 135, 0, 0},  // n1438 $ref #/$defs/JobSpecSolvation
+    {kAnyOf, 663, 3, 0},  // n1438 anyOf
     {kType, 32, 0, 0},  // n1439 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1440 type
+    {kType, 1, 0, 0},  // n1440 type
+    {kConst, 183, 0, 0},  // n1441 const ""
+    {kAnyOf, 666, 3, 0},  // n1442 anyOf
+    {kType, 32, 0, 0},  // n1443 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 136, 0, 0},  // n1441 $ref #/$defs/JobSpecScf
-    {kRef, 137, 0, 0},  // n1442 $ref #/$defs/JobSpecGeometry
-    {kRef, 138, 0, 0},  // n1443 $ref #/$defs/JobSpecResources
-    {kType, 4, 0, 0},  // n1444 type
-    {kType, 32, 0, 0},  // n1446 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1447 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 16, 0, 0},  // n1448 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n1450 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 64, 0, 0},  // n1451 type
+    {kType, 1, 0, 0},  // n1444 type
+    {kConst, 183, 0, 0},  // n1445 const ""
+    {kType, 64, 0, 0},  // n1446 type
+    {kType, 64, 0, 0},  // n1447 type
     {kMinimum, 2, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1448 type
+    {kMinItems, 3, 0, 0},  // minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
+    {kItems, 1449, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1449 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1450 type
+    {kItems, 1451, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1451 type
+    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n1452 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 16, 0, 0},  // n1453 type
-    {kType, 16, 0, 0},  // n1455 type
+    {kRef, 136, 0, 0},  // n1453 $ref #/$defs/JobSpecSolvation
+    {kType, 32, 0, 0},  // n1454 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1455 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kRef, 137, 0, 0},  // n1456 $ref #/$defs/JobSpecScf
+    {kRef, 138, 0, 0},  // n1457 $ref #/$defs/JobSpecGeometry
+    {kRef, 139, 0, 0},  // n1458 $ref #/$defs/JobSpecResources
+    {kType, 4, 0, 0},  // n1459 type
+    {kType, 32, 0, 0},  // n1461 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1462 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 16, 0, 0},  // n1463 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 64, 0, 0},  // n1456 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 665, 3, 0},  // n1457 enum
-    {kType, 64, 0, 0},  // n1459 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1460 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1461 type
+    {kType, 16, 0, 0},  // n1465 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kConst, 185, 0, 0},  // n1462 const "basis.ao"
-    {kType, 4, 0, 0},  // n1463 type
+    {kType, 64, 0, 0},  // n1466 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n1467 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 16, 0, 0},  // n1468 type
+    {kType, 16, 0, 0},  // n1470 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 64, 0, 0},  // n1471 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kEnum, 670, 3, 0},  // n1472 enum
+    {kType, 64, 0, 0},  // n1474 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1475 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 16, 0, 0},  // n1476 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kConst, 187, 0, 0},  // n1477 const "basis.ao"
+    {kType, 4, 0, 0},  // n1478 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 668, 11, 0},  // required: atom_index, atom_symbol, shell_index, primitive_index, angul...
-    {kProperties, 1794, 13, 0},  // properties: atom_index, atom_symbol, shell_index, primitive_index, angul...
-    {kType, 64, 0, 0},  // n1464 type
+    {kRequired, 673, 11, 0},  // required: atom_index, atom_symbol, shell_index, primitive_index, angul...
+    {kProperties, 1816, 13, 0},  // properties: atom_index, atom_symbol, shell_index, primitive_index, angul...
+    {kType, 64, 0, 0},  // n1479 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1465 type
+    {kType, 32, 0, 0},  // n1480 type
     {kMinLength, 1, 0, 0},  // minLength
     {kMaxLength, 3, 0, 0},  // maxLength
-    {kType, 64, 0, 0},  // n1466 type
+    {kType, 64, 0, 0},  // n1481 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1467 type
+    {kType, 64, 0, 0},  // n1482 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1468 type
-    {kItems, 1469, 0, 0},  // items
+    {kType, 8, 0, 0},  // n1483 type
+    {kItems, 1484, 0, 0},  // items
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1469 type
-    {kType, 8, 0, 0},  // n1470 type
-    {kItems, 1471, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1484 type
+    {kType, 8, 0, 0},  // n1485 type
+    {kItems, 1486, 0, 0},  // items
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1471 type
+    {kType, 64, 0, 0},  // n1486 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1472 type
-    {kEnum, 679, 7, 0},  // enum
-    {kType, 16, 0, 0},  // n1473 type
+    {kType, 32, 0, 0},  // n1487 type
+    {kEnum, 684, 7, 0},  // enum
+    {kType, 16, 0, 0},  // n1488 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n1474 type
-    {kType, 2, 0, 0},  // n1475 type
-    {kType, 2, 0, 0},  // n1476 type
-    {kType, 64, 0, 0},  // n1477 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1478 type
-    {kType, 4, 0, 0},  // n1479 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 686, 2, 0},  // required: grid, data
-    {kProperties, 1820, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n1480 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n1481 $ref #/$defs/Volume3DBinary
-    {kConst, 193, 0, 0},  // n1482 const "equation_of_state"
-    {kType, 4, 0, 0},  // n1483 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 688, 3, 0},  // required: volumes, energies, fit
-    {kProperties, 1830, 3, 0},  // properties: volumes, energies, fit
-    {kRef, 13, 0, 0},  // n1484 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1485 $ref #/$defs/BinaryMember
-    {kRef, 14, 0, 0},  // n1486 $ref #/$defs/JsonMember
-    {kEnum, 692, 5, 0},  // n1488 enum
     {kType, 16, 0, 0},  // n1489 type
-    {kType, 16, 0, 0},  // n1490 type
-    {kType, 16, 0, 0},  // n1491 type
-    {kType, 16, 0, 0},  // n1492 type
-    {kType, 16, 0, 0},  // n1493 type
+    {kType, 2, 0, 0},  // n1490 type
+    {kType, 2, 0, 0},  // n1491 type
+    {kType, 64, 0, 0},  // n1492 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1494 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1495 type
-    {kItems, 1496, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1496 type
-    {kType, 32, 0, 0},  // n1497 type
-    {kType, 32, 0, 0},  // n1498 type
-    {kType, 32, 0, 0},  // n1499 type
-    {kConst, 199, 0, 0},  // n1500 const "fermi_surface"
-    {kType, 4, 0, 0},  // n1501 type
+    {kType, 32, 0, 0},  // n1493 type
+    {kType, 4, 0, 0},  // n1494 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 697, 2, 0},  // required: mesh, energies
-    {kProperties, 1864, 2, 0},  // properties: mesh, energies
-    {kRef, 14, 0, 0},  // n1502 $ref #/$defs/JsonMember
-    {kRef, 17, 0, 0},  // n1503 $ref #/$defs/Volume4DBinary
-    {kType, 8, 0, 0},  // n1505 type
+    {kRequired, 691, 2, 0},  // required: grid, data
+    {kProperties, 1842, 2, 0},  // properties: grid, data
+    {kRef, 15, 0, 0},  // n1495 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n1496 $ref #/$defs/Volume3DBinary
+    {kConst, 195, 0, 0},  // n1497 const "equation_of_state"
+    {kType, 4, 0, 0},  // n1498 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 693, 3, 0},  // required: volumes, energies, fit
+    {kProperties, 1852, 3, 0},  // properties: volumes, energies, fit
+    {kRef, 14, 0, 0},  // n1499 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1500 $ref #/$defs/BinaryMember
+    {kRef, 15, 0, 0},  // n1501 $ref #/$defs/JsonMember
+    {kEnum, 697, 5, 0},  // n1503 enum
+    {kType, 16, 0, 0},  // n1504 type
+    {kType, 16, 0, 0},  // n1505 type
+    {kType, 16, 0, 0},  // n1506 type
+    {kType, 16, 0, 0},  // n1507 type
+    {kType, 16, 0, 0},  // n1508 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1509 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1510 type
+    {kItems, 1511, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1511 type
+    {kType, 32, 0, 0},  // n1512 type
+    {kType, 32, 0, 0},  // n1513 type
+    {kType, 32, 0, 0},  // n1514 type
+    {kConst, 201, 0, 0},  // n1515 const "fermi_surface"
+    {kType, 4, 0, 0},  // n1516 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 702, 2, 0},  // required: mesh, energies
+    {kProperties, 1886, 2, 0},  // properties: mesh, energies
+    {kRef, 15, 0, 0},  // n1517 $ref #/$defs/JsonMember
+    {kRef, 18, 0, 0},  // n1518 $ref #/$defs/Volume4DBinary
+    {kType, 8, 0, 0},  // n1520 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1506, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1506 type
+    {kItems, 1521, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1521 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1507 type
+    {kType, 64, 0, 0},  // n1522 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1508 type
+    {kType, 64, 0, 0},  // n1523 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1509 type
+    {kType, 64, 0, 0},  // n1524 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kRef, 5, 0, 0},  // n1510 $ref #/$defs/Vec3
-    {kType, 2, 0, 0},  // n1511 type
-    {kType, 8, 0, 0},  // n1512 type
-    {kItems, 1513, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1513 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n1514 type
-    {kType, 64, 0, 0},  // n1515 type
+    {kRef, 5, 0, 0},  // n1525 $ref #/$defs/Vec3
+    {kType, 2, 0, 0},  // n1526 type
+    {kType, 8, 0, 0},  // n1527 type
+    {kItems, 1528, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n1528 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n1529 type
+    {kType, 64, 0, 0},  // n1530 type
     {kMinimum, 2, 0, 0},  // minimum
     {kMaximum, 7, 0, 0},  // maximum
-    {kType, 8, 0, 0},  // n1516 type
-    {kItems, 1517, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1517 type
+    {kType, 8, 0, 0},  // n1531 type
+    {kItems, 1532, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1532 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 21, 0, 0},  // n1518 $ref #/$defs/Lattice3x3
-    {kType, 8, 0, 0},  // n1519 type
+    {kRef, 22, 0, 0},  // n1533 $ref #/$defs/Lattice3x3
+    {kType, 8, 0, 0},  // n1534 type
     {kMinItems, 3, 0, 0},  // minItems
     {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1520, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1520 $ref #/$defs/Vec3
-    {kType, 4, 0, 0},  // n1521 type
-    {kAdditionalProperties, 1522, 0, 0},  // additionalProperties
-    {kProperties, 1874, 4, 0},  // properties: fermi_energy_ev, energies, lattice_vectors, reciprocal_latti...
-    {kRef, 2, 0, 0},  // n1522 $ref #/$defs/UnitName
-    {kConst, 9, 0, 0},  // n1523 const "ev"
-    {kConst, 9, 0, 0},  // n1524 const "ev"
-    {kConst, 6, 0, 0},  // n1525 const "angstrom"
-    {kConst, 31, 0, 0},  // n1526 const "angstrom-1"
-    {kConst, 200, 0, 0},  // n1527 const "phonon_bands"
-    {kType, 4, 0, 0},  // n1528 type
+    {kItems, 1535, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n1535 $ref #/$defs/Vec3
+    {kType, 4, 0, 0},  // n1536 type
+    {kAdditionalProperties, 1537, 0, 0},  // additionalProperties
+    {kProperties, 1896, 4, 0},  // properties: fermi_energy_ev, energies, lattice_vectors, reciprocal_latti...
+    {kRef, 2, 0, 0},  // n1537 $ref #/$defs/UnitName
+    {kConst, 9, 0, 0},  // n1538 const "ev"
+    {kConst, 9, 0, 0},  // n1539 const "ev"
+    {kConst, 6, 0, 0},  // n1540 const "angstrom"
+    {kConst, 31, 0, 0},  // n1541 const "angstrom-1"
+    {kConst, 202, 0, 0},  // n1542 const "phonon_bands"
+    {kType, 4, 0, 0},  // n1543 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 699, 2, 0},  // required: qpath, frequencies
-    {kProperties, 1912, 3, 0},  // properties: qpath, frequencies, eigenvectors
-    {kRef, 14, 0, 0},  // n1529 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1530 $ref #/$defs/BinaryMember
-    {kAllOf, 712, 2, 0},  // n1531 allOf
-    {kRef, 13, 0, 0},  // n1532 $ref #/$defs/BinaryMember
-    {kProperties, 1908, 2, 0},  // n1533 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1534 const "float64"
-    {kAnyOf, 710, 2, 0},  // n1535 anyOf
-    {kMinItems, 4, 0, 0},  // n1536 minItems
+    {kRequired, 704, 2, 0},  // required: qpath, frequencies
+    {kProperties, 1934, 3, 0},  // properties: qpath, frequencies, eigenvectors
+    {kRef, 15, 0, 0},  // n1544 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1545 $ref #/$defs/BinaryMember
+    {kAllOf, 717, 2, 0},  // n1546 allOf
+    {kRef, 14, 0, 0},  // n1547 $ref #/$defs/BinaryMember
+    {kProperties, 1930, 2, 0},  // n1548 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1549 const "float64"
+    {kAnyOf, 715, 2, 0},  // n1550 anyOf
+    {kMinItems, 4, 0, 0},  // n1551 minItems
     {kMaxItems, 4, 0, 0},  // maxItems
-    {kPrefixItems, 701, 4, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n1540 const 3
-    {kMinItems, 5, 0, 0},  // n1541 minItems
+    {kPrefixItems, 706, 4, 0},  // prefixItems
+    {kConst, 66, 0, 0},  // n1555 const 3
+    {kMinItems, 5, 0, 0},  // n1556 minItems
     {kMaxItems, 5, 0, 0},  // maxItems
-    {kPrefixItems, 705, 5, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n1545 const 3
-    {kConst, 67, 0, 0},  // n1546 const 2
-    {kType, 8, 0, 0},  // n1548 type
-    {kItems, 1549, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1549 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1550 type
-    {kItems, 1551, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1551 type
-    {kType, 8, 0, 0},  // n1552 type
-    {kItems, 1553, 0, 0},  // items
-    {kRef, 111, 0, 0},  // n1553 $ref #/$defs/KpathSegment
-    {kType, 64, 0, 0},  // n1554 type
+    {kPrefixItems, 710, 5, 0},  // prefixItems
+    {kConst, 66, 0, 0},  // n1560 const 3
+    {kConst, 67, 0, 0},  // n1561 const 2
+    {kType, 8, 0, 0},  // n1563 type
+    {kItems, 1564, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n1564 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n1565 type
+    {kItems, 1566, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1566 type
+    {kType, 8, 0, 0},  // n1567 type
+    {kItems, 1568, 0, 0},  // items
+    {kRef, 112, 0, 0},  // n1568 $ref #/$defs/KpathSegment
+    {kType, 64, 0, 0},  // n1569 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1555 type
+    {kType, 64, 0, 0},  // n1570 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1556 type
+    {kType, 64, 0, 0},  // n1571 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n1557 type
-    {kType, 8, 0, 0},  // n1558 type
-    {kItems, 1559, 0, 0},  // items
-    {kRef, 118, 0, 0},  // n1559 $ref #/$defs/DosChannel
-    {kType, 32, 0, 0},  // n1560 type
-    {kType, 4, 0, 0},  // n1561 type
-    {kAdditionalProperties, 1562, 0, 0},  // additionalProperties
-    {kProperties, 1924, 1, 0},  // properties: frequencies
-    {kRef, 2, 0, 0},  // n1562 $ref #/$defs/UnitName
-    {kConst, 12, 0, 0},  // n1563 const "cm-1"
-    {kConst, 201, 0, 0},  // n1564 const "phonon_dos"
-    {kType, 4, 0, 0},  // n1565 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 714, 3, 0},  // required: meta, frequencies, dos
-    {kProperties, 1950, 4, 0},  // properties: meta, frequencies, dos, projected
-    {kRef, 14, 0, 0},  // n1566 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1567 $ref #/$defs/BinaryMember
-    {kRef, 13, 0, 0},  // n1568 $ref #/$defs/BinaryMember
-    {kAllOf, 717, 2, 0},  // n1569 allOf
-    {kRef, 13, 0, 0},  // n1570 $ref #/$defs/BinaryMember
-    {kProperties, 1946, 2, 0},  // n1571 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1572 const "float64"
-    {kMinItems, 2, 0, 0},  // n1573 minItems
-    {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1574 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1575 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1576 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1577 type
-    {kType, 8, 0, 0},  // n1578 type
-    {kItems, 1579, 0, 0},  // items
-    {kRef, 118, 0, 0},  // n1579 $ref #/$defs/DosChannel
+    {kType, 2, 0, 0},  // n1572 type
+    {kType, 8, 0, 0},  // n1573 type
+    {kItems, 1574, 0, 0},  // items
+    {kRef, 119, 0, 0},  // n1574 $ref #/$defs/DosChannel
+    {kType, 32, 0, 0},  // n1575 type
+    {kType, 4, 0, 0},  // n1576 type
+    {kAdditionalProperties, 1577, 0, 0},  // additionalProperties
+    {kProperties, 1946, 1, 0},  // properties: frequencies
+    {kRef, 2, 0, 0},  // n1577 $ref #/$defs/UnitName
+    {kConst, 12, 0, 0},  // n1578 const "cm-1"
+    {kConst, 203, 0, 0},  // n1579 const "phonon_dos"
     {kType, 4, 0, 0},  // n1580 type
-    {kAdditionalProperties, 1581, 0, 0},  // additionalProperties
-    {kProperties, 1962, 1, 0},  // properties: frequencies
-    {kRef, 2, 0, 0},  // n1581 $ref #/$defs/UnitName
-    {kConst, 12, 0, 0},  // n1582 const "cm-1"
-    {kConst, 202, 0, 0},  // n1583 const "topology.qtaim"
-    {kType, 4, 0, 0},  // n1584 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 719, 1, 0},  // required: critical_points
-    {kProperties, 1976, 1, 0},  // properties: critical_points
-    {kRef, 14, 0, 0},  // n1585 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n1586 type
-    {kItems, 1587, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1587 type
-    {kRequired, 721, 2, 0},  // required: type, position
-    {kProperties, 1982, 7, 0},  // properties: type, position, rho, laplacian, ellipticity, atom_pair, atom...
-    {kEnum, 723, 4, 0},  // n1588 enum
-    {kRef, 5, 0, 0},  // n1589 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n1590 type
+    {kRequired, 719, 3, 0},  // required: meta, frequencies, dos
+    {kProperties, 1972, 4, 0},  // properties: meta, frequencies, dos, projected
+    {kRef, 15, 0, 0},  // n1581 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1582 $ref #/$defs/BinaryMember
+    {kRef, 14, 0, 0},  // n1583 $ref #/$defs/BinaryMember
+    {kAllOf, 722, 2, 0},  // n1584 allOf
+    {kRef, 14, 0, 0},  // n1585 $ref #/$defs/BinaryMember
+    {kProperties, 1968, 2, 0},  // n1586 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1587 const "float64"
+    {kMinItems, 2, 0, 0},  // n1588 minItems
+    {kMaxItems, 2, 0, 0},  // maxItems
+    {kType, 64, 0, 0},  // n1589 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1590 type
+    {kMinimum, 2, 0, 0},  // minimum
     {kType, 16, 0, 0},  // n1591 type
-    {kType, 16, 0, 0},  // n1592 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 32, 0, 0},  // n1592 type
     {kType, 8, 0, 0},  // n1593 type
     {kItems, 1594, 0, 0},  // items
-    {kMinItems, 2, 0, 0},  // minItems
-    {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1594 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1595 type
-    {kItems, 1596, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1596 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1597 type
-    {kItems, 1598, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1598 type
-    {kProperties, 1996, 2, 0},  // properties: atoms, path
-    {kType, 8, 0, 0},  // n1599 type
-    {kItems, 1600, 0, 0},  // items
-    {kMinItems, 2, 0, 0},  // minItems
-    {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1600 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 119, 0, 0},  // n1594 $ref #/$defs/DosChannel
+    {kType, 4, 0, 0},  // n1595 type
+    {kAdditionalProperties, 1596, 0, 0},  // additionalProperties
+    {kProperties, 1984, 1, 0},  // properties: frequencies
+    {kRef, 2, 0, 0},  // n1596 $ref #/$defs/UnitName
+    {kConst, 12, 0, 0},  // n1597 const "cm-1"
+    {kConst, 204, 0, 0},  // n1598 const "topology.qtaim"
+    {kType, 4, 0, 0},  // n1599 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 724, 1, 0},  // required: critical_points
+    {kProperties, 1998, 1, 0},  // properties: critical_points
+    {kRef, 15, 0, 0},  // n1600 $ref #/$defs/JsonMember
     {kType, 8, 0, 0},  // n1601 type
     {kItems, 1602, 0, 0},  // items
-    {kRef, 5, 0, 0},  // n1602 $ref #/$defs/Vec3
-    {kType, 4, 0, 0},  // n1603 type
-    {kAdditionalProperties, 1604, 0, 0},  // additionalProperties
-    {kProperties, 2000, 1, 0},  // properties: position
-    {kRef, 2, 0, 0},  // n1604 $ref #/$defs/UnitName
-    {kRef, 2, 0, 0},  // n1605 $ref #/$defs/UnitName
-    {kConst, 207, 0, 0},  // n1606 const "forces"
-    {kType, 4, 0, 0},  // n1607 type
+    {kType, 4, 0, 0},  // n1602 type
+    {kRequired, 726, 2, 0},  // required: type, position
+    {kProperties, 2004, 7, 0},  // properties: type, position, rho, laplacian, ellipticity, atom_pair, atom...
+    {kEnum, 728, 4, 0},  // n1603 enum
+    {kRef, 5, 0, 0},  // n1604 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n1605 type
+    {kType, 16, 0, 0},  // n1606 type
+    {kType, 16, 0, 0},  // n1607 type
+    {kType, 8, 0, 0},  // n1608 type
+    {kItems, 1609, 0, 0},  // items
+    {kMinItems, 2, 0, 0},  // minItems
+    {kMaxItems, 2, 0, 0},  // maxItems
+    {kType, 64, 0, 0},  // n1609 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1610 type
+    {kItems, 1611, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1611 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1612 type
+    {kItems, 1613, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1613 type
+    {kProperties, 2018, 2, 0},  // properties: atoms, path
+    {kType, 8, 0, 0},  // n1614 type
+    {kItems, 1615, 0, 0},  // items
+    {kMinItems, 2, 0, 0},  // minItems
+    {kMaxItems, 2, 0, 0},  // maxItems
+    {kType, 64, 0, 0},  // n1615 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1616 type
+    {kItems, 1617, 0, 0},  // items
+    {kRef, 5, 0, 0},  // n1617 $ref #/$defs/Vec3
+    {kType, 4, 0, 0},  // n1618 type
+    {kAdditionalProperties, 1619, 0, 0},  // additionalProperties
+    {kProperties, 2022, 1, 0},  // properties: position
+    {kRef, 2, 0, 0},  // n1619 $ref #/$defs/UnitName
+    {kRef, 2, 0, 0},  // n1620 $ref #/$defs/UnitName
+    {kConst, 209, 0, 0},  // n1621 const "forces"
+    {kType, 4, 0, 0},  // n1622 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 727, 1, 0},  // required: gradient
-    {kProperties, 2008, 3, 0},  // properties: gradient, stress, meta
-    {kRef, 151, 0, 0},  // n1608 $ref #/$defs/ForcesGradient
-    {kRef, 152, 0, 0},  // n1609 $ref #/$defs/ForcesStress
-    {kRef, 14, 0, 0},  // n1610 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1611 $ref #/$defs/BinaryMember
-    {kProperties, 2018, 2, 0},  // n1612 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1613 const "float64"
-    {kMinItems, 2, 0, 0},  // n1614 minItems
+    {kRequired, 732, 1, 0},  // required: gradient
+    {kProperties, 2030, 3, 0},  // properties: gradient, stress, meta
+    {kRef, 152, 0, 0},  // n1623 $ref #/$defs/ForcesGradient
+    {kRef, 153, 0, 0},  // n1624 $ref #/$defs/ForcesStress
+    {kRef, 15, 0, 0},  // n1625 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1626 $ref #/$defs/BinaryMember
+    {kProperties, 2040, 2, 0},  // n1627 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1628 const "float64"
+    {kMinItems, 2, 0, 0},  // n1629 minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kPrefixItems, 731, 2, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n1616 const 3
-    {kRef, 13, 0, 0},  // n1617 $ref #/$defs/BinaryMember
-    {kProperties, 2022, 2, 0},  // n1618 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1619 const "float64"
-    {kMinItems, 2, 0, 0},  // n1620 minItems
+    {kPrefixItems, 736, 2, 0},  // prefixItems
+    {kConst, 66, 0, 0},  // n1631 const 3
+    {kRef, 14, 0, 0},  // n1632 $ref #/$defs/BinaryMember
+    {kProperties, 2044, 2, 0},  // n1633 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1634 const "float64"
+    {kMinItems, 2, 0, 0},  // n1635 minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kPrefixItems, 735, 2, 0},  // prefixItems
-    {kConst, 66, 0, 0},  // n1621 const 3
-    {kConst, 66, 0, 0},  // n1622 const 3
-    {kType, 32, 0, 0},  // n1624 type
+    {kPrefixItems, 740, 2, 0},  // prefixItems
+    {kConst, 66, 0, 0},  // n1636 const 3
+    {kConst, 66, 0, 0},  // n1637 const 3
+    {kType, 32, 0, 0},  // n1639 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1625 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kEnum, 739, 1, 0},  // n1626 enum
-    {kRef, 154, 0, 0},  // n1627 $ref #/$defs/DerivativeUnits
-    {kConst, 8, 0, 0},  // n1629 const "hartree"
-    {kConst, 7, 0, 0},  // n1630 const "bohr"
-    {kConst, 209, 0, 0},  // n1631 const "hessian"
-    {kType, 4, 0, 0},  // n1632 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 740, 1, 0},  // required: matrix
-    {kProperties, 2042, 2, 0},  // properties: matrix, meta
-    {kRef, 156, 0, 0},  // n1633 $ref #/$defs/HessianMatrix
-    {kRef, 14, 0, 0},  // n1634 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1635 $ref #/$defs/BinaryMember
-    {kProperties, 2050, 2, 0},  // n1636 properties: dtype, shape
-    {kConst, 63, 0, 0},  // n1637 const "float64"
-    {kMinItems, 2, 0, 0},  // n1638 minItems
-    {kMaxItems, 2, 0, 0},  // maxItems
     {kType, 32, 0, 0},  // n1640 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 2, 0, 0},  // n1641 type
-    {kType, 2, 0, 0},  // n1642 type
-    {kType, 8, 0, 0},  // n1643 type
-    {kItems, 1644, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1644 type
+    {kEnum, 744, 1, 0},  // n1641 enum
+    {kRef, 155, 0, 0},  // n1642 $ref #/$defs/DerivativeUnits
+    {kConst, 8, 0, 0},  // n1644 const "hartree"
+    {kConst, 7, 0, 0},  // n1645 const "bohr"
+    {kConst, 211, 0, 0},  // n1646 const "hessian"
+    {kType, 4, 0, 0},  // n1647 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 745, 1, 0},  // required: matrix
+    {kProperties, 2064, 2, 0},  // properties: matrix, meta
+    {kRef, 157, 0, 0},  // n1648 $ref #/$defs/HessianMatrix
+    {kRef, 15, 0, 0},  // n1649 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1650 $ref #/$defs/BinaryMember
+    {kProperties, 2072, 2, 0},  // n1651 properties: dtype, shape
+    {kConst, 63, 0, 0},  // n1652 const "float64"
+    {kMinItems, 2, 0, 0},  // n1653 minItems
+    {kMaxItems, 2, 0, 0},  // maxItems
+    {kType, 32, 0, 0},  // n1655 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 2, 0, 0},  // n1656 type
+    {kType, 2, 0, 0},  // n1657 type
+    {kType, 8, 0, 0},  // n1658 type
+    {kItems, 1659, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1659 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kRef, 154, 0, 0},  // n1645 $ref #/$defs/DerivativeUnits
-    {kProperties, 2066, 1, 0},  // n1646 properties: mass_weighted
-    {kRequired, 746, 1, 0},  // required: mass_weighted
-    {kConst, 68, 0, 0},  // n1647 const true
-    {kRequired, 747, 1, 0},  // n1648 required: atom_masses_amu
-    {kConst, 210, 0, 0},  // n1649 const "excited_states"
-    {kType, 32, 0, 0},  // n1650 type
-    {kType, 4, 0, 0},  // n1651 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 748, 1, 0},  // required: states
-    {kProperties, 2068, 1, 0},  // properties: states
-    {kRef, 14, 0, 0},  // n1652 $ref #/$defs/JsonMember
-    {kConst, 211, 0, 0},  // n1653 const "properties.electric"
-    {kType, 4, 0, 0},  // n1654 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 752, 1, 0},  // required: properties
-    {kProperties, 2076, 1, 0},  // properties: properties
-    {kRef, 14, 0, 0},  // n1655 $ref #/$defs/JsonMember
-    {kType, 8, 0, 0},  // n1657 type
-    {kItems, 1658, 0, 0},  // items
-    {kRef, 161, 0, 0},  // n1658 $ref #/$defs/ExcitedState
-    {kRef, 163, 0, 0},  // n1659 $ref #/$defs/ExcitedStatesMeta
-    {kType, 64, 0, 0},  // n1661 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kRef, 1, 0, 0},  // n1662 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1663 $ref #/$defs/ValueWithUnits
-    {kType, 64, 0, 0},  // n1664 type
-    {kMinimum, 2, 0, 0},  // minimum
+    {kRef, 155, 0, 0},  // n1660 $ref #/$defs/DerivativeUnits
+    {kProperties, 2088, 1, 0},  // n1661 properties: mass_weighted
+    {kRequired, 751, 1, 0},  // required: mass_weighted
+    {kConst, 68, 0, 0},  // n1662 const true
+    {kRequired, 752, 1, 0},  // n1663 required: atom_masses_amu
+    {kConst, 212, 0, 0},  // n1664 const "excited_states"
     {kType, 32, 0, 0},  // n1665 type
-    {kType, 16, 0, 0},  // n1666 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1667 type
-    {kRef, 5, 0, 0},  // n1668 $ref #/$defs/Vec3
-    {kRef, 5, 0, 0},  // n1669 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1670 type
-    {kItems, 1671, 0, 0},  // items
-    {kRef, 162, 0, 0},  // n1671 $ref #/$defs/ExcitedStateContribution
-    {kType, 32, 0, 0},  // n1672 type
-    {kType, 32, 0, 0},  // n1673 type
-    {kType, 64, 0, 0},  // n1675 type
-    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 4, 0, 0},  // n1666 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 753, 1, 0},  // required: states
+    {kProperties, 2090, 1, 0},  // properties: states
+    {kRef, 15, 0, 0},  // n1667 $ref #/$defs/JsonMember
+    {kConst, 213, 0, 0},  // n1668 const "properties.electric"
+    {kType, 4, 0, 0},  // n1669 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 757, 1, 0},  // required: properties
+    {kProperties, 2098, 1, 0},  // properties: properties
+    {kRef, 15, 0, 0},  // n1670 $ref #/$defs/JsonMember
+    {kType, 8, 0, 0},  // n1672 type
+    {kItems, 1673, 0, 0},  // items
+    {kRef, 162, 0, 0},  // n1673 $ref #/$defs/ExcitedState
+    {kRef, 164, 0, 0},  // n1674 $ref #/$defs/ExcitedStatesMeta
     {kType, 64, 0, 0},  // n1676 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kEnum, 762, 2, 0},  // n1677 enum
-    {kType, 16, 0, 0},  // n1678 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kRef, 1, 0, 0},  // n1677 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1678 $ref #/$defs/ValueWithUnits
+    {kType, 64, 0, 0},  // n1679 type
+    {kMinimum, 2, 0, 0},  // minimum
     {kType, 32, 0, 0},  // n1680 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1681 type
-    {kType, 64, 0, 0},  // n1682 type
+    {kType, 16, 0, 0},  // n1681 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n1683 type
-    {kType, 2, 0, 0},  // n1684 type
-    {kType, 4, 0, 0},  // n1685 type
-    {kAdditionalProperties, 1686, 0, 0},  // additionalProperties
-    {kProperties, 2126, 4, 0},  // properties: excitation_energy, total_energy, oscillator_strength, transi...
-    {kRef, 2, 0, 0},  // n1686 $ref #/$defs/UnitName
-    {kRef, 2, 0, 0},  // n1687 $ref #/$defs/UnitName
-    {kRef, 2, 0, 0},  // n1688 $ref #/$defs/UnitName
-    {kConst, 30, 0, 0},  // n1689 const "dimensionless"
-    {kConst, 43, 0, 0},  // n1690 const "e_bohr"
-    {kConst, 212, 0, 0},  // n1691 const "properties.elastic"
-    {kType, 4, 0, 0},  // n1692 type
+    {kType, 16, 0, 0},  // n1682 type
+    {kRef, 5, 0, 0},  // n1683 $ref #/$defs/Vec3
+    {kRef, 5, 0, 0},  // n1684 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n1685 type
+    {kItems, 1686, 0, 0},  // items
+    {kRef, 163, 0, 0},  // n1686 $ref #/$defs/ExcitedStateContribution
+    {kType, 32, 0, 0},  // n1687 type
+    {kType, 32, 0, 0},  // n1688 type
+    {kType, 64, 0, 0},  // n1690 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1691 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kEnum, 767, 2, 0},  // n1692 enum
+    {kType, 16, 0, 0},  // n1693 type
+    {kType, 32, 0, 0},  // n1695 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1696 type
+    {kType, 64, 0, 0},  // n1697 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 2, 0, 0},  // n1698 type
+    {kType, 2, 0, 0},  // n1699 type
+    {kType, 4, 0, 0},  // n1700 type
+    {kAdditionalProperties, 1701, 0, 0},  // additionalProperties
+    {kProperties, 2148, 4, 0},  // properties: excitation_energy, total_energy, oscillator_strength, transi...
+    {kRef, 2, 0, 0},  // n1701 $ref #/$defs/UnitName
+    {kRef, 2, 0, 0},  // n1702 $ref #/$defs/UnitName
+    {kRef, 2, 0, 0},  // n1703 $ref #/$defs/UnitName
+    {kConst, 30, 0, 0},  // n1704 const "dimensionless"
+    {kConst, 43, 0, 0},  // n1705 const "e_bohr"
+    {kConst, 214, 0, 0},  // n1706 const "properties.elastic"
+    {kType, 4, 0, 0},  // n1707 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 764, 1, 0},  // required: properties
-    {kProperties, 2146, 1, 0},  // properties: properties
-    {kRef, 14, 0, 0},  // n1693 $ref #/$defs/JsonMember
-    {kConst, 213, 0, 0},  // n1694 const "properties.dielectric"
-    {kType, 4, 0, 0},  // n1695 type
+    {kRequired, 769, 1, 0},  // required: properties
+    {kProperties, 2168, 1, 0},  // properties: properties
+    {kRef, 15, 0, 0},  // n1708 $ref #/$defs/JsonMember
+    {kConst, 215, 0, 0},  // n1709 const "properties.dielectric"
+    {kType, 4, 0, 0},  // n1710 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 768, 1, 0},  // required: properties
-    {kProperties, 2152, 1, 0},  // properties: properties
-    {kRef, 14, 0, 0},  // n1696 $ref #/$defs/JsonMember
-    {kRef, 5, 0, 0},  // n1697 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1698 type
+    {kRequired, 773, 1, 0},  // required: properties
+    {kProperties, 2174, 1, 0},  // properties: properties
+    {kRef, 15, 0, 0},  // n1711 $ref #/$defs/JsonMember
+    {kRef, 5, 0, 0},  // n1712 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n1713 type
     {kMinItems, 6, 0, 0},  // minItems
     {kMaxItems, 6, 0, 0},  // maxItems
-    {kItems, 1699, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1699 type
-    {kType, 8, 0, 0},  // n1700 type
+    {kItems, 1714, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1714 type
+    {kType, 8, 0, 0},  // n1715 type
     {kMinItems, 6, 0, 0},  // minItems
     {kMaxItems, 6, 0, 0},  // maxItems
-    {kItems, 1701, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1701 type
-    {kType, 16, 0, 0},  // n1702 type
-    {kRequired, 772, 1, 0},  // n1704 required: dipole
-    {kRequired, 773, 1, 0},  // n1705 required: quadrupole
-    {kRequired, 774, 1, 0},  // n1706 required: octupole
-    {kRequired, 775, 1, 0},  // n1707 required: polarizability
-    {kRequired, 776, 1, 0},  // n1708 required: hyperpolarizability
-    {kOneOf, 782, 2, 0},  // n1709 oneOf
-    {kType, 32, 0, 0},  // n1710 type
+    {kItems, 1716, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1716 type
+    {kType, 16, 0, 0},  // n1717 type
+    {kRequired, 777, 1, 0},  // n1719 required: dipole
+    {kRequired, 778, 1, 0},  // n1720 required: quadrupole
+    {kRequired, 779, 1, 0},  // n1721 required: octupole
+    {kRequired, 780, 1, 0},  // n1722 required: polarizability
+    {kRequired, 781, 1, 0},  // n1723 required: hyperpolarizability
+    {kOneOf, 787, 2, 0},  // n1724 oneOf
+    {kType, 32, 0, 0},  // n1725 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 5, 0, 0},  // n1711 $ref #/$defs/Vec3
-    {kType, 4, 0, 0},  // n1712 type
+    {kRef, 5, 0, 0},  // n1726 $ref #/$defs/Vec3
+    {kType, 4, 0, 0},  // n1727 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2160, 1, 0},  // patternProperties
-    {kRequired, 784, 1, 0},  // required: vector
-    {kProperties, 2162, 3, 0},  // properties: vector, total, units
-    {kRef, 5, 0, 0},  // n1714 $ref #/$defs/Vec3
-    {kType, 16, 0, 0},  // n1715 type
+    {kPatternProperties, 2182, 1, 0},  // patternProperties
+    {kRequired, 789, 1, 0},  // required: vector
+    {kProperties, 2184, 3, 0},  // properties: vector, total, units
+    {kRef, 5, 0, 0},  // n1729 $ref #/$defs/Vec3
+    {kType, 16, 0, 0},  // n1730 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 2, 0, 0},  // n1716 $ref #/$defs/UnitName
+    {kRef, 2, 0, 0},  // n1731 $ref #/$defs/UnitName
     {kConst, 14, 0, 0},  // const "debye"
-    {kType, 4, 0, 0},  // n1717 type
+    {kType, 4, 0, 0},  // n1732 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2168, 1, 0},  // patternProperties
-    {kRequired, 785, 3, 0},  // required: matrix, traceless, convention
-    {kProperties, 2170, 3, 0},  // properties: matrix, traceless, convention
-    {kIf, 1722, 1724, -1},  // if
-    {kRef, 166, 0, 0},  // n1719 $ref #/$defs/Matrix3x3
-    {kType, 2, 0, 0},  // n1720 type
-    {kEnum, 788, 2, 0},  // n1721 enum
-    {kProperties, 2176, 1, 0},  // n1722 properties: convention
-    {kRequired, 790, 1, 0},  // required: convention
-    {kConst, 214, 0, 0},  // n1723 const "buckingham"
-    {kProperties, 2178, 1, 0},  // n1724 properties: traceless
-    {kConst, 68, 0, 0},  // n1725 const true
-    {kType, 4, 0, 0},  // n1726 type
+    {kPatternProperties, 2190, 1, 0},  // patternProperties
+    {kRequired, 790, 3, 0},  // required: matrix, traceless, convention
+    {kProperties, 2192, 3, 0},  // properties: matrix, traceless, convention
+    {kIf, 1737, 1739, -1},  // if
+    {kRef, 167, 0, 0},  // n1734 $ref #/$defs/Matrix3x3
+    {kType, 2, 0, 0},  // n1735 type
+    {kEnum, 793, 2, 0},  // n1736 enum
+    {kProperties, 2198, 1, 0},  // n1737 properties: convention
+    {kRequired, 795, 1, 0},  // required: convention
+    {kConst, 216, 0, 0},  // n1738 const "buckingham"
+    {kProperties, 2200, 1, 0},  // n1739 properties: traceless
+    {kConst, 68, 0, 0},  // n1740 const true
+    {kType, 4, 0, 0},  // n1741 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2180, 1, 0},  // patternProperties
-    {kRequired, 791, 1, 0},  // required: tensor
-    {kProperties, 2182, 2, 0},  // properties: tensor, convention
-    {kRef, 169, 0, 0},  // n1728 $ref #/$defs/Tensor3x3x3
-    {kEnum, 792, 2, 0},  // n1729 enum
-    {kType, 4, 0, 0},  // n1730 type
+    {kPatternProperties, 2202, 1, 0},  // patternProperties
+    {kRequired, 796, 1, 0},  // required: tensor
+    {kProperties, 2204, 2, 0},  // properties: tensor, convention
+    {kRef, 170, 0, 0},  // n1743 $ref #/$defs/Tensor3x3x3
+    {kEnum, 797, 2, 0},  // n1744 enum
+    {kType, 4, 0, 0},  // n1745 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2186, 1, 0},  // patternProperties
-    {kRequired, 794, 1, 0},  // required: matrix
-    {kProperties, 2188, 3, 0},  // properties: matrix, frequency_ev, isotropic
-    {kRef, 166, 0, 0},  // n1732 $ref #/$defs/Matrix3x3
-    {kType, 16, 0, 0},  // n1733 type
+    {kPatternProperties, 2208, 1, 0},  // patternProperties
+    {kRequired, 799, 1, 0},  // required: matrix
+    {kProperties, 2210, 3, 0},  // properties: matrix, frequency_ev, isotropic
+    {kRef, 167, 0, 0},  // n1747 $ref #/$defs/Matrix3x3
+    {kType, 16, 0, 0},  // n1748 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1734 type
-    {kType, 4, 0, 0},  // n1735 type
+    {kType, 16, 0, 0},  // n1749 type
+    {kType, 4, 0, 0},  // n1750 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2194, 1, 0},  // patternProperties
-    {kRequired, 795, 1, 0},  // required: tensor
-    {kProperties, 2196, 2, 0},  // properties: tensor, frequencies_ev
-    {kRef, 169, 0, 0},  // n1737 $ref #/$defs/Tensor3x3x3
-    {kType, 8, 0, 0},  // n1738 type
+    {kPatternProperties, 2216, 1, 0},  // patternProperties
+    {kRequired, 800, 1, 0},  // required: tensor
+    {kProperties, 2218, 2, 0},  // properties: tensor, frequencies_ev
+    {kRef, 170, 0, 0},  // n1752 $ref #/$defs/Tensor3x3x3
+    {kType, 8, 0, 0},  // n1753 type
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kItems, 1739, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1739 type
-    {kType, 4, 0, 0},  // n1740 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2200, 1, 0},  // patternProperties
-    {kProperties, 2202, 6, 0},  // properties: dipole, origin, quadrupole, octupole, polarizability, hyperp...
-    {kConst, 14, 0, 0},  // n1742 const "debye"
-    {kConst, 7, 0, 0},  // n1743 const "bohr"
-    {kConst, 45, 0, 0},  // n1744 const "debye_angstrom"
-    {kConst, 46, 0, 0},  // n1745 const "debye_angstrom2"
-    {kConst, 47, 0, 0},  // n1746 const "e2_bohr2_per_hartree"
-    {kConst, 48, 0, 0},  // n1747 const "e3_bohr3_per_hartree2"
-    {kRef, 168, 0, 0},  // n1749 $ref #/$defs/Matrix6x6
-    {kRef, 168, 0, 0},  // n1750 $ref #/$defs/Matrix6x6
-    {kType, 16, 0, 0},  // n1751 type
-    {kType, 16, 0, 0},  // n1752 type
-    {kType, 16, 0, 0},  // n1753 type
+    {kItems, 1754, 0, 0},  // items
     {kType, 16, 0, 0},  // n1754 type
-    {kEnum, 797, 3, 0},  // n1755 enum
-    {kType, 4, 0, 0},  // n1756 type
+    {kType, 4, 0, 0},  // n1755 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2230, 1, 0},  // patternProperties
-    {kProperties, 2232, 6, 0},  // properties: stiffness, compliance, bulk_modulus_gpa, shear_modulus_gpa, ...
-    {kConst, 21, 0, 0},  // n1758 const "gpa"
-    {kConst, 32, 0, 0},  // n1759 const "gpa-1"
-    {kConst, 21, 0, 0},  // n1760 const "gpa"
-    {kConst, 21, 0, 0},  // n1761 const "gpa"
-    {kConst, 21, 0, 0},  // n1762 const "gpa"
-    {kConst, 30, 0, 0},  // n1763 const "dimensionless"
-    {kRef, 166, 0, 0},  // n1765 $ref #/$defs/Matrix3x3
-    {kRef, 166, 0, 0},  // n1766 $ref #/$defs/Matrix3x3
-    {kRef, 166, 0, 0},  // n1767 $ref #/$defs/Matrix3x3
-    {kType, 8, 0, 0},  // n1768 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1769, 0, 0},  // items
-    {kRef, 166, 0, 0},  // n1769 $ref #/$defs/Matrix3x3
-    {kRef, 167, 0, 0},  // n1770 $ref #/$defs/Matrix3x6
+    {kPatternProperties, 2222, 1, 0},  // patternProperties
+    {kProperties, 2224, 6, 0},  // properties: dipole, origin, quadrupole, octupole, polarizability, hyperp...
+    {kConst, 14, 0, 0},  // n1757 const "debye"
+    {kConst, 7, 0, 0},  // n1758 const "bohr"
+    {kConst, 45, 0, 0},  // n1759 const "debye_angstrom"
+    {kConst, 46, 0, 0},  // n1760 const "debye_angstrom2"
+    {kConst, 47, 0, 0},  // n1761 const "e2_bohr2_per_hartree"
+    {kConst, 48, 0, 0},  // n1762 const "e3_bohr3_per_hartree2"
+    {kRef, 169, 0, 0},  // n1764 $ref #/$defs/Matrix6x6
+    {kRef, 169, 0, 0},  // n1765 $ref #/$defs/Matrix6x6
+    {kType, 16, 0, 0},  // n1766 type
+    {kType, 16, 0, 0},  // n1767 type
+    {kType, 16, 0, 0},  // n1768 type
+    {kType, 16, 0, 0},  // n1769 type
+    {kEnum, 802, 3, 0},  // n1770 enum
     {kType, 4, 0, 0},  // n1771 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2262, 1, 0},  // patternProperties
-    {kProperties, 2264, 5, 0},  // properties: electronic, ionic, static, born_charges, piezoelectric
-    {kConst, 30, 0, 0},  // n1773 const "dimensionless"
-    {kConst, 30, 0, 0},  // n1774 const "dimensionless"
-    {kConst, 30, 0, 0},  // n1775 const "dimensionless"
-    {kConst, 26, 0, 0},  // n1776 const "e"
-    {kConst, 49, 0, 0},  // n1777 const "c_per_m2"
-    {kConst, 218, 0, 0},  // n1778 const "volume.transition_density"
-    {kType, 32, 0, 0},  // n1779 type
-    {kType, 64, 0, 0},  // n1780 type
+    {kPatternProperties, 2252, 1, 0},  // patternProperties
+    {kProperties, 2254, 6, 0},  // properties: stiffness, compliance, bulk_modulus_gpa, shear_modulus_gpa, ...
+    {kConst, 21, 0, 0},  // n1773 const "gpa"
+    {kConst, 32, 0, 0},  // n1774 const "gpa-1"
+    {kConst, 21, 0, 0},  // n1775 const "gpa"
+    {kConst, 21, 0, 0},  // n1776 const "gpa"
+    {kConst, 21, 0, 0},  // n1777 const "gpa"
+    {kConst, 30, 0, 0},  // n1778 const "dimensionless"
+    {kRef, 167, 0, 0},  // n1780 $ref #/$defs/Matrix3x3
+    {kRef, 167, 0, 0},  // n1781 $ref #/$defs/Matrix3x3
+    {kRef, 167, 0, 0},  // n1782 $ref #/$defs/Matrix3x3
+    {kType, 8, 0, 0},  // n1783 type
+    {kMinItems, 1, 0, 0},  // minItems
+    {kItems, 1784, 0, 0},  // items
+    {kRef, 167, 0, 0},  // n1784 $ref #/$defs/Matrix3x3
+    {kRef, 168, 0, 0},  // n1785 $ref #/$defs/Matrix3x6
+    {kType, 4, 0, 0},  // n1786 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 2284, 1, 0},  // patternProperties
+    {kProperties, 2286, 5, 0},  // properties: electronic, ionic, static, born_charges, piezoelectric
+    {kConst, 30, 0, 0},  // n1788 const "dimensionless"
+    {kConst, 30, 0, 0},  // n1789 const "dimensionless"
+    {kConst, 30, 0, 0},  // n1790 const "dimensionless"
+    {kConst, 26, 0, 0},  // n1791 const "e"
+    {kConst, 49, 0, 0},  // n1792 const "c_per_m2"
+    {kConst, 220, 0, 0},  // n1793 const "volume.transition_density"
+    {kType, 32, 0, 0},  // n1794 type
+    {kType, 64, 0, 0},  // n1795 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 4, 0, 0},  // n1781 type
+    {kType, 4, 0, 0},  // n1796 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 801, 2, 0},  // required: grid, data
-    {kProperties, 2286, 2, 0},  // properties: grid, data
-    {kRef, 14, 0, 0},  // n1782 $ref #/$defs/JsonMember
-    {kRef, 16, 0, 0},  // n1783 $ref #/$defs/Volume3DBinary
-    {kConst, 219, 0, 0},  // n1784 const "preview"
-    {kType, 4, 0, 0},  // n1785 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 804, 1, 0},  // required: thumbnail
-    {kProperties, 2298, 2, 0},  // properties: thumbnail, image
-    {kRef, 175, 0, 0},  // n1786 $ref #/$defs/PreviewThumbnail
-    {kRef, 176, 0, 0},  // n1787 $ref #/$defs/PreviewImage
-    {kRef, 9, 0, 0},  // n1788 $ref #/$defs/ZipPath
-    {kConst, 64, 0, 0},  // n1789 const "binary"
-    {kRef, 8, 0, 0},  // n1790 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n1791 $ref #/$defs/MemberSize
-    {kEnum, 812, 2, 0},  // n1792 enum
-    {kRef, 9, 0, 0},  // n1793 $ref #/$defs/ZipPath
-    {kConst, 64, 0, 0},  // n1794 const "binary"
-    {kRef, 8, 0, 0},  // n1795 $ref #/$defs/Sha256Hex
-    {kRef, 11, 0, 0},  // n1796 $ref #/$defs/MemberSize
-    {kEnum, 818, 3, 0},  // n1797 enum
-    {kConst, 223, 0, 0},  // n1798 const "energy_decomposition"
-    {kType, 32, 0, 0},  // n1799 type
+    {kRequired, 806, 2, 0},  // required: grid, data
+    {kProperties, 2308, 2, 0},  // properties: grid, data
+    {kRef, 15, 0, 0},  // n1797 $ref #/$defs/JsonMember
+    {kRef, 17, 0, 0},  // n1798 $ref #/$defs/Volume3DBinary
+    {kConst, 221, 0, 0},  // n1799 const "preview"
     {kType, 4, 0, 0},  // n1800 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 821, 1, 0},  // required: decomposition
-    {kProperties, 2326, 1, 0},  // properties: decomposition
-    {kRef, 14, 0, 0},  // n1801 $ref #/$defs/JsonMember
-    {kOneOf, 836, 2, 0},  // n1803 oneOf
-    {kEnum, 828, 8, 0},  // n1804 enum
-    {kType, 32, 0, 0},  // n1805 type
-    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kType, 32, 0, 0},  // n1806 type
-    {kRef, 179, 0, 0},  // n1807 $ref #/$defs/DecompositionMethod
-    {kType, 8, 0, 0},  // n1808 type
-    {kMinItems, 2, 0, 0},  // minItems
-    {kItems, 1809, 0, 0},  // items
-    {kRef, 180, 0, 0},  // n1809 $ref #/$defs/DecompositionFragment
-    {kType, 4, 0, 0},  // n1810 type
+    {kRequired, 809, 1, 0},  // required: thumbnail
+    {kProperties, 2320, 2, 0},  // properties: thumbnail, image
+    {kRef, 176, 0, 0},  // n1801 $ref #/$defs/PreviewThumbnail
+    {kRef, 177, 0, 0},  // n1802 $ref #/$defs/PreviewImage
+    {kRef, 10, 0, 0},  // n1803 $ref #/$defs/ZipPath
+    {kConst, 64, 0, 0},  // n1804 const "binary"
+    {kRef, 9, 0, 0},  // n1805 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n1806 $ref #/$defs/MemberSize
+    {kEnum, 817, 2, 0},  // n1807 enum
+    {kRef, 10, 0, 0},  // n1808 $ref #/$defs/ZipPath
+    {kConst, 64, 0, 0},  // n1809 const "binary"
+    {kRef, 9, 0, 0},  // n1810 $ref #/$defs/Sha256Hex
+    {kRef, 12, 0, 0},  // n1811 $ref #/$defs/MemberSize
+    {kEnum, 823, 3, 0},  // n1812 enum
+    {kConst, 225, 0, 0},  // n1813 const "energy_decomposition"
+    {kType, 32, 0, 0},  // n1814 type
+    {kType, 4, 0, 0},  // n1815 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kPatternProperties, 2336, 1, 0},  // patternProperties
-    {kRequired, 838, 0, 0},  // required: 
-    {kProperties, 2338, 1, 0},  // properties: system
-    {kRef, 1, 0, 0},  // n1812 $ref #/$defs/ValueWithUnits
-    {kType, 8, 0, 0},  // n1813 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1814, 0, 0},  // items
-    {kRef, 181, 0, 0},  // n1814 $ref #/$defs/DecompositionTerm
-    {kType, 8, 0, 0},  // n1815 type
-    {kItems, 1816, 0, 0},  // items
-    {kRef, 182, 0, 0},  // n1816 $ref #/$defs/DecompositionSumRule
-    {kRef, 183, 0, 0},  // n1817 $ref #/$defs/DecompositionOrbitalPairs
-    {kRef, 185, 0, 0},  // n1818 $ref #/$defs/DecompositionPeriodic
-    {kType, 32, 0, 0},  // n1819 type
+    {kRequired, 826, 1, 0},  // required: decomposition
+    {kProperties, 2348, 1, 0},  // properties: decomposition
+    {kRef, 15, 0, 0},  // n1816 $ref #/$defs/JsonMember
+    {kOneOf, 841, 2, 0},  // n1818 oneOf
+    {kEnum, 833, 8, 0},  // n1819 enum
+    {kType, 32, 0, 0},  // n1820 type
+    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
     {kType, 32, 0, 0},  // n1821 type
-    {kType, 32, 0, 0},  // n1822 type
-    {kType, 32, 0, 0},  // n1823 type
-    {kType, 32, 0, 0},  // n1824 type
-    {kType, 32, 0, 0},  // n1826 type
+    {kRef, 180, 0, 0},  // n1822 $ref #/$defs/DecompositionMethod
+    {kType, 8, 0, 0},  // n1823 type
+    {kMinItems, 2, 0, 0},  // minItems
+    {kItems, 1824, 0, 0},  // items
+    {kRef, 181, 0, 0},  // n1824 $ref #/$defs/DecompositionFragment
+    {kType, 4, 0, 0},  // n1825 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kPatternProperties, 2358, 1, 0},  // patternProperties
+    {kRequired, 843, 0, 0},  // required: 
+    {kProperties, 2360, 1, 0},  // properties: system
+    {kRef, 1, 0, 0},  // n1827 $ref #/$defs/ValueWithUnits
+    {kType, 8, 0, 0},  // n1828 type
+    {kMinItems, 1, 0, 0},  // minItems
+    {kItems, 1829, 0, 0},  // items
+    {kRef, 182, 0, 0},  // n1829 $ref #/$defs/DecompositionTerm
+    {kType, 8, 0, 0},  // n1830 type
+    {kItems, 1831, 0, 0},  // items
+    {kRef, 183, 0, 0},  // n1831 $ref #/$defs/DecompositionSumRule
+    {kRef, 184, 0, 0},  // n1832 $ref #/$defs/DecompositionOrbitalPairs
+    {kRef, 186, 0, 0},  // n1833 $ref #/$defs/DecompositionPeriodic
+    {kType, 32, 0, 0},  // n1834 type
+    {kType, 32, 0, 0},  // n1836 type
+    {kType, 32, 0, 0},  // n1837 type
+    {kType, 32, 0, 0},  // n1838 type
+    {kType, 32, 0, 0},  // n1839 type
+    {kType, 32, 0, 0},  // n1841 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 8, 0, 0},  // n1827 type
+    {kType, 8, 0, 0},  // n1842 type
     {kMinItems, 1, 0, 0},  // minItems
     {kUniqueItems, 0, 0, 0},  // uniqueItems
-    {kItems, 1828, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1828 type
+    {kItems, 1843, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1843 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1829 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1830 type
-    {kType, 64, 0, 0},  // n1831 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n1832 type
-    {kOneOf, 842, 2, 0},  // n1833 oneOf
-    {kEnum, 840, 2, 0},  // n1834 enum
-    {kType, 32, 0, 0},  // n1835 type
-    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kType, 32, 0, 0},  // n1836 type
-    {kRef, 1, 0, 0},  // n1837 $ref #/$defs/ValueWithUnits
-    {kOneOf, 868, 2, 0},  // n1839 oneOf
-    {kEnum, 846, 22, 0},  // n1840 enum
-    {kType, 32, 0, 0},  // n1841 type
-    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kRef, 1, 0, 0},  // n1842 $ref #/$defs/ValueWithUnits
-    {kType, 8, 0, 0},  // n1843 type
-    {kMinItems, 1, 0, 0},  // minItems
-    {kItems, 1844, 0, 0},  // items
     {kType, 64, 0, 0},  // n1844 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n1845 type
-    {kEnum, 870, 2, 0},  // n1846 enum
-    {kType, 64, 0, 0},  // n1847 type
+    {kType, 64, 0, 0},  // n1845 type
+    {kType, 64, 0, 0},  // n1846 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 2, 0, 0},  // n1847 type
+    {kOneOf, 847, 2, 0},  // n1848 oneOf
+    {kEnum, 845, 2, 0},  // n1849 enum
+    {kType, 32, 0, 0},  // n1850 type
+    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
+    {kType, 32, 0, 0},  // n1851 type
+    {kRef, 1, 0, 0},  // n1852 $ref #/$defs/ValueWithUnits
+    {kOneOf, 873, 2, 0},  // n1854 oneOf
+    {kEnum, 851, 22, 0},  // n1855 enum
+    {kType, 32, 0, 0},  // n1856 type
+    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
+    {kRef, 1, 0, 0},  // n1857 $ref #/$defs/ValueWithUnits
+    {kType, 8, 0, 0},  // n1858 type
+    {kMinItems, 1, 0, 0},  // minItems
+    {kItems, 1859, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1859 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 32, 0, 0},  // n1848 type
-    {kType, 32, 0, 0},  // n1849 type
-    {kType, 64, 0, 0},  // n1851 type
+    {kType, 2, 0, 0},  // n1860 type
+    {kEnum, 875, 2, 0},  // n1861 enum
+    {kType, 64, 0, 0},  // n1862 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1852 type
+    {kType, 32, 0, 0},  // n1863 type
+    {kType, 32, 0, 0},  // n1864 type
+    {kType, 64, 0, 0},  // n1866 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1867 type
     {kMinItems, 1, 0, 0},  // minItems
     {kUniqueItems, 0, 0, 0},  // uniqueItems
-    {kItems, 1853, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1853 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kAllOf, 874, 2, 0},  // n1854 allOf
-    {kRef, 1, 0, 0},  // n1855 $ref #/$defs/ValueWithUnits
-    {kProperties, 2410, 1, 0},  // n1856 properties: value
-    {kMinimum, 0, 0, 0},  // n1857 minimum
-    {kOneOf, 880, 2, 0},  // n1859 oneOf
-    {kEnum, 878, 2, 0},  // n1860 enum
-    {kType, 32, 0, 0},  // n1861 type
-    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
-    {kEnum, 882, 2, 0},  // n1862 enum
-    {kType, 16, 0, 0},  // n1863 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 1, 0, 0},  // n1864 $ref #/$defs/ValueWithUnits
-    {kType, 8, 0, 0},  // n1865 type
-    {kItems, 1866, 0, 0},  // items
-    {kRef, 184, 0, 0},  // n1866 $ref #/$defs/DecompositionOrbitalPair
+    {kItems, 1868, 0, 0},  // items
     {kType, 64, 0, 0},  // n1868 type
-    {kMinimum, 2, 0, 0},  // minimum
-    {kEnum, 887, 3, 0},  // n1869 enum
-    {kType, 16, 0, 0},  // n1870 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kRef, 1, 0, 0},  // n1871 $ref #/$defs/ValueWithUnits
-    {kType, 64, 0, 0},  // n1872 type
+    {kAllOf, 879, 2, 0},  // n1869 allOf
+    {kRef, 1, 0, 0},  // n1870 $ref #/$defs/ValueWithUnits
+    {kProperties, 2432, 1, 0},  // n1871 properties: value
+    {kMinimum, 0, 0, 0},  // n1872 minimum
+    {kOneOf, 885, 2, 0},  // n1874 oneOf
+    {kEnum, 883, 2, 0},  // n1875 enum
+    {kType, 32, 0, 0},  // n1876 type
+    {kPattern, 11, 0, 0},  // pattern ^x_[A-Za-z0-9_.-]+$
+    {kEnum, 887, 2, 0},  // n1877 enum
+    {kType, 16, 0, 0},  // n1878 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 64, 0, 0},  // n1873 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1874 type
-    {kItems, 1875, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1875 type
-    {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1876 type
-    {kItems, 1877, 0, 0},  // items
-    {kType, 16, 0, 0},  // n1877 type
-    {kType, 32, 0, 0},  // n1878 type
-    {kType, 32, 0, 0},  // n1879 type
-    {kRef, 106, 0, 0},  // n1881 $ref #/$defs/BlochKpointsPayload
-    {kType, 8, 0, 0},  // n1882 type
-    {kMinItems, 3, 0, 0},  // minItems
-    {kMaxItems, 3, 0, 0},  // maxItems
-    {kItems, 1883, 0, 0},  // items
+    {kRef, 1, 0, 0},  // n1879 $ref #/$defs/ValueWithUnits
+    {kType, 8, 0, 0},  // n1880 type
+    {kItems, 1881, 0, 0},  // items
+    {kRef, 185, 0, 0},  // n1881 $ref #/$defs/DecompositionOrbitalPair
     {kType, 64, 0, 0},  // n1883 type
     {kMinimum, 2, 0, 0},  // minimum
-    {kType, 2, 0, 0},  // n1884 type
-    {kType, 32, 0, 0},  // n1885 type
-    {kPattern, 22, 0, 0},  // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
-    {kType, 4, 0, 0},  // n1886 type
-    {kAdditionalProperties, 1887, 0, 0},  // additionalProperties
-    {kOneOf, 891, 3, 0},  // n1887 oneOf
-    {kRef, 14, 0, 0},  // n1888 $ref #/$defs/JsonMember
-    {kRef, 13, 0, 0},  // n1889 $ref #/$defs/BinaryMember
-    {kRef, 130, 0, 0},  // n1890 $ref #/$defs/OpaqueBinaryMember
-    {kType, 32, 0, 0},  // n1892 type
+    {kEnum, 892, 3, 0},  // n1884 enum
+    {kType, 16, 0, 0},  // n1885 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kRef, 1, 0, 0},  // n1886 $ref #/$defs/ValueWithUnits
+    {kType, 64, 0, 0},  // n1887 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 64, 0, 0},  // n1888 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1889 type
+    {kItems, 1890, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1890 type
+    {kMinimum, 0, 0, 0},  // minimum
+    {kType, 8, 0, 0},  // n1891 type
+    {kItems, 1892, 0, 0},  // items
+    {kType, 16, 0, 0},  // n1892 type
     {kType, 32, 0, 0},  // n1893 type
     {kType, 32, 0, 0},  // n1894 type
-    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
-    {kType, 32, 0, 0},  // n1895 type
-    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
-    {kType, 32, 0, 0},  // n1896 type
-    {kPattern, 23, 0, 0},  // pattern ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+    {kRef, 107, 0, 0},  // n1896 $ref #/$defs/BlochKpointsPayload
     {kType, 8, 0, 0},  // n1897 type
+    {kMinItems, 3, 0, 0},  // minItems
+    {kMaxItems, 3, 0, 0},  // maxItems
     {kItems, 1898, 0, 0},  // items
-    {kRef, 188, 0, 0},  // n1898 $ref #/$defs/MetadataAuthor
-    {kType, 32, 0, 0},  // n1899 type
-    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 64, 0, 0},  // n1898 type
+    {kMinimum, 2, 0, 0},  // minimum
+    {kType, 2, 0, 0},  // n1899 type
     {kType, 32, 0, 0},  // n1900 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kType, 8, 0, 0},  // n1901 type
-    {kItems, 1902, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1902 type
-    {kType, 8, 0, 0},  // n1903 type
-    {kItems, 1904, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1904 type
-    {kType, 8, 0, 0},  // n1905 type
-    {kItems, 1906, 0, 0},  // items
-    {kType, 32, 0, 0},  // n1906 type
+    {kPattern, 22, 0, 0},  // pattern ^x_[A-Za-z0-9_]+(\.[A-Za-z0-9_.-]+)?$
+    {kType, 4, 0, 0},  // n1901 type
+    {kAdditionalProperties, 1902, 0, 0},  // additionalProperties
+    {kOneOf, 896, 3, 0},  // n1902 oneOf
+    {kRef, 15, 0, 0},  // n1903 $ref #/$defs/JsonMember
+    {kRef, 14, 0, 0},  // n1904 $ref #/$defs/BinaryMember
+    {kRef, 131, 0, 0},  // n1905 $ref #/$defs/OpaqueBinaryMember
+    {kType, 32, 0, 0},  // n1907 type
     {kType, 32, 0, 0},  // n1908 type
-    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n1909 type
+    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
     {kType, 32, 0, 0},  // n1910 type
+    {kPattern, 1, 0, 0},  // pattern ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?Z$
     {kType, 32, 0, 0},  // n1911 type
-    {kType, 32, 0, 0},  // n1913 type
-    {kMinLength, 1, 0, 0},  // minLength
+    {kPattern, 23, 0, 0},  // pattern ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+    {kType, 8, 0, 0},  // n1912 type
+    {kItems, 1913, 0, 0},  // items
+    {kRef, 189, 0, 0},  // n1913 $ref #/$defs/MetadataAuthor
     {kType, 32, 0, 0},  // n1914 type
+    {kMinLength, 1, 0, 0},  // minLength
     {kType, 32, 0, 0},  // n1915 type
-    {kType, 16, 0, 0},  // n1916 type
-    {kType, 16, 0, 0},  // n1917 type
-    {kType, 16, 0, 0},  // n1918 type
-    {kType, 16, 0, 0},  // n1919 type
-    {kType, 16, 0, 0},  // n1920 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n1921 type
-    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kType, 16, 0, 0},  // n1922 type
-    {kRef, 5, 0, 0},  // n1923 $ref #/$defs/Vec3
-    {kOneOf, 896, 2, 0},  // n1924 oneOf
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 8, 0, 0},  // n1916 type
+    {kItems, 1917, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1917 type
+    {kType, 8, 0, 0},  // n1918 type
+    {kItems, 1919, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1919 type
+    {kType, 8, 0, 0},  // n1920 type
+    {kItems, 1921, 0, 0},  // items
+    {kType, 32, 0, 0},  // n1921 type
+    {kType, 32, 0, 0},  // n1923 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1924 type
     {kType, 32, 0, 0},  // n1925 type
-    {kRef, 5, 0, 0},  // n1926 $ref #/$defs/Vec3
-    {kType, 8, 0, 0},  // n1927 type
-    {kItems, 1928, 0, 0},  // items
-    {kType, 64, 0, 0},  // n1928 type
+    {kType, 32, 0, 0},  // n1926 type
+    {kType, 32, 0, 0},  // n1928 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1929 type
+    {kType, 32, 0, 0},  // n1930 type
+    {kType, 16, 0, 0},  // n1931 type
+    {kType, 16, 0, 0},  // n1932 type
+    {kType, 16, 0, 0},  // n1933 type
+    {kType, 16, 0, 0},  // n1934 type
+    {kType, 16, 0, 0},  // n1935 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 16, 0, 0},  // n1936 type
+    {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
+    {kType, 16, 0, 0},  // n1937 type
+    {kRef, 5, 0, 0},  // n1938 $ref #/$defs/Vec3
+    {kOneOf, 901, 2, 0},  // n1939 oneOf
+    {kType, 32, 0, 0},  // n1940 type
+    {kRef, 5, 0, 0},  // n1941 $ref #/$defs/Vec3
+    {kType, 8, 0, 0},  // n1942 type
+    {kItems, 1943, 0, 0},  // items
+    {kType, 64, 0, 0},  // n1943 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 8, 0, 0},  // n1929 type
-    {kItems, 1930, 0, 0},  // items
-    {kType, 4, 0, 0},  // n1930 type
+    {kType, 8, 0, 0},  // n1944 type
+    {kItems, 1945, 0, 0},  // items
+    {kType, 4, 0, 0},  // n1945 type
     {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 898, 2, 0},  // required: atoms, target_angstrom
-    {kProperties, 2524, 2, 0},  // properties: atoms, target_angstrom
-    {kType, 8, 0, 0},  // n1931 type
-    {kItems, 1932, 0, 0},  // items
+    {kRequired, 903, 2, 0},  // required: atoms, target_angstrom
+    {kProperties, 2546, 2, 0},  // properties: atoms, target_angstrom
+    {kType, 8, 0, 0},  // n1946 type
+    {kItems, 1947, 0, 0},  // items
     {kMinItems, 2, 0, 0},  // minItems
     {kMaxItems, 2, 0, 0},  // maxItems
-    {kType, 64, 0, 0},  // n1932 type
+    {kType, 64, 0, 0},  // n1947 type
     {kMinimum, 0, 0, 0},  // minimum
-    {kType, 16, 0, 0},  // n1933 type
+    {kType, 16, 0, 0},  // n1948 type
     {kExclusiveMinimum, 0, 0, 0},  // exclusiveMinimum
-    {kRef, 1, 0, 0},  // n1935 $ref #/$defs/ValueWithUnits
-    {kType, 32, 0, 0},  // n1936 type
-    {kMinLength, 1, 0, 0},  // minLength
-    {kRef, 194, 0, 0},  // n1937 $ref #/$defs/EnergyComponents
-    {kType, 8, 0, 0},  // n1938 type
-    {kItems, 1939, 0, 0},  // items
-    {kRef, 195, 0, 0},  // n1939 $ref #/$defs/EnergyByMethod
-    {kType, 32, 0, 0},  // n1940 type
-    {kRef, 1, 0, 0},  // n1941 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1942 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1943 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1944 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1945 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1946 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1947 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1948 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1949 $ref #/$defs/ValueWithUnits
     {kRef, 1, 0, 0},  // n1950 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1951 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1952 $ref #/$defs/ValueWithUnits
-    {kRef, 1, 0, 0},  // n1953 $ref #/$defs/ValueWithUnits
+    {kType, 32, 0, 0},  // n1951 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kRef, 195, 0, 0},  // n1952 $ref #/$defs/EnergyComponents
+    {kType, 8, 0, 0},  // n1953 type
+    {kItems, 1954, 0, 0},  // items
+    {kRef, 196, 0, 0},  // n1954 $ref #/$defs/EnergyByMethod
     {kType, 32, 0, 0},  // n1955 type
-    {kMinLength, 1, 0, 0},  // minLength
     {kRef, 1, 0, 0},  // n1956 $ref #/$defs/ValueWithUnits
-    {kRef, 194, 0, 0},  // n1957 $ref #/$defs/EnergyComponents
-    {kType, 4, 0, 0},  // n1958 type
-    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
-    {kRequired, 903, 1, 0},  // required: version
-    {kProperties, 2578, 3, 0},  // properties: version, schema_uri, critical
-    {kType, 32, 0, 0},  // n1959 type
+    {kRef, 1, 0, 0},  // n1957 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1958 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1959 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1960 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1961 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1962 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1963 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1964 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1965 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1966 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1967 $ref #/$defs/ValueWithUnits
+    {kRef, 1, 0, 0},  // n1968 $ref #/$defs/ValueWithUnits
+    {kType, 32, 0, 0},  // n1970 type
     {kMinLength, 1, 0, 0},  // minLength
-    {kType, 32, 0, 0},  // n1960 type
-    {kType, 2, 0, 0},  // n1961 type
+    {kRef, 1, 0, 0},  // n1971 $ref #/$defs/ValueWithUnits
+    {kRef, 195, 0, 0},  // n1972 $ref #/$defs/EnergyComponents
+    {kType, 4, 0, 0},  // n1973 type
+    {kAdditionalProperties, -1, 0, 0},  // additionalProperties
+    {kRequired, 908, 1, 0},  // required: version
+    {kProperties, 2600, 3, 0},  // properties: version, schema_uri, critical
+    {kType, 32, 0, 0},  // n1974 type
+    {kMinLength, 1, 0, 0},  // minLength
+    {kType, 32, 0, 0},  // n1975 type
+    {kType, 2, 0, 0},  // n1976 type
 };
 
 // The $defs entries by name, in schema order.
-inline constexpr Def kDefs[196] = {
+inline constexpr Def kDefs[197] = {
     {"ValueWithUnits", 1},
     {"UnitName", 2},
     {"LegacyUnitName", 3},
     {"ViewerHint", 4},
     {"Vec3", 5},
-    {"Camera", 6},
-    {"Bookmark", 7},
-    {"Sha256Hex", 8},
-    {"ZipPath", 9},
-    {"NumpyDtype", 10},
-    {"MemberSize", 11},
-    {"MediaType", 12},
-    {"BinaryMember", 13},
-    {"JsonMember", 14},
-    {"Section", 15},
-    {"Volume3DBinary", 16},
-    {"Volume4DBinary", 17},
-    {"Volume4DVectorBinary", 18},
-    {"Volume4DComplexBinary", 19},
-    {"StructureAtom", 20},
-    {"Lattice3x3", 21},
-    {"StructurePayload", 22},
-    {"BiomoleculeResidue", 23},
-    {"BiomoleculeSecondaryStructure", 24},
-    {"SectionStructure", 25},
-    {"SectionVolumeDensity", 26},
-    {"VolumeGridPayload", 27},
-    {"SectionVolumeOrbital", 28},
-    {"SectionVolumeSpin", 29},
-    {"SectionVolumeELF", 30},
-    {"SectionVolumeGeneric", 31},
-    {"SectionVolumeDifference", 32},
-    {"SectionVolumePotential", 33},
-    {"SectionVolumeRDG", 34},
-    {"SectionVolumeLaplacian", 35},
-    {"SectionVolumeVector", 36},
-    {"SectionVolumeComplex", 37},
-    {"SectionVolumeSeries", 38},
-    {"VolumeSeriesAxisPayload", 39},
-    {"AtomChargeBinary", 40},
-    {"AtomVectorBinary", 41},
-    {"AtomPropertyMetaEntry", 42},
-    {"AtomPropertiesMetaPayload", 43},
-    {"SectionAtomProperties", 44},
-    {"TrajectoryCoords", 45},
-    {"TrajectoryFrameVectors", 46},
-    {"TrajectoryFrameScalars", 47},
-    {"TrajectoryLattice", 48},
-    {"SectionTrajectory", 49},
-    {"TrajectoryAtom", 50},
-    {"TrajectoryMetadataCommon", 51},
-    {"TrajectoryMetadataPayload", 52},
-    {"SectionReactionPath", 53},
-    {"ReactionWaypoint", 54},
-    {"ReactionPathMetadataPayload", 55},
-    {"ReactionPathLattice", 56},
-    {"SectionScanSurface", 57},
-    {"ScanSurfaceAxis", 58},
-    {"ScanSurfaceMetadataPayload", 59},
-    {"SectionReactionWaypoints", 60},
-    {"ReactionWaypointsPayload", 61},
-    {"SectionReactionScheme", 62},
-    {"ReactionSchemePayload", 63},
-    {"ReactionStep", 64},
-    {"ReactionParticipant", 65},
-    {"ReactionStepEnergies", 66},
-    {"ReactionEnergyDelta", 67},
-    {"ReactionEnergyTerm", 68},
-    {"ReactionEnergyMethod", 69},
-    {"ReactionEnergySource", 70},
-    {"VibrationsDisplacements", 71},
-    {"SectionVibrations", 72},
-    {"VibrationsMetadataPayload", 73},
-    {"SectionSpectraIR", 74},
-    {"SpectrumPayload", 75},
-    {"XraySpectrumBlock", 76},
-    {"SpectrumPeak", 77},
-    {"SectionSpectraRaman", 78},
-    {"BandsEigenvalues", 79},
-    {"SectionSpectraUVVis", 80},
-    {"SectionSpectraECD", 81},
-    {"SectionSpectraVCD", 82},
-    {"SectionSpectraNMR", 83},
-    {"NmrSpectrumPayload", 84},
-    {"SectionSpectraEPR", 85},
-    {"EprSpectrumPayload", 86},
-    {"SectionSpectraXAS", 87},
-    {"SectionSpectraXES", 88},
-    {"SectionSpectraMossbauer", 89},
-    {"MossbauerSpectrumPayload", 90},
-    {"MossbauerSite", 91},
-    {"SectionSpectraGeneric", 92},
-    {"MoCoefficientsBinary", 93},
-    {"SectionWavefunctionGTO", 94},
-    {"WavefunctionAoMatrix", 95},
-    {"BasisShell", 96},
-    {"BasisEcpProjector", 97},
-    {"BasisEcpCentre", 98},
-    {"BasisPayload", 99},
-    {"MoSpinChannel", 100},
-    {"MoMetadataPayload", 101},
-    {"SectionWavefunctionBloch", 102},
-    {"BlochMoCoefficients", 103},
-    {"BlochEnergies", 104},
-    {"BlochOccupations", 105},
-    {"BlochKpointsPayload", 106},
-    {"BlochMoMetadataPayload", 107},
-    {"SectionBands", 108},
-    {"BandsProjections", 109},
-    {"BandsOccupations", 110},
-    {"KpathSegment", 111},
-    {"KpathPayload", 112},
-    {"SectionDOSTotal", 113},
-    {"SectionDOSProjected", 114},
-    {"DOSProjectedProjections", 115},
-    {"SectionDOSCOOP", 116},
-    {"SectionDOSCOHP", 117},
-    {"DosChannel", 118},
-    {"DosMetaPayload", 119},
-    {"SectionStructureSymmetry", 120},
-    {"SymmetryPayload", 121},
-    {"SectionBonds", 122},
-    {"BondsPayload", 123},
-    {"SectionBondOrders", 124},
-    {"BondOrdersPayload", 125},
-    {"SectionSCFHistory", 126},
-    {"ScfHistoryPayload", 127},
-    {"CitationsReferences", 128},
-    {"SectionCitations", 129},
-    {"OpaqueBinaryMember", 130},
-    {"SectionRunRecord", 131},
-    {"RunRecordFilesPayload", 132},
-    {"SectionJobSpec", 133},
-    {"JobSpecPayload", 134},
-    {"JobSpecSolvation", 135},
-    {"JobSpecScf", 136},
-    {"JobSpecGeometry", 137},
-    {"JobSpecResources", 138},
-    {"SectionBasisAO", 139},
-    {"SectionEquationOfState", 140},
-    {"EosFitPayload", 141},
-    {"SectionFermiSurface", 142},
-    {"FermiMeshPayload", 143},
-    {"SectionPhononBands", 144},
-    {"QpathPayload", 145},
-    {"SectionPhononDOS", 146},
-    {"PhononMetaPayload", 147},
-    {"SectionTopologyQTAIM", 148},
-    {"QtaimPayload", 149},
-    {"SectionForces", 150},
-    {"ForcesGradient", 151},
-    {"ForcesStress", 152},
-    {"ForcesMetaPayload", 153},
-    {"DerivativeUnits", 154},
-    {"SectionHessian", 155},
-    {"HessianMatrix", 156},
-    {"HessianMetaPayload", 157},
-    {"SectionExcitedStates", 158},
-    {"SectionPropertiesElectric", 159},
-    {"ExcitedStatesPayload", 160},
-    {"ExcitedState", 161},
-    {"ExcitedStateContribution", 162},
-    {"ExcitedStatesMeta", 163},
-    {"SectionPropertiesElastic", 164},
-    {"SectionPropertiesDielectric", 165},
-    {"Matrix3x3", 166},
-    {"Matrix3x6", 167},
-    {"Matrix6x6", 168},
-    {"Tensor3x3x3", 169},
-    {"ElectricPropertiesPayload", 170},
-    {"ElasticPropertiesPayload", 171},
-    {"DielectricPropertiesPayload", 172},
-    {"SectionVolumeTransitionDensity", 173},
-    {"SectionPreview", 174},
-    {"PreviewThumbnail", 175},
-    {"PreviewImage", 176},
-    {"SectionEnergyDecomposition", 177},
-    {"EnergyDecompositionPayload", 178},
-    {"DecompositionMethod", 179},
-    {"DecompositionFragment", 180},
-    {"DecompositionTerm", 181},
-    {"DecompositionSumRule", 182},
-    {"DecompositionOrbitalPairs", 183},
-    {"DecompositionOrbitalPair", 184},
-    {"DecompositionPeriodic", 185},
-    {"SectionVendor", 186},
-    {"Metadata", 187},
-    {"MetadataAuthor", 188},
-    {"ProvenanceSoftware", 189},
-    {"Thermochemistry", 190},
-    {"DipoleMoment", 191},
-    {"Constraints", 192},
-    {"Energies", 193},
-    {"EnergyComponents", 194},
-    {"EnergyByMethod", 195},
-    {"Extensions", 196},
+    {"LatticeImage", 6},
+    {"Camera", 7},
+    {"Bookmark", 8},
+    {"Sha256Hex", 9},
+    {"ZipPath", 10},
+    {"NumpyDtype", 11},
+    {"MemberSize", 12},
+    {"MediaType", 13},
+    {"BinaryMember", 14},
+    {"JsonMember", 15},
+    {"Section", 16},
+    {"Volume3DBinary", 17},
+    {"Volume4DBinary", 18},
+    {"Volume4DVectorBinary", 19},
+    {"Volume4DComplexBinary", 20},
+    {"StructureAtom", 21},
+    {"Lattice3x3", 22},
+    {"StructurePayload", 23},
+    {"BiomoleculeResidue", 24},
+    {"BiomoleculeSecondaryStructure", 25},
+    {"SectionStructure", 26},
+    {"SectionVolumeDensity", 27},
+    {"VolumeGridPayload", 28},
+    {"SectionVolumeOrbital", 29},
+    {"SectionVolumeSpin", 30},
+    {"SectionVolumeELF", 31},
+    {"SectionVolumeGeneric", 32},
+    {"SectionVolumeDifference", 33},
+    {"SectionVolumePotential", 34},
+    {"SectionVolumeRDG", 35},
+    {"SectionVolumeLaplacian", 36},
+    {"SectionVolumeVector", 37},
+    {"SectionVolumeComplex", 38},
+    {"SectionVolumeSeries", 39},
+    {"VolumeSeriesAxisPayload", 40},
+    {"AtomChargeBinary", 41},
+    {"AtomVectorBinary", 42},
+    {"AtomPropertyMetaEntry", 43},
+    {"AtomPropertiesMetaPayload", 44},
+    {"SectionAtomProperties", 45},
+    {"TrajectoryCoords", 46},
+    {"TrajectoryFrameVectors", 47},
+    {"TrajectoryFrameScalars", 48},
+    {"TrajectoryLattice", 49},
+    {"SectionTrajectory", 50},
+    {"TrajectoryAtom", 51},
+    {"TrajectoryMetadataCommon", 52},
+    {"TrajectoryMetadataPayload", 53},
+    {"SectionReactionPath", 54},
+    {"ReactionWaypoint", 55},
+    {"ReactionPathMetadataPayload", 56},
+    {"ReactionPathLattice", 57},
+    {"SectionScanSurface", 58},
+    {"ScanSurfaceAxis", 59},
+    {"ScanSurfaceMetadataPayload", 60},
+    {"SectionReactionWaypoints", 61},
+    {"ReactionWaypointsPayload", 62},
+    {"SectionReactionScheme", 63},
+    {"ReactionSchemePayload", 64},
+    {"ReactionStep", 65},
+    {"ReactionParticipant", 66},
+    {"ReactionStepEnergies", 67},
+    {"ReactionEnergyDelta", 68},
+    {"ReactionEnergyTerm", 69},
+    {"ReactionEnergyMethod", 70},
+    {"ReactionEnergySource", 71},
+    {"VibrationsDisplacements", 72},
+    {"SectionVibrations", 73},
+    {"VibrationsMetadataPayload", 74},
+    {"SectionSpectraIR", 75},
+    {"SpectrumPayload", 76},
+    {"XraySpectrumBlock", 77},
+    {"SpectrumPeak", 78},
+    {"SectionSpectraRaman", 79},
+    {"BandsEigenvalues", 80},
+    {"SectionSpectraUVVis", 81},
+    {"SectionSpectraECD", 82},
+    {"SectionSpectraVCD", 83},
+    {"SectionSpectraNMR", 84},
+    {"NmrSpectrumPayload", 85},
+    {"SectionSpectraEPR", 86},
+    {"EprSpectrumPayload", 87},
+    {"SectionSpectraXAS", 88},
+    {"SectionSpectraXES", 89},
+    {"SectionSpectraMossbauer", 90},
+    {"MossbauerSpectrumPayload", 91},
+    {"MossbauerSite", 92},
+    {"SectionSpectraGeneric", 93},
+    {"MoCoefficientsBinary", 94},
+    {"SectionWavefunctionGTO", 95},
+    {"WavefunctionAoMatrix", 96},
+    {"BasisShell", 97},
+    {"BasisEcpProjector", 98},
+    {"BasisEcpCentre", 99},
+    {"BasisPayload", 100},
+    {"MoSpinChannel", 101},
+    {"MoMetadataPayload", 102},
+    {"SectionWavefunctionBloch", 103},
+    {"BlochMoCoefficients", 104},
+    {"BlochEnergies", 105},
+    {"BlochOccupations", 106},
+    {"BlochKpointsPayload", 107},
+    {"BlochMoMetadataPayload", 108},
+    {"SectionBands", 109},
+    {"BandsProjections", 110},
+    {"BandsOccupations", 111},
+    {"KpathSegment", 112},
+    {"KpathPayload", 113},
+    {"SectionDOSTotal", 114},
+    {"SectionDOSProjected", 115},
+    {"DOSProjectedProjections", 116},
+    {"SectionDOSCOOP", 117},
+    {"SectionDOSCOHP", 118},
+    {"DosChannel", 119},
+    {"DosMetaPayload", 120},
+    {"SectionStructureSymmetry", 121},
+    {"SymmetryPayload", 122},
+    {"SectionBonds", 123},
+    {"BondsPayload", 124},
+    {"SectionBondOrders", 125},
+    {"BondOrdersPayload", 126},
+    {"SectionSCFHistory", 127},
+    {"ScfHistoryPayload", 128},
+    {"CitationsReferences", 129},
+    {"SectionCitations", 130},
+    {"OpaqueBinaryMember", 131},
+    {"SectionRunRecord", 132},
+    {"RunRecordFilesPayload", 133},
+    {"SectionJobSpec", 134},
+    {"JobSpecPayload", 135},
+    {"JobSpecSolvation", 136},
+    {"JobSpecScf", 137},
+    {"JobSpecGeometry", 138},
+    {"JobSpecResources", 139},
+    {"SectionBasisAO", 140},
+    {"SectionEquationOfState", 141},
+    {"EosFitPayload", 142},
+    {"SectionFermiSurface", 143},
+    {"FermiMeshPayload", 144},
+    {"SectionPhononBands", 145},
+    {"QpathPayload", 146},
+    {"SectionPhononDOS", 147},
+    {"PhononMetaPayload", 148},
+    {"SectionTopologyQTAIM", 149},
+    {"QtaimPayload", 150},
+    {"SectionForces", 151},
+    {"ForcesGradient", 152},
+    {"ForcesStress", 153},
+    {"ForcesMetaPayload", 154},
+    {"DerivativeUnits", 155},
+    {"SectionHessian", 156},
+    {"HessianMatrix", 157},
+    {"HessianMetaPayload", 158},
+    {"SectionExcitedStates", 159},
+    {"SectionPropertiesElectric", 160},
+    {"ExcitedStatesPayload", 161},
+    {"ExcitedState", 162},
+    {"ExcitedStateContribution", 163},
+    {"ExcitedStatesMeta", 164},
+    {"SectionPropertiesElastic", 165},
+    {"SectionPropertiesDielectric", 166},
+    {"Matrix3x3", 167},
+    {"Matrix3x6", 168},
+    {"Matrix6x6", 169},
+    {"Tensor3x3x3", 170},
+    {"ElectricPropertiesPayload", 171},
+    {"ElasticPropertiesPayload", 172},
+    {"DielectricPropertiesPayload", 173},
+    {"SectionVolumeTransitionDensity", 174},
+    {"SectionPreview", 175},
+    {"PreviewThumbnail", 176},
+    {"PreviewImage", 177},
+    {"SectionEnergyDecomposition", 178},
+    {"EnergyDecompositionPayload", 179},
+    {"DecompositionMethod", 180},
+    {"DecompositionFragment", 181},
+    {"DecompositionTerm", 182},
+    {"DecompositionSumRule", 183},
+    {"DecompositionOrbitalPairs", 184},
+    {"DecompositionOrbitalPair", 185},
+    {"DecompositionPeriodic", 186},
+    {"SectionVendor", 187},
+    {"Metadata", 188},
+    {"MetadataAuthor", 189},
+    {"ProvenanceSoftware", 190},
+    {"Thermochemistry", 191},
+    {"DipoleMoment", 192},
+    {"Constraints", 193},
+    {"Energies", 194},
+    {"EnergyComponents", 195},
+    {"EnergyByMethod", 196},
+    {"Extensions", 197},
 };
 
 // The patterns of the schema (pattern and patternProperties keys) and their
@@ -23367,6 +23471,268 @@ inline std::vector<std::string> bonds_errors(
     return errs;
 }
 
+// The structure a standalone `bonds`, a `bond_orders` or a
+// `structure.symmetry` section describes, for the periodic-image and site-map
+// rules (spec § 5.1, § 5.7): the one its structure_ref names, else the
+// archive's only structure. Empty when neither resolves; an unresolved
+// reference is the reference check's finding. Mirrors _bonds_structure() in
+// python/qvf/validate.py.
+inline std::string bonds_structure(const Json& section,
+                                   const std::map<std::string, std::string>& kinds_by_id,
+                                   const std::string* only_structure) {
+    if (section.is_object() && section.has("structure_ref")) {
+        const Json* ref = get(section, "structure_ref");
+        if (!ref || !ref->is_string()) return "";
+        auto it = kinds_by_id.find(ref->as_string());
+        return it != kinds_by_id.end() && it->second == "structure" ? ref->as_string() : "";
+    }
+    return only_structure ? *only_structure : "";
+}
+
+// `pbc` of a structure payload as three booleans: all false when absent (a
+// molecule), false in `ok` when malformed (the periodicity check's finding).
+// Mirrors _pbc_of().
+inline bool pbc_of(const Json* structure, std::array<bool, 3>& pbc) {
+    pbc = {false, false, false};
+    if (!structure || !structure->is_object()) return false;
+    const Json* p = get(*structure, "pbc");
+    if (!p) return true;
+    if (!p->is_array() || p->size() != 3) return false;
+    for (size_t a = 0; a < 3; ++a) {
+        if (!p->at(a).is_bool()) return false;
+        pbc[a] = p->at(a).as_bool();
+    }
+    return true;
+}
+
+inline std::string show_pbc(const std::array<bool, 3>& pbc) {
+    std::string s = "[";
+    for (size_t a = 0; a < 3; ++a) s += std::string(a ? ", " : "") + (pbc[a] ? "true" : "false");
+    return s + "]";
+}
+
+// Three integers, else false (the schema check's finding). Mirrors _int3().
+inline bool int3(const Json* v, std::array<int64_t, 3>& n) {
+    if (!v || !v->is_array() || v->size() != 3) return false;
+    for (size_t a = 0; a < 3; ++a) {
+        if (!is_int(&v->at(a))) return false;
+        n[a] = v->at(a).as_int();
+    }
+    return true;
+}
+
+inline std::string show_int3(const std::array<int64_t, 3>& n) {
+    return "[" + std::to_string(n[0]) + ", " + std::to_string(n[1]) + ", " +
+           std::to_string(n[2]) + "]";
+}
+
+// Periodic bond images of a `bonds` or `bond_orders` payload (spec § 5.1,
+// *Periodic bond images*), given the pbc of the structure the bonds belong
+// to. Only pairs that carry `image` are checked: an image needs a periodic
+// structure and is 0 along every axis that is not periodic; a self-bond
+// (i == j) needs a nonzero image; and no two imaged pairs are the same bond,
+// (i, j, n) being the same as (j, i, -n). Pairs without an image keep their
+// earlier meaning and are not compared. Mirrors _bond_image_errors().
+inline std::vector<std::string> bond_image_errors(const std::string& sid, const Json& payload,
+                                                  const std::array<bool, 3>& pbc) {
+    std::vector<std::string> errs;
+    const Json* pairs = payload.is_object() ? get(payload, "pairs") : nullptr;
+    if (!pairs || !pairs->is_array()) return errs;
+    using Key = std::pair<std::array<int64_t, 2>, std::array<int64_t, 3>>;
+    std::map<Key, size_t> seen;
+    const bool periodic = pbc[0] || pbc[1] || pbc[2];
+    for (size_t k = 0; k < pairs->size(); ++k) {
+        const Json& pair = pairs->at(k);
+        if (!pair.is_object() || !pair.has("image")) continue;
+        std::array<int64_t, 3> n{};
+        if (!int3(get(pair, "image"), n)) continue;
+        const std::string where = "section " + quote_str(sid) + ": pairs[" +
+                                  std::to_string(k) + "].image " + show_int3(n);
+        if (!periodic) {
+            errs.push_back(where + " on a structure with no periodic axis; a bond image "
+                                   "needs a periodic structure (spec § 5.1)");
+            continue;
+        }
+        int off = -1;
+        for (int a = 0; a < 3 && off < 0; ++a)
+            if (n[a] != 0 && !pbc[a]) off = a;
+        if (off >= 0) {
+            errs.push_back(where + " is nonzero along axis " + std::to_string(off) +
+                           ", which is not periodic (pbc " + show_pbc(pbc) + ") (spec § 5.1)");
+            continue;
+        }
+        const Json* ij = get(pair, "i");
+        const Json* jj = get(pair, "j");
+        if (!is_int(ij) || !is_int(jj)) continue;
+        const int64_t i = ij->as_int(), j = jj->as_int();
+        if (i == j && n == std::array<int64_t, 3>{0, 0, 0}) {
+            errs.push_back(where + " joins atom " + std::to_string(i) +
+                           " to itself in the same cell; a self-bond needs a nonzero "
+                           "image (spec § 5.1)");
+            continue;
+        }
+        // -INT64_MIN does not exist; such an image cannot be negated.
+        if (n[0] == INT64_MIN || n[1] == INT64_MIN || n[2] == INT64_MIN) continue;
+        const std::array<int64_t, 3> neg{-n[0], -n[1], -n[2]};
+        Key key;
+        if (i < j) key = Key{{i, j}, n};
+        else if (i > j) key = Key{{j, i}, neg};
+        else key = Key{{i, i}, std::max(n, neg)};
+        auto it = seen.find(key);
+        if (it != seen.end())
+            errs.push_back(where + " is the bond of pairs[" + std::to_string(it->second) +
+                           "] again: (i, j, n) and (j, i, -n) are one bond (spec § 5.1)");
+        else
+            seen.emplace(key, k);
+    }
+    return errs;
+}
+
+// Default largest distance, in Å, between an atom and the position its
+// atom_sites entry generates (spec § 5.7, *Site map*).
+constexpr double kSiteTolerance = 0.01;
+
+// A `rows` x 3 matrix of finite numbers, else false. Mirrors _real_matrix().
+inline bool real_matrix(const Json* v, size_t rows, std::array<std::array<double, 3>, 3>& out) {
+    if (!v || !v->is_array() || v->size() != rows) return false;
+    for (size_t r = 0; r < rows; ++r) {
+        const Json& row = v->at(r);
+        if (!row.is_array() || row.size() != 3) return false;
+        for (size_t c = 0; c < 3; ++c) {
+            if (!row.at(c).is_number() || !std::isfinite(row.at(c).as_double())) return false;
+            out[r][c] = row.at(c).as_double();
+        }
+    }
+    return true;
+}
+
+// A vector of three finite numbers, else false.
+inline bool real3(const Json* v, std::array<double, 3>& out) {
+    if (!v || !v->is_array() || v->size() != 3) return false;
+    for (size_t c = 0; c < 3; ++c) {
+        if (!v->at(c).is_number() || !std::isfinite(v->at(c).as_double())) return false;
+        out[c] = v->at(c).as_double();
+    }
+    return true;
+}
+
+inline std::string format_g(const char* fmt, double v) {
+    char buf[48];
+    std::snprintf(buf, sizeof(buf), fmt, v);
+    return buf;
+}
+
+// The site map of a `structure.symmetry` payload (spec § 5.7, *Site map*):
+// atom_sites against sites, operations and, when the structure is known
+// (`structure`, its payload, else null), its atoms. Every entry names a site
+// and an operation that exist, its translation is 0 along every axis that is
+// not periodic, there is one entry per atom, and the position the entry
+// generates, R x_site + t + n (fractional, turned Cartesian with the lattice,
+// for a periodic structure; Cartesian for a molecule), lies within
+// site_tolerance (default 0.01 Å) of the atom. Mirrors _site_map_errors().
+inline std::vector<std::string> site_map_errors(const std::string& sid, const Json& payload,
+                                                const Json* structure) {
+    std::vector<std::string> errs;
+    const Json* atom_sites = payload.is_object() ? get(payload, "atom_sites") : nullptr;
+    if (!atom_sites || !atom_sites->is_array()) return errs;
+    const Json* sites = get(payload, "sites");
+    const Json* ops = get(payload, "operations");
+    const std::string sec = "section " + quote_str(sid) + ": ";
+    if (!sites || !sites->is_array())
+        errs.push_back(sec + "atom_sites needs sites, which is absent (spec § 5.7)");
+    if (!ops || !ops->is_array())
+        errs.push_back(sec + "atom_sites needs operations, which is absent (spec § 5.7)");
+    if (!errs.empty()) return errs;
+
+    std::array<bool, 3> pbc{};
+    const bool pbc_known = structure && pbc_of(structure, pbc);
+    const Json* atoms =
+        structure && structure->is_object() ? get(*structure, "atoms") : nullptr;
+    if (atoms && !atoms->is_array()) atoms = nullptr;
+    if (atoms && atoms->size() != atom_sites->size()) {
+        errs.push_back(sec + "atom_sites has " + std::to_string(atom_sites->size()) +
+                       " entries but the structure has " + std::to_string(atoms->size()) +
+                       " atoms (spec § 5.7)");
+        atoms = nullptr;
+    }
+    if (!pbc_known) atoms = nullptr;
+    const bool periodic = pbc_known && (pbc[0] || pbc[1] || pbc[2]);
+    std::array<std::array<double, 3>, 3> lattice{};
+    if (atoms && periodic && !real_matrix(get(*structure, "lattice_vectors"), 3, lattice))
+        atoms = nullptr;  // the periodicity check's finding
+    double tol = kSiteTolerance;
+    const Json* tj = get(payload, "site_tolerance");
+    if (tj && tj->is_number() && tj->as_double() > 0) tol = tj->as_double();
+
+    const int64_t n_sites = static_cast<int64_t>(sites->size());
+    const int64_t n_ops = static_cast<int64_t>(ops->size());
+    for (size_t k = 0; k < atom_sites->size(); ++k) {
+        const Json& entry = atom_sites->at(k);
+        if (!entry.is_object()) continue;
+        const Json* site = get(entry, "site");
+        const Json* op = get(entry, "operation");
+        std::array<int64_t, 3> n{0, 0, 0};
+        const Json* tr = get(entry, "translation");
+        const bool n_ok = !tr || int3(tr, n);
+        const std::string where = sec + "atom_sites[" + std::to_string(k) + "]";
+        bool ok = is_int(site) && is_int(op) && n_ok;
+        if (is_int(site) && (site->as_int() < 0 || site->as_int() >= n_sites)) {
+            errs.push_back(where + ".site " + std::to_string(site->as_int()) +
+                           " is not one of the " + std::to_string(n_sites) +
+                           " sites (spec § 5.7)");
+            ok = false;
+        }
+        if (is_int(op) && (op->as_int() < 0 || op->as_int() >= n_ops)) {
+            errs.push_back(where + ".operation " + std::to_string(op->as_int()) +
+                           " is not one of the " + std::to_string(n_ops) +
+                           " operations (spec § 5.7)");
+            ok = false;
+        }
+        if (n_ok && pbc_known) {
+            int off = -1;
+            for (int a = 0; a < 3 && off < 0; ++a)
+                if (n[a] != 0 && !pbc[a]) off = a;
+            if (off >= 0) {
+                errs.push_back(where + ".translation " + show_int3(n) +
+                               " is nonzero along axis " + std::to_string(off) +
+                               ", which is not periodic (spec § 5.7)");
+                ok = false;
+            }
+        }
+        if (!ok || !atoms) continue;
+        const Json& s = sites->at(static_cast<size_t>(site->as_int()));
+        const Json& o = ops->at(static_cast<size_t>(op->as_int()));
+        std::array<std::array<double, 3>, 3> rot{};
+        std::array<double, 3> shift{0.0, 0.0, 0.0}, pos{}, apos{};
+        if (!o.is_object() || !real_matrix(get(o, "rotation"), 3, rot)) continue;
+        if (const Json* t = get(o, "translation"))
+            if (!real3(t, shift)) continue;
+        if (!s.is_object() || !real3(get(s, "position"), pos)) continue;
+        const Json& atom = atoms->at(k);
+        if (!atom.is_object() || !real3(get(atom, "position"), apos)) continue;
+        std::array<double, 3> fr{}, x{};
+        for (size_t r = 0; r < 3; ++r) {
+            fr[r] = rot[r][0] * pos[0] + rot[r][1] * pos[1] + rot[r][2] * pos[2] + shift[r] +
+                    static_cast<double>(n[r]);
+        }
+        if (periodic)
+            for (size_t r = 0; r < 3; ++r)
+                x[r] = fr[0] * lattice[0][r] + fr[1] * lattice[1][r] + fr[2] * lattice[2][r];
+        else
+            x = fr;
+        double d2 = 0.0;
+        for (size_t r = 0; r < 3; ++r) d2 += (x[r] - apos[r]) * (x[r] - apos[r]);
+        const double dist = std::sqrt(d2);
+        if (!(dist <= tol))
+            errs.push_back(where + " generates (" + format_g("%.6g", x[0]) + ", " +
+                           format_g("%.6g", x[1]) + ", " + format_g("%.6g", x[2]) + ") Å, " +
+                           format_g("%.3g", dist) + " Å from atom " + std::to_string(k) +
+                           ", more than the site tolerance " + format_g("%g", tol) +
+                           " Å (spec § 5.7)");
+    }
+    return errs;
+}
+
 // A properties.* section, checked after every structure has been read.
 struct PropertySection {
     size_t index;
@@ -24418,7 +24784,8 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
                            size_t* n_sections = nullptr) {
     const bool payloads = level >= validate::Level::Payloads;
     const bool semantics = level >= validate::Level::Semantics;
-    Sink f(out, level >= validate::Level::References);
+    const bool references = level >= validate::Level::References;
+    Sink f(out, references);
     const std::vector<ZipReader::Entry>& entries = zip.entries();
     const std::vector<std::string> names = zip.names();
     std::map<std::string, size_t> counts;
@@ -24625,6 +24992,16 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
     std::map<std::string, bool> periodic_of;    // structure id -> any(pbc)
     std::vector<DerivativeSection> derivative_sections;  // checked last
     std::vector<DeferredSection> bonds_sections;         // standalone bonds, checked last
+    // Bond images and site maps (spec § 5.1, § 5.7), checked once every
+    // structure payload has been read (`cells` holds them): the section, the
+    // member role, the structure it belongs to ("" when none) and the payload.
+    struct ImageSection {
+        size_t index;
+        std::string sid, role, structure;
+        Json payload;
+    };
+    std::vector<ImageSection> image_sections;     // bonds / bond_orders payloads
+    std::vector<ImageSection> symmetry_sections;  // structure.symmetry, checked last
     // Excited states (spec § 5.12): orbital rows of every wavefunction.gto,
     // state indices of every excited_states payload, and the sections whose
     // references are checked once every payload has been read.
@@ -25006,6 +25383,19 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             bonds_sections.push_back(
                 DeferredSection{i, sid, &s, has_doc, has_doc ? it->second : Json()});
         }
+        if (references) {  // they read another section's payload
+            if (kind == "structure" && docs.count("bonds")) {
+                image_sections.push_back(ImageSection{i, sid, "bonds", sid, docs.at("bonds")});
+            } else if ((kind == "bonds" || kind == "bond_orders") && docs.count(kind)) {
+                image_sections.push_back(ImageSection{
+                    i, sid, kind, bonds_structure(s, kinds_by_id, only_structure),
+                    docs.at(kind)});
+            } else if (kind == "structure.symmetry" && docs.count("data")) {
+                symmetry_sections.push_back(ImageSection{
+                    i, sid, "data", bonds_structure(s, kinds_by_id, only_structure),
+                    docs.at("data")});
+            }
+        }
         if (kind == "excited_states") {
             auto it = docs.find("states");
             const bool has_doc = it != docs.end();
@@ -25118,6 +25508,22 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         for (const auto& msg : bonds_errors(d.sid, *d.section, d.has_doc ? &d.doc : nullptr,
                                             kinds_by_id, n_atoms_of))
             f.error("E_MEMBER_MALFORMED", member_pointer(d.index, "bonds"), msg);
+
+    // Periodic bond images and symmetry site maps against the structure they
+    // belong to, which may come later (spec § 5.1, § 5.7).
+    for (const auto& d : image_sections) {
+        auto cell = d.structure.empty() ? cells.end() : cells.find(d.structure);
+        std::array<bool, 3> pbc{};
+        if (cell == cells.end() || !pbc_of(&cell->second, pbc)) continue;
+        for (const auto& msg : bond_image_errors(d.sid, d.payload, pbc))
+            f.error("E_MEMBER_MALFORMED", member_pointer(d.index, d.role), msg);
+    }
+    for (const auto& d : symmetry_sections) {
+        auto cell = d.structure.empty() ? cells.end() : cells.find(d.structure);
+        for (const auto& msg : site_map_errors(d.sid, d.payload,
+                                               cell == cells.end() ? nullptr : &cell->second))
+            f.error("E_MEMBER_MALFORMED", member_pointer(d.index, "data"), msg);
+    }
 
     for (const auto& d : nto_sections)
         for (const auto& e : nto_pair_errors(d, nto_sections, kinds_by_id, state_indices_of))

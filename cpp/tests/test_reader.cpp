@@ -36,6 +36,7 @@
 
 #include "qvf/qvf.hpp"
 #include "qvf/qvf_reader.hpp"
+#include "qvf/validation.hpp"
 #include "qvf_inflate.hpp"
 #include "qvf_deflate.hpp"
 #include "qvf_schema_check.hpp"
@@ -2830,6 +2831,180 @@ static void test_family_drift() {
     }
 }
 
+// --- periodic bond images and the symmetry site map (spec § 5.1, § 5.7) -------
+
+// Graphene: two carbons in a hexagonal cell periodic along a and b.
+static const std::string kGrapheneCell =
+    R"("pbc":[true,true,false],"lattice_vectors":[[2.46,0.0,0.0],)"
+    R"([-1.23,2.130422493309719,0.0],[0.0,0.0,15.0]])";
+static const std::string kGraphene =
+    R"({"atoms":[{"symbol":"C","position":[0.0,1.4202816622064793,7.5],"atomic_number":6},)"
+    R"({"symbol":"C","position":[1.23,0.7101408311032397,7.5],"atomic_number":6}],)" +
+    kGrapheneCell + "}";
+// Each carbon bonds to the other through three images.
+static const std::string kGraphenePairs =
+    R"([{"i":0,"j":1,"image":[0,0,0]},{"i":0,"j":1,"image":[-1,0,0]},)"
+    R"({"i":0,"j":1,"image":[0,1,0]}])";
+
+// A structure `data` with bonds `pairs`, either in its own `bonds` member
+// (`where` "structure"), a standalone bonds section ("bonds") or a
+// bond_orders section ("bond_orders"), which follows the structure.
+static std::vector<uint8_t> image_archive(const std::string& data, const std::string& pairs,
+                                          const std::string& where = "structure") {
+    const std::string payload = R"({"pairs":)" + pairs + "}";
+    std::vector<Entry> files{{"structure/structure.json", data}};
+    Json sm = Json::object();
+    sm.set("structure", json_member("structure/structure.json", data));
+    if (where == "structure") {
+        sm.set("bonds", json_member("structure/bonds.json", payload));
+        files.push_back({"structure/bonds.json", payload});
+        return archive(manifest_of({section("structure", "structure", sm)}), files);
+    }
+    Json bm = Json::object();
+    bm.set(where, json_member("b/" + where + ".json", payload));
+    Json b = section("b", where, bm);
+    if (where == "bonds") b.set("structure_ref", "structure");
+    files.push_back({"b/" + where + ".json", payload});
+    return archive(manifest_of({section("structure", "structure", sm), b}), files);
+}
+
+// A structure.symmetry section with payload `data` after the structure `structure`.
+static std::vector<uint8_t> symmetry_archive(const std::string& structure,
+                                             const std::string& data) {
+    Json m = Json::object();
+    m.set("data", json_member("symmetry/data.json", data));
+    return archive(manifest_of({structure_section("structure", "structure/structure.json",
+                                                  structure),
+                                section("symmetry", "structure.symmetry", m)}),
+                   {{"structure/structure.json", structure}, {"symmetry/data.json", data}});
+}
+
+// A cubic 5 Å cell with one site at (0.1, 0.2, 0.3) and its inversion image,
+// brought into the cell by the translation (1, 1, 1).
+static const std::string kCubicCell =
+    R"("pbc":[true,true,true],"lattice_vectors":[[5.0,0,0],[0,5.0,0],[0,0,5.0]])";
+static std::string cubic_structure(const std::string& second = "[4.5,4.0,3.5]") {
+    return R"({"atoms":[{"symbol":"C","position":[0.5,1.0,1.5],"atomic_number":6},)"
+           R"({"symbol":"C","position":)" + second + R"(,"atomic_number":6}],)" + kCubicCell + "}";
+}
+static const std::string kInversionOps =
+    R"("operations":[{"rotation":[[1,0,0],[0,1,0],[0,0,1]],"translation":[0,0,0]},)"
+    R"({"rotation":[[-1,0,0],[0,-1,0],[0,0,-1]]}])";
+static std::string site_map(const std::string& atom_sites, const std::string& extra = "",
+                            const std::string& ops = kInversionOps) {
+    return R"({"source":"deposited",)" + ops +
+           R"(,"sites":[{"label":"C1","position":[0.1,0.2,0.3]}],"atom_sites":)" + atom_sites +
+           extra + "}";
+}
+static const std::string kCubicSites =
+    R"([{"site":0,"operation":0},{"site":0,"operation":1,"translation":[1,1,1]}])";
+
+static void test_periodic_identity() {
+    const std::string bonds_at = "/sections/0/members/bonds";
+    // Bond images that validate.
+    for (const char* where : {"structure", "bonds", "bond_orders"})
+        expect_clean(std::string("images: graphene through three images in ") + where,
+                     image_archive(kGraphene, kGraphenePairs, where));
+    expect_clean("images: one atom bonded to its own images",
+                 image_archive(R"({"atoms":[{"symbol":"Po","position":[0,0,0]}],)" + kCubicCell +
+                                   "}",
+                               R"([{"i":0,"j":0,"image":[1,0,0]},{"i":0,"j":0,"image":[0,1,0]},)"
+                               R"({"i":0,"j":0,"image":[0,0,1]}])"));
+    expect_clean("images: a repeated pair without images keeps its meaning",
+                 image_archive(kWater3, R"([{"i":0,"j":1},{"i":0,"j":2},{"i":1,"j":0}])"));
+    expect_clean("images: a slab periodic along y and z bonds through [0, 0, 1]",
+                 image_archive(R"({"atoms":[{"symbol":"H","position":[0,0,0]}],)"
+                               R"("pbc":[false,true,true],)"
+                               R"("lattice_vectors":[[20,0,0],[0,3,0],[0,0,3]]})",
+                               R"([{"i":0,"j":0,"image":[0,0,1]}])"));
+    // Bond images that must fail.
+    expect_at("images: a self-bond with a zero image",
+              image_archive(kGraphene, R"([{"i":1,"j":1,"image":[0,0,0]}])"),
+              "E_MEMBER_MALFORMED", bonds_at);
+    expect_at("images: an image on a molecule",
+              image_archive(kH2, R"([{"i":0,"j":1,"image":[0,0,0]}])", "bonds"),
+              "E_MEMBER_MALFORMED", "/sections/1/members/bonds");
+    expect_at("images: an image along an aperiodic axis",
+              image_archive(kGraphene, R"([{"i":0,"j":1,"image":[0,0,1]}])"),
+              "E_MEMBER_MALFORMED", bonds_at);
+    for (const char* second : {R"({"i":0,"j":1,"image":[-1,0,0]})",
+                               R"({"i":1,"j":0,"image":[1,0,0]})"})
+        expect_at(std::string("images: one bond written twice, ") + second,
+                  image_archive(kGraphene,
+                                std::string(R"([{"i":0,"j":1,"image":[-1,0,0]},)") + second + "]"),
+                  "E_MEMBER_MALFORMED", bonds_at);
+    expect_at("images: a self-bond and its reversal are one bond",
+              image_archive(R"({"atoms":[{"symbol":"Po","position":[0,0,0]}],)" + kCubicCell + "}",
+                            R"([{"i":0,"j":0,"image":[1,0,0]},{"i":0,"j":0,"image":[-1,0,0]}])"),
+              "E_MEMBER_MALFORMED", bonds_at);
+    expect_at("images: bond_orders follow the same rules",
+              image_archive(kGraphene, R"([{"i":0,"j":0,"image":[0,0,0],"order":1.0}])",
+                            "bond_orders"),
+              "E_MEMBER_MALFORMED", "/sections/1/members/bond_orders");
+    expect_clean("images: an image that is not three integers is the schema's finding",
+                 image_archive(kGraphene, R"([{"i":0,"j":1,"image":[0.5,0,0]}])"));
+
+    // Site maps that validate.
+    const std::string data_at = "/sections/1/members/data";
+    expect_clean("site map: a cubic cell with an inversion image",
+                 symmetry_archive(cubic_structure(), site_map(kCubicSites)));
+    expect_clean("site map: a molecule in Cartesian coordinates",
+                 symmetry_archive(R"({"atoms":[{"symbol":"H","position":[0.1,0.2,0.3]},)"
+                                  R"({"symbol":"H","position":[-0.1,-0.2,-0.3]}],)"
+                                  R"("pbc":[false,false,false]})",
+                                  site_map(R"([{"site":0,"operation":0},)"
+                                           R"({"site":0,"operation":1}])")));
+    expect_clean("site map: a symmetry payload without one is unchanged",
+                 symmetry_archive(cubic_structure(), R"({"source":"deposited"})"));
+    // Site maps that must fail.
+    expect_at("site map: atom_sites without sites",
+              symmetry_archive(cubic_structure(),
+                               R"({"source":"deposited",)" + kInversionOps +
+                                   R"(,"atom_sites":)" + kCubicSites + "}"),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_at("site map: one entry fewer than atoms",
+              symmetry_archive(cubic_structure(), site_map(R"([{"site":0,"operation":0}])")),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_at("site map: a site out of range",
+              symmetry_archive(cubic_structure(),
+                               site_map(R"([{"site":0,"operation":0},)"
+                                        R"({"site":1,"operation":1,"translation":[1,1,1]}])")),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_at("site map: an operation out of range",
+              symmetry_archive(cubic_structure(),
+                               site_map(R"([{"site":0,"operation":0},)"
+                                        R"({"site":0,"operation":2,"translation":[1,1,1]}])")),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_at("site map: a wrong translation moves the atom",
+              symmetry_archive(cubic_structure(),
+                               site_map(R"([{"site":0,"operation":0},)"
+                                        R"({"site":0,"operation":1,"translation":[1,1,0]}])")),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_at("site map: an atom 0.05 Å from its generated position",
+              symmetry_archive(cubic_structure("[4.55,4.0,3.5]"), site_map(kCubicSites)),
+              "E_MEMBER_MALFORMED", data_at);
+    expect_clean("site map: site_tolerance widens the position check",
+                 symmetry_archive(cubic_structure("[4.55,4.0,3.5]"),
+                                  site_map(kCubicSites, R"(,"site_tolerance":0.1)")));
+    expect_at("site map: a translation along an aperiodic axis",
+              symmetry_archive(R"({"atoms":[{"symbol":"H","position":[0.1,0.2,0.3]},)"
+                               R"({"symbol":"H","position":[-0.1,-0.2,0.7]}],)"
+                               R"("pbc":[false,false,false]})",
+                               site_map(R"([{"site":0,"operation":0},)"
+                                        R"({"site":0,"operation":1,"translation":[0,0,1]}])")),
+              "E_MEMBER_MALFORMED", data_at);
+    {
+        // The image and site-map rules read another section's payload: a
+        // Semantics-level validation does not run them.
+        const std::vector<Finding> fs =
+            validate::run_bytes(image_archive(kGraphene, R"([{"i":1,"j":1,"image":[0,0,0]}])"),
+                                validate::Level::Semantics, Limits{}, no_schema())
+                .findings;
+        CHECK(!has_code(fs, "E_MEMBER_MALFORMED"),
+              "images: not checked below the references level" + describe(fs));
+    }
+}
+
 int main(int argc, char** argv) {
     if (argc == 3 && std::string(argv[1]) == "--negative") return run_negative_corpus(argv[2]);
     if (argc >= 3 && std::string(argv[1]) == "--model-roundtrip")
@@ -2860,6 +3035,7 @@ int main(int argc, char** argv) {
     test_reaction_scheme();
     test_preview_members();
     test_family_drift();
+    test_periodic_identity();
 
     test_section_references();
     test_schema_checker();

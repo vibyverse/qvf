@@ -104,7 +104,9 @@ grid `units.data` against the unit spec § 4.3 fixes for its volume kind,
 `E_UNIT_CONTRADICTED`),
 `references` (operands, `trajectory_ref`, `job_ref`, `files` index, the
 participants of a `reaction.scheme`, the atom indices of a `bonds` section
-against the structure its `structure_ref` names), `all` (the default). The bytes of a
+against the structure its `structure_ref` names, the periodic `image` of every
+bond against the `pbc` of its structure, the `atom_sites` site map of a
+`structure.symmetry` section), `all` (the default). The bytes of a
 `preview` member are checked against its `media_type` at the `payloads` level.
 
 The JSON Schema is checked at the `manifest` level (`E_SCHEMA`, `where` the

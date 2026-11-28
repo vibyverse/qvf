@@ -1,0 +1,72 @@
+{
+  "archive": "structure_symmetry_site_map.qvf",
+  "description": "Rutile TiO2 expanded from its deposited asymmetric unit with the sixteen operations of P4_2/mnm: Ti on the special position 2a (two atoms, not sixteen) and O on 4f, whose deposited position lies outside the reference cell, so that its copies carry nonzero lattice translations. atom_sites gives the site, operation and translation of each of the six atoms (spec \u00a7 5.7, Site map).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "structure",
+    "structure.symmetry"
+  ],
+  "checks": [
+    {
+      "section": "symmetry",
+      "member": "data",
+      "json_pointer": [
+        "source"
+      ],
+      "equals": "deposited"
+    },
+    {
+      "section": "symmetry",
+      "member": "data",
+      "json_pointer": [
+        "sites",
+        1,
+        "label"
+      ],
+      "equals": "O1"
+    },
+    {
+      "section": "symmetry",
+      "member": "data",
+      "json_pointer": [
+        "atom_sites",
+        1
+      ],
+      "equals": {
+        "site": 0,
+        "operation": 2,
+        "translation": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "section": "symmetry",
+      "member": "data",
+      "json_pointer": [
+        "atom_sites",
+        2,
+        "translation"
+      ],
+      "equals": [
+        -1,
+        0,
+        0
+      ]
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        5,
+        "position",
+        0
+      ],
+      "equals": 3.6977106,
+      "tol": 1e-09
+    }
+  ]
+}

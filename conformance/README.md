@@ -227,6 +227,19 @@ of sheet `S1` whose end residue 14 is absent from the structure (allowed), and
 a coil. A consumer that drops the insertion code starts the helix one residue
 early.
 
+`bonds_periodic_images.qvf` holds **periodic bond images** (spec § 5.1,
+*Periodic bond images*): a graphene sheet whose two carbons bond through the
+images `[0, 0, 0]`, `[-1, 0, 0]` and `[0, 1, 0]`, and a one-atom simple cubic
+cell bonded to its own images along each axis, each bond written once. A
+consumer that collapses images to in-cell pairs keeps one bond of the three.
+
+`structure_symmetry_site_map.qvf` holds the **symmetry site map** (spec § 5.7,
+*Site map*): rutile TiO₂ expanded from its deposited asymmetric unit with the
+sixteen operations of P4₂/mnm, Ti on the special position 2a (two atoms) and
+O on 4f deposited outside the reference cell, so that `atom_sites` carries
+nonzero lattice translations. Each atom names its site, operation and
+translation.
+
 `zip64.qvf` and `data_descriptor.qvf` hold the same calculation (water:
 structure with bonds, `atom_properties`, an IR spectrum) with the same member
 bytes as an ordinary archive; only the container differs. The properties of
@@ -341,6 +354,18 @@ rejects, and the schema-only `payload_localization_reference_basis_empty.qvf`
 (an atom with `occupancy` 1.5, `E_PAYLOAD_SCHEMA`) covers the atom-site
 identity fields, and the schema-only `structure_helix_class_on_sheet.qvf` (a
 `sheet` range with a `helix_class`, `E_SCHEMA`) the typed range fields.
+
+Periodic bond images (spec § 5.1) have `bonds_image_self_zero.qvf` (a
+self-bond with a zero image), `bonds_image_molecule.qvf` (an image on a
+molecule), `bonds_image_aperiodic_axis.qvf` (a nonzero image along an axis
+that is not periodic) and `bonds_image_duplicate.qvf` (a bond and its
+reversal), all `E_MEMBER_MALFORMED`, and the schema-only
+`bonds_image_not_integer.qvf` (`E_PAYLOAD_SCHEMA`). The symmetry site map
+(spec § 5.7) has `symmetry_site_operation_out_of_range.qvf`,
+`symmetry_site_position_mismatch.qvf` (an entry that generates a position 4 Å
+from its atom), `symmetry_site_count_mismatch.qvf` and
+`symmetry_site_map_without_sites.qvf`, all `E_MEMBER_MALFORMED`, and the
+schema-only `symmetry_site_translation_not_integer.qvf` (`E_PAYLOAD_SCHEMA`).
 
 The wavefunction rules of spec § 5.3 have three archives:
 `wavefunction_normalization.qvf` (an `overlap` whose `d_xy` diagonal is 1, three

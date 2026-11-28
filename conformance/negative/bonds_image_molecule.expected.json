@@ -1,0 +1,10 @@
+{
+  "archive": "bonds_image_molecule.qvf",
+  "description": "A bond of water, a molecule, that carries an image; a bond image needs a structure with a periodic axis (spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

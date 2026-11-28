@@ -135,6 +135,8 @@ pub struct BondsPayloadPairsItem {
     pub j: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub order: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<[i64; 3]>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -199,6 +201,8 @@ pub struct BondOrdersPayloadPairsItem {
     pub symbol_i: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symbol_j: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<[i64; 3]>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -1895,6 +1899,27 @@ pub struct SymmetryPayloadOperationsItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SymmetryPayloadSitesItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    pub position: [f64; 3],
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SymmetryPayloadAtomSitesItem {
+    pub site: i64,
+    pub operation: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub translation: Option<[i64; 3]>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SymmetryPayload {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spacegroup_number: Option<i64>,
@@ -1918,6 +1943,14 @@ pub struct SymmetryPayload {
     pub equivalent_atoms: Option<Vec<i64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symprec: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sites: Option<Vec<SymmetryPayloadSitesItem>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atom_sites: Option<Vec<SymmetryPayloadAtomSitesItem>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site_tolerance: Option<f64>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,

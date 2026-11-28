@@ -1806,6 +1806,268 @@ inline std::vector<std::string> bonds_errors(
     return errs;
 }
 
+// The structure a standalone `bonds`, a `bond_orders` or a
+// `structure.symmetry` section describes, for the periodic-image and site-map
+// rules (spec § 5.1, § 5.7): the one its structure_ref names, else the
+// archive's only structure. Empty when neither resolves; an unresolved
+// reference is the reference check's finding. Mirrors _bonds_structure() in
+// python/qvf/validate.py.
+inline std::string bonds_structure(const Json& section,
+                                   const std::map<std::string, std::string>& kinds_by_id,
+                                   const std::string* only_structure) {
+    if (section.is_object() && section.has("structure_ref")) {
+        const Json* ref = get(section, "structure_ref");
+        if (!ref || !ref->is_string()) return "";
+        auto it = kinds_by_id.find(ref->as_string());
+        return it != kinds_by_id.end() && it->second == "structure" ? ref->as_string() : "";
+    }
+    return only_structure ? *only_structure : "";
+}
+
+// `pbc` of a structure payload as three booleans: all false when absent (a
+// molecule), false in `ok` when malformed (the periodicity check's finding).
+// Mirrors _pbc_of().
+inline bool pbc_of(const Json* structure, std::array<bool, 3>& pbc) {
+    pbc = {false, false, false};
+    if (!structure || !structure->is_object()) return false;
+    const Json* p = get(*structure, "pbc");
+    if (!p) return true;
+    if (!p->is_array() || p->size() != 3) return false;
+    for (size_t a = 0; a < 3; ++a) {
+        if (!p->at(a).is_bool()) return false;
+        pbc[a] = p->at(a).as_bool();
+    }
+    return true;
+}
+
+inline std::string show_pbc(const std::array<bool, 3>& pbc) {
+    std::string s = "[";
+    for (size_t a = 0; a < 3; ++a) s += std::string(a ? ", " : "") + (pbc[a] ? "true" : "false");
+    return s + "]";
+}
+
+// Three integers, else false (the schema check's finding). Mirrors _int3().
+inline bool int3(const Json* v, std::array<int64_t, 3>& n) {
+    if (!v || !v->is_array() || v->size() != 3) return false;
+    for (size_t a = 0; a < 3; ++a) {
+        if (!is_int(&v->at(a))) return false;
+        n[a] = v->at(a).as_int();
+    }
+    return true;
+}
+
+inline std::string show_int3(const std::array<int64_t, 3>& n) {
+    return "[" + std::to_string(n[0]) + ", " + std::to_string(n[1]) + ", " +
+           std::to_string(n[2]) + "]";
+}
+
+// Periodic bond images of a `bonds` or `bond_orders` payload (spec § 5.1,
+// *Periodic bond images*), given the pbc of the structure the bonds belong
+// to. Only pairs that carry `image` are checked: an image needs a periodic
+// structure and is 0 along every axis that is not periodic; a self-bond
+// (i == j) needs a nonzero image; and no two imaged pairs are the same bond,
+// (i, j, n) being the same as (j, i, -n). Pairs without an image keep their
+// earlier meaning and are not compared. Mirrors _bond_image_errors().
+inline std::vector<std::string> bond_image_errors(const std::string& sid, const Json& payload,
+                                                  const std::array<bool, 3>& pbc) {
+    std::vector<std::string> errs;
+    const Json* pairs = payload.is_object() ? get(payload, "pairs") : nullptr;
+    if (!pairs || !pairs->is_array()) return errs;
+    using Key = std::pair<std::array<int64_t, 2>, std::array<int64_t, 3>>;
+    std::map<Key, size_t> seen;
+    const bool periodic = pbc[0] || pbc[1] || pbc[2];
+    for (size_t k = 0; k < pairs->size(); ++k) {
+        const Json& pair = pairs->at(k);
+        if (!pair.is_object() || !pair.has("image")) continue;
+        std::array<int64_t, 3> n{};
+        if (!int3(get(pair, "image"), n)) continue;
+        const std::string where = "section " + quote_str(sid) + ": pairs[" +
+                                  std::to_string(k) + "].image " + show_int3(n);
+        if (!periodic) {
+            errs.push_back(where + " on a structure with no periodic axis; a bond image "
+                                   "needs a periodic structure (spec § 5.1)");
+            continue;
+        }
+        int off = -1;
+        for (int a = 0; a < 3 && off < 0; ++a)
+            if (n[a] != 0 && !pbc[a]) off = a;
+        if (off >= 0) {
+            errs.push_back(where + " is nonzero along axis " + std::to_string(off) +
+                           ", which is not periodic (pbc " + show_pbc(pbc) + ") (spec § 5.1)");
+            continue;
+        }
+        const Json* ij = get(pair, "i");
+        const Json* jj = get(pair, "j");
+        if (!is_int(ij) || !is_int(jj)) continue;
+        const int64_t i = ij->as_int(), j = jj->as_int();
+        if (i == j && n == std::array<int64_t, 3>{0, 0, 0}) {
+            errs.push_back(where + " joins atom " + std::to_string(i) +
+                           " to itself in the same cell; a self-bond needs a nonzero "
+                           "image (spec § 5.1)");
+            continue;
+        }
+        // -INT64_MIN does not exist; such an image cannot be negated.
+        if (n[0] == INT64_MIN || n[1] == INT64_MIN || n[2] == INT64_MIN) continue;
+        const std::array<int64_t, 3> neg{-n[0], -n[1], -n[2]};
+        Key key;
+        if (i < j) key = Key{{i, j}, n};
+        else if (i > j) key = Key{{j, i}, neg};
+        else key = Key{{i, i}, std::max(n, neg)};
+        auto it = seen.find(key);
+        if (it != seen.end())
+            errs.push_back(where + " is the bond of pairs[" + std::to_string(it->second) +
+                           "] again: (i, j, n) and (j, i, -n) are one bond (spec § 5.1)");
+        else
+            seen.emplace(key, k);
+    }
+    return errs;
+}
+
+// Default largest distance, in Å, between an atom and the position its
+// atom_sites entry generates (spec § 5.7, *Site map*).
+constexpr double kSiteTolerance = 0.01;
+
+// A `rows` x 3 matrix of finite numbers, else false. Mirrors _real_matrix().
+inline bool real_matrix(const Json* v, size_t rows, std::array<std::array<double, 3>, 3>& out) {
+    if (!v || !v->is_array() || v->size() != rows) return false;
+    for (size_t r = 0; r < rows; ++r) {
+        const Json& row = v->at(r);
+        if (!row.is_array() || row.size() != 3) return false;
+        for (size_t c = 0; c < 3; ++c) {
+            if (!row.at(c).is_number() || !std::isfinite(row.at(c).as_double())) return false;
+            out[r][c] = row.at(c).as_double();
+        }
+    }
+    return true;
+}
+
+// A vector of three finite numbers, else false.
+inline bool real3(const Json* v, std::array<double, 3>& out) {
+    if (!v || !v->is_array() || v->size() != 3) return false;
+    for (size_t c = 0; c < 3; ++c) {
+        if (!v->at(c).is_number() || !std::isfinite(v->at(c).as_double())) return false;
+        out[c] = v->at(c).as_double();
+    }
+    return true;
+}
+
+inline std::string format_g(const char* fmt, double v) {
+    char buf[48];
+    std::snprintf(buf, sizeof(buf), fmt, v);
+    return buf;
+}
+
+// The site map of a `structure.symmetry` payload (spec § 5.7, *Site map*):
+// atom_sites against sites, operations and, when the structure is known
+// (`structure`, its payload, else null), its atoms. Every entry names a site
+// and an operation that exist, its translation is 0 along every axis that is
+// not periodic, there is one entry per atom, and the position the entry
+// generates, R x_site + t + n (fractional, turned Cartesian with the lattice,
+// for a periodic structure; Cartesian for a molecule), lies within
+// site_tolerance (default 0.01 Å) of the atom. Mirrors _site_map_errors().
+inline std::vector<std::string> site_map_errors(const std::string& sid, const Json& payload,
+                                                const Json* structure) {
+    std::vector<std::string> errs;
+    const Json* atom_sites = payload.is_object() ? get(payload, "atom_sites") : nullptr;
+    if (!atom_sites || !atom_sites->is_array()) return errs;
+    const Json* sites = get(payload, "sites");
+    const Json* ops = get(payload, "operations");
+    const std::string sec = "section " + quote_str(sid) + ": ";
+    if (!sites || !sites->is_array())
+        errs.push_back(sec + "atom_sites needs sites, which is absent (spec § 5.7)");
+    if (!ops || !ops->is_array())
+        errs.push_back(sec + "atom_sites needs operations, which is absent (spec § 5.7)");
+    if (!errs.empty()) return errs;
+
+    std::array<bool, 3> pbc{};
+    const bool pbc_known = structure && pbc_of(structure, pbc);
+    const Json* atoms =
+        structure && structure->is_object() ? get(*structure, "atoms") : nullptr;
+    if (atoms && !atoms->is_array()) atoms = nullptr;
+    if (atoms && atoms->size() != atom_sites->size()) {
+        errs.push_back(sec + "atom_sites has " + std::to_string(atom_sites->size()) +
+                       " entries but the structure has " + std::to_string(atoms->size()) +
+                       " atoms (spec § 5.7)");
+        atoms = nullptr;
+    }
+    if (!pbc_known) atoms = nullptr;
+    const bool periodic = pbc_known && (pbc[0] || pbc[1] || pbc[2]);
+    std::array<std::array<double, 3>, 3> lattice{};
+    if (atoms && periodic && !real_matrix(get(*structure, "lattice_vectors"), 3, lattice))
+        atoms = nullptr;  // the periodicity check's finding
+    double tol = kSiteTolerance;
+    const Json* tj = get(payload, "site_tolerance");
+    if (tj && tj->is_number() && tj->as_double() > 0) tol = tj->as_double();
+
+    const int64_t n_sites = static_cast<int64_t>(sites->size());
+    const int64_t n_ops = static_cast<int64_t>(ops->size());
+    for (size_t k = 0; k < atom_sites->size(); ++k) {
+        const Json& entry = atom_sites->at(k);
+        if (!entry.is_object()) continue;
+        const Json* site = get(entry, "site");
+        const Json* op = get(entry, "operation");
+        std::array<int64_t, 3> n{0, 0, 0};
+        const Json* tr = get(entry, "translation");
+        const bool n_ok = !tr || int3(tr, n);
+        const std::string where = sec + "atom_sites[" + std::to_string(k) + "]";
+        bool ok = is_int(site) && is_int(op) && n_ok;
+        if (is_int(site) && (site->as_int() < 0 || site->as_int() >= n_sites)) {
+            errs.push_back(where + ".site " + std::to_string(site->as_int()) +
+                           " is not one of the " + std::to_string(n_sites) +
+                           " sites (spec § 5.7)");
+            ok = false;
+        }
+        if (is_int(op) && (op->as_int() < 0 || op->as_int() >= n_ops)) {
+            errs.push_back(where + ".operation " + std::to_string(op->as_int()) +
+                           " is not one of the " + std::to_string(n_ops) +
+                           " operations (spec § 5.7)");
+            ok = false;
+        }
+        if (n_ok && pbc_known) {
+            int off = -1;
+            for (int a = 0; a < 3 && off < 0; ++a)
+                if (n[a] != 0 && !pbc[a]) off = a;
+            if (off >= 0) {
+                errs.push_back(where + ".translation " + show_int3(n) +
+                               " is nonzero along axis " + std::to_string(off) +
+                               ", which is not periodic (spec § 5.7)");
+                ok = false;
+            }
+        }
+        if (!ok || !atoms) continue;
+        const Json& s = sites->at(static_cast<size_t>(site->as_int()));
+        const Json& o = ops->at(static_cast<size_t>(op->as_int()));
+        std::array<std::array<double, 3>, 3> rot{};
+        std::array<double, 3> shift{0.0, 0.0, 0.0}, pos{}, apos{};
+        if (!o.is_object() || !real_matrix(get(o, "rotation"), 3, rot)) continue;
+        if (const Json* t = get(o, "translation"))
+            if (!real3(t, shift)) continue;
+        if (!s.is_object() || !real3(get(s, "position"), pos)) continue;
+        const Json& atom = atoms->at(k);
+        if (!atom.is_object() || !real3(get(atom, "position"), apos)) continue;
+        std::array<double, 3> fr{}, x{};
+        for (size_t r = 0; r < 3; ++r) {
+            fr[r] = rot[r][0] * pos[0] + rot[r][1] * pos[1] + rot[r][2] * pos[2] + shift[r] +
+                    static_cast<double>(n[r]);
+        }
+        if (periodic)
+            for (size_t r = 0; r < 3; ++r)
+                x[r] = fr[0] * lattice[0][r] + fr[1] * lattice[1][r] + fr[2] * lattice[2][r];
+        else
+            x = fr;
+        double d2 = 0.0;
+        for (size_t r = 0; r < 3; ++r) d2 += (x[r] - apos[r]) * (x[r] - apos[r]);
+        const double dist = std::sqrt(d2);
+        if (!(dist <= tol))
+            errs.push_back(where + " generates (" + format_g("%.6g", x[0]) + ", " +
+                           format_g("%.6g", x[1]) + ", " + format_g("%.6g", x[2]) + ") Å, " +
+                           format_g("%.3g", dist) + " Å from atom " + std::to_string(k) +
+                           ", more than the site tolerance " + format_g("%g", tol) +
+                           " Å (spec § 5.7)");
+    }
+    return errs;
+}
+
 // A properties.* section, checked after every structure has been read.
 struct PropertySection {
     size_t index;
@@ -2857,7 +3119,8 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
                            size_t* n_sections = nullptr) {
     const bool payloads = level >= validate::Level::Payloads;
     const bool semantics = level >= validate::Level::Semantics;
-    Sink f(out, level >= validate::Level::References);
+    const bool references = level >= validate::Level::References;
+    Sink f(out, references);
     const std::vector<ZipReader::Entry>& entries = zip.entries();
     const std::vector<std::string> names = zip.names();
     std::map<std::string, size_t> counts;
@@ -3064,6 +3327,16 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
     std::map<std::string, bool> periodic_of;    // structure id -> any(pbc)
     std::vector<DerivativeSection> derivative_sections;  // checked last
     std::vector<DeferredSection> bonds_sections;         // standalone bonds, checked last
+    // Bond images and site maps (spec § 5.1, § 5.7), checked once every
+    // structure payload has been read (`cells` holds them): the section, the
+    // member role, the structure it belongs to ("" when none) and the payload.
+    struct ImageSection {
+        size_t index;
+        std::string sid, role, structure;
+        Json payload;
+    };
+    std::vector<ImageSection> image_sections;     // bonds / bond_orders payloads
+    std::vector<ImageSection> symmetry_sections;  // structure.symmetry, checked last
     // Excited states (spec § 5.12): orbital rows of every wavefunction.gto,
     // state indices of every excited_states payload, and the sections whose
     // references are checked once every payload has been read.
@@ -3445,6 +3718,19 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
             bonds_sections.push_back(
                 DeferredSection{i, sid, &s, has_doc, has_doc ? it->second : Json()});
         }
+        if (references) {  // they read another section's payload
+            if (kind == "structure" && docs.count("bonds")) {
+                image_sections.push_back(ImageSection{i, sid, "bonds", sid, docs.at("bonds")});
+            } else if ((kind == "bonds" || kind == "bond_orders") && docs.count(kind)) {
+                image_sections.push_back(ImageSection{
+                    i, sid, kind, bonds_structure(s, kinds_by_id, only_structure),
+                    docs.at(kind)});
+            } else if (kind == "structure.symmetry" && docs.count("data")) {
+                symmetry_sections.push_back(ImageSection{
+                    i, sid, "data", bonds_structure(s, kinds_by_id, only_structure),
+                    docs.at("data")});
+            }
+        }
         if (kind == "excited_states") {
             auto it = docs.find("states");
             const bool has_doc = it != docs.end();
@@ -3557,6 +3843,22 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
         for (const auto& msg : bonds_errors(d.sid, *d.section, d.has_doc ? &d.doc : nullptr,
                                             kinds_by_id, n_atoms_of))
             f.error("E_MEMBER_MALFORMED", member_pointer(d.index, "bonds"), msg);
+
+    // Periodic bond images and symmetry site maps against the structure they
+    // belong to, which may come later (spec § 5.1, § 5.7).
+    for (const auto& d : image_sections) {
+        auto cell = d.structure.empty() ? cells.end() : cells.find(d.structure);
+        std::array<bool, 3> pbc{};
+        if (cell == cells.end() || !pbc_of(&cell->second, pbc)) continue;
+        for (const auto& msg : bond_image_errors(d.sid, d.payload, pbc))
+            f.error("E_MEMBER_MALFORMED", member_pointer(d.index, d.role), msg);
+    }
+    for (const auto& d : symmetry_sections) {
+        auto cell = d.structure.empty() ? cells.end() : cells.find(d.structure);
+        for (const auto& msg : site_map_errors(d.sid, d.payload,
+                                               cell == cells.end() ? nullptr : &cell->second))
+            f.error("E_MEMBER_MALFORMED", member_pointer(d.index, "data"), msg);
+    }
 
     for (const auto& d : nto_sections)
         for (const auto& e : nto_pair_errors(d, nto_sections, kinds_by_id, state_indices_of))

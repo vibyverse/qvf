@@ -4469,6 +4469,10 @@ The JSON payload named by a `structure.symmetry` section's `data` member: a symm
 | `wyckoffs` |  | array of string | Wyckoff letter of each atom, in the order of the structure's atoms. |
 | `equivalent_atoms` |  | array of integer | For each atom, the 0-based index of the representative atom of its symmetry-equivalence class. |
 | `symprec` |  | number | Distance tolerance of the symmetry search, in Angstrom. |
+| `source` |  | one of `"deposited"` \| `"detected"` | Where `operations` come from: `deposited`, the operations a structure file records (such as a CIF symmetry-operation list), in that file's setting, which `hall` names when present; `detected`, found by a symmetry search at the tolerance `symprec`. Absent means not recorded. See QVF spec § 5.7 (Analysis kinds), `structure.symmetry`. |
+| `sites` |  | array of object | The crystallographic sites the structure was generated from, such as the asymmetric unit of a CIF, in the coordinates `operations` act on: fractional coordinates of the structure's lattice when periodic, Cartesian Angstrom for a molecule. `atom_sites` maps every atom to one of them. See QVF spec § 5.7 (Analysis kinds), *Site map*. |
+| `atom_sites` |  | array of object | One entry per atom of the structure, in the order of its `atoms`: the site, operation and lattice translation that generate the atom, x_atom = R x_site + t + n, with (R, t) = operations[operation], x_site = sites[site].position and n = translation. Requires `sites` and `operations`. A validator checks the indices, the atom count and the positions (QVF spec § 5.7 (Analysis kinds), *Site map*). |
+| `site_tolerance` |  | number | Largest Cartesian distance, in Angstrom, between an atom's position and the one its `atom_sites` entry generates. Absent means 0.01 Angstrom. |
 
 <a id="def-trajectorymetadatapayload"></a>
 

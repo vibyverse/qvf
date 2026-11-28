@@ -240,6 +240,7 @@ struct BondsPayloadPairsItem {
     int64_t i{};
     int64_t j{};
     std::optional<double> order{};
+    std::optional<std::array<int64_t, 3>> image{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -249,6 +250,8 @@ struct BondsPayloadPairsItem {
         codec::put(out, "j", j);
         if (out.has("order")) throw std::invalid_argument("use the typed field, not extra: order");
         if (order) codec::put(out, "order", *order);
+        if (out.has("image")) throw std::invalid_argument("use the typed field, not extra: image");
+        if (image) codec::put(out, "image", *image);
         return out;
     }
     static BondsPayloadPairsItem from_json(const Json& j) {
@@ -257,7 +260,8 @@ struct BondsPayloadPairsItem {
         out.i = codec::get<int64_t>(j, "i");
         out.j = codec::get<int64_t>(j, "j");
         if (j.has("order")) out.order.emplace(codec::get<double>(j, "order"));
-        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order") out.extra[kv.first] = kv.second;
+        if (j.has("image")) out.image.emplace(codec::get<std::array<int64_t, 3>>(j, "image"));
+        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "image") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -287,6 +291,7 @@ struct BondOrdersPayloadPairsItem {
     std::optional<double> distance_ang{};
     std::optional<std::string> symbol_i{};
     std::optional<std::string> symbol_j{};
+    std::optional<std::array<int64_t, 3>> image{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -302,6 +307,8 @@ struct BondOrdersPayloadPairsItem {
         if (symbol_i) codec::put(out, "symbol_i", *symbol_i);
         if (out.has("symbol_j")) throw std::invalid_argument("use the typed field, not extra: symbol_j");
         if (symbol_j) codec::put(out, "symbol_j", *symbol_j);
+        if (out.has("image")) throw std::invalid_argument("use the typed field, not extra: image");
+        if (image) codec::put(out, "image", *image);
         return out;
     }
     static BondOrdersPayloadPairsItem from_json(const Json& j) {
@@ -313,7 +320,8 @@ struct BondOrdersPayloadPairsItem {
         if (j.has("distance_ang")) out.distance_ang.emplace(codec::get<double>(j, "distance_ang"));
         if (j.has("symbol_i")) out.symbol_i.emplace(codec::get<std::string>(j, "symbol_i"));
         if (j.has("symbol_j")) out.symbol_j.emplace(codec::get<std::string>(j, "symbol_j"));
-        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "distance_ang" && kv.first != "symbol_i" && kv.first != "symbol_j") out.extra[kv.first] = kv.second;
+        if (j.has("image")) out.image.emplace(codec::get<std::array<int64_t, 3>>(j, "image"));
+        for (const auto& kv : j.items()) if (kv.first != "i" && kv.first != "j" && kv.first != "order" && kv.first != "distance_ang" && kv.first != "symbol_i" && kv.first != "symbol_j" && kv.first != "image") out.extra[kv.first] = kv.second;
         return out;
     }
 };
@@ -2520,6 +2528,54 @@ struct SymmetryPayloadOperationsItem {
     }
 };
 
+struct SymmetryPayloadSitesItem {
+    std::optional<std::string> label{};
+    std::array<double, 3> position{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("label")) throw std::invalid_argument("use the typed field, not extra: label");
+        if (label) codec::put(out, "label", *label);
+        if (out.has("position")) throw std::invalid_argument("use the typed field, not extra: position");
+        codec::put(out, "position", position);
+        return out;
+    }
+    static SymmetryPayloadSitesItem from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        SymmetryPayloadSitesItem out;
+        if (j.has("label")) out.label.emplace(codec::get<std::string>(j, "label"));
+        out.position = codec::get<std::array<double, 3>>(j, "position");
+        for (const auto& kv : j.items()) if (kv.first != "label" && kv.first != "position") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
+struct SymmetryPayloadAtomSitesItem {
+    int64_t site{};
+    int64_t operation{};
+    std::optional<std::array<int64_t, 3>> translation{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("site")) throw std::invalid_argument("use the typed field, not extra: site");
+        codec::put(out, "site", site);
+        if (out.has("operation")) throw std::invalid_argument("use the typed field, not extra: operation");
+        codec::put(out, "operation", operation);
+        if (out.has("translation")) throw std::invalid_argument("use the typed field, not extra: translation");
+        if (translation) codec::put(out, "translation", *translation);
+        return out;
+    }
+    static SymmetryPayloadAtomSitesItem from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        SymmetryPayloadAtomSitesItem out;
+        out.site = codec::get<int64_t>(j, "site");
+        out.operation = codec::get<int64_t>(j, "operation");
+        if (j.has("translation")) out.translation.emplace(codec::get<std::array<int64_t, 3>>(j, "translation"));
+        for (const auto& kv : j.items()) if (kv.first != "site" && kv.first != "operation" && kv.first != "translation") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct SymmetryPayload {
     std::optional<int64_t> spacegroup_number{};
     std::optional<std::string> international{};
@@ -2532,6 +2588,10 @@ struct SymmetryPayload {
     std::optional<std::vector<std::string>> wyckoffs{};
     std::optional<std::vector<int64_t>> equivalent_atoms{};
     std::optional<double> symprec{};
+    std::optional<std::string> source{};
+    std::optional<std::vector<SymmetryPayloadSitesItem>> sites{};
+    std::optional<std::vector<SymmetryPayloadAtomSitesItem>> atom_sites{};
+    std::optional<double> site_tolerance{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -2557,6 +2617,14 @@ struct SymmetryPayload {
         if (equivalent_atoms) codec::put(out, "equivalent_atoms", *equivalent_atoms);
         if (out.has("symprec")) throw std::invalid_argument("use the typed field, not extra: symprec");
         if (symprec) codec::put(out, "symprec", *symprec);
+        if (out.has("source")) throw std::invalid_argument("use the typed field, not extra: source");
+        if (source) codec::put(out, "source", *source);
+        if (out.has("sites")) throw std::invalid_argument("use the typed field, not extra: sites");
+        if (sites) codec::put(out, "sites", *sites);
+        if (out.has("atom_sites")) throw std::invalid_argument("use the typed field, not extra: atom_sites");
+        if (atom_sites) codec::put(out, "atom_sites", *atom_sites);
+        if (out.has("site_tolerance")) throw std::invalid_argument("use the typed field, not extra: site_tolerance");
+        if (site_tolerance) codec::put(out, "site_tolerance", *site_tolerance);
         return out;
     }
     static SymmetryPayload from_json(const Json& j) {
@@ -2573,7 +2641,11 @@ struct SymmetryPayload {
         if (j.has("wyckoffs")) out.wyckoffs.emplace(codec::get<std::vector<std::string>>(j, "wyckoffs"));
         if (j.has("equivalent_atoms")) out.equivalent_atoms.emplace(codec::get<std::vector<int64_t>>(j, "equivalent_atoms"));
         if (j.has("symprec")) out.symprec.emplace(codec::get<double>(j, "symprec"));
-        for (const auto& kv : j.items()) if (kv.first != "spacegroup_number" && kv.first != "international" && kv.first != "hall" && kv.first != "point_group" && kv.first != "hermann_mauguin" && kv.first != "space_group_number" && kv.first != "space_group_symbol" && kv.first != "operations" && kv.first != "wyckoffs" && kv.first != "equivalent_atoms" && kv.first != "symprec") out.extra[kv.first] = kv.second;
+        if (j.has("source")) out.source.emplace(codec::get<std::string>(j, "source"));
+        if (j.has("sites")) out.sites.emplace(codec::get<std::vector<SymmetryPayloadSitesItem>>(j, "sites"));
+        if (j.has("atom_sites")) out.atom_sites.emplace(codec::get<std::vector<SymmetryPayloadAtomSitesItem>>(j, "atom_sites"));
+        if (j.has("site_tolerance")) out.site_tolerance.emplace(codec::get<double>(j, "site_tolerance"));
+        for (const auto& kv : j.items()) if (kv.first != "spacegroup_number" && kv.first != "international" && kv.first != "hall" && kv.first != "point_group" && kv.first != "hermann_mauguin" && kv.first != "space_group_number" && kv.first != "space_group_symbol" && kv.first != "operations" && kv.first != "wyckoffs" && kv.first != "equivalent_atoms" && kv.first != "symprec" && kv.first != "source" && kv.first != "sites" && kv.first != "atom_sites" && kv.first != "site_tolerance") out.extra[kv.first] = kv.second;
         return out;
     }
 };

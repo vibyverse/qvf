@@ -1171,7 +1171,8 @@ def _every_option_writer() -> QvfWriter:
     w.add_dos_coop_cohp("dos.coop", [-1, 0, 1], np.zeros((1, 3)), np.zeros((1, 3)),
                         {"pairs": [[0, 1]]}, label="dos_coop_cohp", section_id="coop")
     w.add_structure_symmetry({"space_group": "C2v", "point_group": "C2v"},
-                             label="structure_symmetry", section_id="sym")
+                             label="structure_symmetry", structure_ref=sid,
+                             section_id="sym")
     w.add_scf_history([{"iter": 1, "energy_eh": -74.9, "delta_e": 1.0,
                         "diis_error": 0.1}], label="scf_history", section_id="scf")
     w.add_citations("@article{x2026, title={T}, author={A}, year={2026}}",
