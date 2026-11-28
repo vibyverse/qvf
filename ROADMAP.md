@@ -46,7 +46,7 @@ vibe-qc family and merges what its programs already wrote or read.
 
 ## Release boundary and current main
 
-For the frozen QC 0.18 / Sketch 0.6 / View 3.0 / Queue 1.0 interfaces,
+For the frozen QC 0.18 / Sketch 0.6 / View 3.0 / Scheduler 1.0 interfaces,
 prioritize demonstrated interoperability blockers and preserve their QVF
 v0.6.0 pins, accepted source/artifact hashes and geometry identities. The
 [family workflow](docs/family_workflow.md#correlated-results-and-campaign-acceptance)

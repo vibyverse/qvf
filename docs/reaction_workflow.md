@@ -19,14 +19,14 @@ same step rather than choosing one silently. Move to the canonical field only
 after a containing QVF release and explicit consumer adoption.
 
 This is the **28 October 2026 source integration agreement**, tracked under
-QVF #15/#16, QC #702 and View #164 with the Sketch and Queue owners. It is
+QVF #15/#16, QC #702 and View #164 with the Sketch and vibe-scheduler owners. It is
 not a claim that the pending fixes have shipped. The critical-content
 preparation fix and audit example are in toolkit 0.7.0, not v0.6.0. Record the actual
 containing release and component test evidence when the release owner
 qualifies them; do not infer release capability from this document.
 
 The component owners maintain execution and acceptance semantics. QVF owns
-the shared format, schema, registry and reference validator. Queue transports
+the shared format, schema, registry and reference validator. vibe-scheduler transports
 QVF and binds attempts; it does not infer scientific success. These profile
 requirements are consumer checks beyond generic QVF validation. Unsupported
 profile versions or required information must be refused by the operation
@@ -41,7 +41,7 @@ that limitation stated.
 | Species and geometry | `structure`, chemical identity, `bonds`, `reaction.scheme` participants | Resolve species and structure IDs, explicit atom ordering/maps, roles and positive stoichiometry. Check charge and multiplicity against the authoritative job request. Positions are angstrom, not canvas coordinates. |
 | Preparation | Sketch document/stage members and run attachments | Retain ETKDG version, seed, attempts, selected conformer, MMFF termination and warnings. A failed preparation cannot become an accepted parent. |
 | Pending stage | `job.spec` with explicit `structure_ref`, `options`, `provenance.run_status=pending`; Sketch stage member | Carry requested and resolved settings, stage/species identity, accepted parent result and geometry identity. Independent `job.spec` sections are not themselves a dependency graph. |
-| Execution | `run.record` with `job_ref`, sequence, status, input, log, attachments | Preserve the request verbatim; record actual package/source/native identity and runtime settings. Queue runtime selection is not proof of the runtime that executed. |
+| Execution | `run.record` with `job_ref`, sequence, status, input, log, attachments | Preserve the request verbatim; record actual package/source/native identity and runtime settings. vibe-scheduler runtime selection is not proof of the runtime that executed. |
 | Results | Separate result `structure`, `trajectory`, `forces`, `hessian`, `vibrations`, root `energies`; section `run_ref`/`structure_ref` | Retain full trajectories, same-surface Hessian settings and convergence evidence. Root energy selection must resolve the current result run and geometry. |
 | Acceptance or rejection | Hash-bound Sketch stage acceptance or View selection review; original run verdict and attachments | Preserve rejected evidence and reasons. Acceptance is an explicit operation, not a translation of exit code or archive validity. |
 | Reaction analysis | `reaction.scheme` and versioned energies extension below | Select one property from each accepted source, check method/state/geometry links, balance and coefficients; retain sources and reproduce the sum. |
@@ -115,7 +115,7 @@ Consumers verify both archive identities and cannot feed rejected derivatives
 to descendants. These are versioned vendor payloads; the generic schema
 does not validate their scientific acceptance semantics.
 
-Queue's `vq.campaign/1`, `vq.campaign-artifact/1` and attempt journal remain
+vibe-scheduler's `vq.campaign/1`, `vq.campaign-artifact/1` and attempt journal remain
 control records: node/output links, artifact hashes, runtime and attempt
 identities. They complement the QVF scientific parent edges and never replace
 them. A failed parent blocks only its descendants. Retrying creates a new

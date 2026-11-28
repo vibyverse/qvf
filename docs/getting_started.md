@@ -18,7 +18,7 @@ python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyv
 python -m qvf --version
 ```
 
-The released baseline for QC 0.18, Sketch 0.6, View 3.0 and Queue 1.0 remains
+The released baseline for QC 0.18, Sketch 0.6, View 3.0 and Scheduler 1.0 remains
 **v0.6.0**. To match it, use `@v0.6.0` in the same command. Adopting 0.8.0 in
 those consumers is a separate step.
 
@@ -101,7 +101,7 @@ python -m qvf validate h2-job.qvf --json
 functional. Charge and multiplicity default to 0 and 1; supply them explicitly
 for ions or radicals. Preparation does not execute or submit the request.
 The [family workflow](family_workflow.md) covers submission, result retrieval,
-Sketch drawing preservation, View inspection and Queue transport limits.
+Sketch drawing preservation, View inspection and vibe-scheduler transport limits.
 
 The CLI requires a new output path. Preserve accepted source archives and
 their hashes; create a derivative file when changing a document. The library

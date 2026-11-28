@@ -15,7 +15,7 @@ scientific interchange requirements, explicit energy selection and immutable
 parent hashes. It distinguishes current source contracts from released and
 scientifically demonstrated capability.
 
-The frozen QC 0.18, Sketch 0.6, View 3.0 and Queue 1.0 interfaces use the
+The frozen QC 0.18, Sketch 0.6, View 3.0 and Scheduler 1.0 interfaces use the
 **v0.6.0 tag's bytes**, including its schema, rather than the current toolkit
 development tree or an optional dependency's minimum version. Keep those pins
 when qualifying these releases. Later toolkit additions need their own
@@ -54,7 +54,7 @@ The example uses the legacy NumPy array API. The `validate` extra adds JSON Sche
 reference validator. This source installation does not depend on the release
 already being available on a package index or mirror. Use your normal managed
 installation for vibe-qc, and install/configure vibe-scheduler on the submission
-host. The queue's `--program NAME` must name a registered vibe-qc runtime;
+host. vibe-scheduler's `--program NAME` must name a registered vibe-qc runtime;
 `NAME` and `HOST` below are placeholders for that configuration.
 
 vibe-viewer's core installation can inspect QVF metadata and structures. The
@@ -212,7 +212,7 @@ result's `run_ref`; do not replace either with whichever structure is last.
 
 View 3.0's normal energy summaries read the SCF/reference energy beside its
 provenance method; they do not select a correlated total from a structured
-attachment. Queue 1.0 verifies transport and lifecycle identities, not
+attachment. Scheduler 1.0 verifies transport and lifecycle identities, not
 scientific acceptance. Its released campaign execution also does not include
 the later opt-in retained-runtime recovery mapping. Keep these limits separate
 from archive validity and from later consumer fixes. None requires changing
