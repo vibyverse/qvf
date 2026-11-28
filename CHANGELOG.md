@@ -9,6 +9,33 @@ The toolkit version is in [`VERSION`](VERSION) and the format version
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-11-28
+
+### Added
+
+- Displacement parameters and disorder groups of crystal-structure atom sites
+  (spec § 5.1, *Crystallographic atom sites*). A `structure` atom gains the
+  optional `adp` (`$defs/AtomDisplacement`: `Uiso`, `Uani`, `Biso` or `Bani`
+  after CIF `_atom_site.ADP_type`; the six anisotropic components in the CIF
+  order, in the CIF `crystal` frame or `cartesian`; Å²) and the optional
+  `disorder_assembly` and `disorder_group` codes of CIF
+  `_atom_site.disorder_assembly` / `_atom_site.disorder_group`. The Python,
+  C++, JavaScript and Rust validators check that a tensor is positive definite
+  and that the crystal frame has a three-periodic structure
+  (`E_MEMBER_MALFORMED`). The Python and JavaScript writers pass the fields
+  through, and `qvf convert` CIF import and export carry them, each symmetry
+  copy with the tensor of its own orientation. Additive; existing archives are
+  unchanged.
+- Periodic bond images and the symmetry site map (spec § 5.1, § 5.7). `bonds`
+  and `bond_orders` pairs gain the optional integer triple `image`, the lattice
+  image of atom `j` (absent: unspecified, `[0, 0, 0]`: the same cell), so that
+  bonds to neighbouring cells, several images of one pair and self-image bonds
+  can be written. `structure.symmetry` gains `sites`, `atom_sites` (the site,
+  operation and lattice translation of each atom), `site_tolerance` and
+  `source` (`deposited` or `detected`). The Python, C++, JavaScript and Rust
+  validators check both (`E_MEMBER_MALFORMED`); the corpus gains positive and
+  negative archives. Additive; existing archives are unchanged.
+
 ## [0.8.1] - 2026-11-28
 
 This additive toolkit release keeps QVF format version 1 (`qvf_version` 1).

@@ -56,10 +56,10 @@ distinguishes reference and correlated results and the consumer limits.
 Broader format and toolkit development follows in compatible releases; it
 does not expand the scope of these frozen releases.
 
-The latest toolkit is **0.8.1** (2026-11-28), implementing **QVF v1**.
+The latest toolkit is **0.8.2** (2026-11-28), implementing **QVF v1**.
 Its release checks are the candidate CI and installed Python/C/C++ package
 acceptance. Toolkit 0.6.0 (2026-10-22) remains the pin of the frozen family
-releases; moving a consumer's main branch to 0.8.1 is that consumer's step.
+releases; moving a consumer's main branch to 0.8.2 is that consumer's step.
 These source pins do not claim that every packaged consumer has been rebuilt.
 A toolkit version increment does not require a new archive format, and the
 v2 ledger below is not a release gate for additive toolkit work.

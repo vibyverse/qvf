@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(qvf_writer LANGUAGES CXX C VERSION 0.8.1)
+project(qvf_writer LANGUAGES CXX C VERSION 0.8.2)
 
 # Standalone development includes checks and examples. Embedded consumers only
 # build the library unless they explicitly opt into those targets.

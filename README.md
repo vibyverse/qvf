@@ -16,7 +16,7 @@ vibe-sketcher, vibe-scheduler) QVF is the standard format the programs read, wri
 and hand each other; see [GOVERNANCE.md](GOVERNANCE.md#qvf-in-the-vibe-qc-family). It is licensed **Apache-2.0** (see `LICENSE`), so
 it can be linked into proprietary as well as open-source codes.
 
-The latest tagged toolkit, **0.8.1**, implements **QVF v1** (`qvf_version = 1`). It includes
+The latest tagged toolkit, **0.8.2**, implements **QVF v1** (`qvf_version = 1`). It includes
 streaming C++/Python APIs, the complete C ABI, optional Fortran bindings,
 a Rust crate, a JavaScript writer, a unified CLI, converters from cube/XYZ/XSF/PDB
 to CIF, mmCIF, VASP, Quantum ESPRESSO, FHI-aims, Molden and Gaussian fchk,
@@ -26,7 +26,7 @@ kind for energy decomposition analyses; 0.8.1 adds the `kinetic`, `coulomb`
 and `residual` terms to its vocabulary and rejects a negative sum-rule
 tolerance. See the [release notes](CHANGELOG.md#081---2026-11-28).
 Format version 1 does not identify a toolkit release.
-The frozen family interfaces continue to pin **v0.6.0**. Adopting 0.8.1 is a
+The frozen family interfaces continue to pin **v0.6.0**. Adopting 0.8.2 is a
 separate consumer step.
 
 Start with [getting started](docs/getting_started.md) for a tagged-source install,
@@ -63,7 +63,7 @@ publication is still planned; `qvf-writer` is the distribution name, and
 `qvf` is the import and command name.
 
 ```sh
-python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyverse/qvf.git@v0.8.1#subdirectory=python"
+python -m pip install "qvf-writer[numpy,validate] @ git+https://github.com/vibyverse/qvf.git@v0.8.2#subdirectory=python"
 ```
 
 From an existing checkout, use `python -m pip install './python[numpy,validate]'`;

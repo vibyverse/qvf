@@ -1,6 +1,6 @@
 [package]
 name = "qvf"
-version = "0.8.1"
+version = "0.8.2"
 edition = "2021"
 rust-version = "1.74"
 license = "Apache-2.0"

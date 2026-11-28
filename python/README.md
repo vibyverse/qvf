@@ -17,18 +17,18 @@ This adapter needs neither xTB nor NumPy at export time.
 
 ## Python release candidate
 
-`0.8.1` is the first PyPI release candidate, the same version as toolkit
-0.8.1, and includes the PySCF adapter. It has not been uploaded yet. Until
+`0.8.2` is the first PyPI release candidate, the same version as toolkit
+0.8.2, and includes the PySCF adapter. It has not been uploaded yet. Until
 then, install the tagged source:
 
 ```sh
-python -m pip install "qvf-writer[pyscf,validate] @ git+https://github.com/vibyverse/qvf.git@v0.8.1#subdirectory=python"
+python -m pip install "qvf-writer[pyscf,validate] @ git+https://github.com/vibyverse/qvf.git@v0.8.2#subdirectory=python"
 ```
 
 The following index command works **after the package is uploaded**:
 
 ```sh
-python -m pip install "qvf-writer[pyscf,validate]==0.8.1"
+python -m pip install "qvf-writer[pyscf,validate]==0.8.2"
 ```
 
 For the PySCF tutorial use Python 3.11–3.13 on a platform with a PySCF wheel
@@ -36,10 +36,10 @@ For the PySCF tutorial use Python 3.11–3.13 on a platform with a PySCF wheel
 To test a built wheel before publication, install it directly:
 
 ```sh
-python -m pip install "./qvf_writer-0.8.1-py3-none-any.whl[pyscf,validate]"
+python -m pip install "./qvf_writer-0.8.2-py3-none-any.whl[pyscf,validate]"
 ```
 
-Toolkit 0.8.1 does not change the archive format version or move consumers
+Toolkit 0.8.2 does not change the archive format version or move consumers
 pinned to toolkit v0.6.0. That older tag has no PySCF adapter. To match
 their pin, install its tagged source:
 
