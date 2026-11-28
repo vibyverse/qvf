@@ -19,7 +19,9 @@ jobs:
   python:
     if: startsWith(github.ref, 'refs/heads/release-candidate/')
     name: python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    # actions/setup-python has no Python 3.9 for ubuntu-latest (Ubuntu 26.04
+    # at the 0.8.1 candidate), so the 3.9 endpoint runs on Ubuntu 24.04.
+    runs-on: ${{ matrix.python-version == '3.9' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     timeout-minutes: 20
     env:
       OMP_NUM_THREADS: "1"
