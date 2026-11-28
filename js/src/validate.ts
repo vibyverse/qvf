@@ -1904,6 +1904,52 @@ function structurePayloadErrors(sid: string, payload: unknown): string[] {
 }
 
 /**
+ * Whether the symmetric 3 x 3 tensor with the unique components `u` in the
+ * CIF order [11, 22, 33, 12, 13, 23] is positive definite: its three leading
+ * principal minors are positive (Sylvester's criterion). Mirrors
+ * _positive_definite() in python/qvf/validate.py.
+ */
+function positiveDefinite(u: readonly number[]): boolean {
+  const [u11, u22, u33, u12, u13, u23] = u as [number, number, number, number, number, number];
+  const m2 = u11 * u22 - u12 * u12;
+  const det = u11 * (u22 * u33 - u23 * u23) - u12 * (u12 * u33 - u23 * u13) + u13 * (u12 * u23 - u22 * u13);
+  return u11 > 0 && m2 > 0 && det > 0;
+}
+
+/**
+ * Displacement parameters of a `structure` payload's atoms (spec § 5.1,
+ * Crystallographic atom sites), beyond the schema: the `crystal` frame needs
+ * a structure periodic along all three axes, and an anisotropic tensor is
+ * positive definite. Malformed members are the schema check's finding and are
+ * skipped here. Mirrors _adp_errors() in python/qvf/validate.py.
+ */
+function adpErrors(sid: string, payload: unknown): string[] {
+  if (!isObject(payload) || !Array.isArray(payload.atoms)) return [];
+  const pbc = payload.pbc;
+  const periodic3 =
+    Array.isArray(pbc) && pbc.length === 3 && pbc.every((x) => x === true) && Array.isArray(payload.lattice_vectors);
+  const errors: string[] = [];
+  payload.atoms.forEach((atom: unknown, k: number) => {
+    if (!isObject(atom) || !isObject(atom.adp)) return;
+    const adp = atom.adp;
+    const where = `section ${quote(sid)}: atoms[${k}].adp`;
+    if (adp.frame === "crystal" && !periodic3) {
+      errors.push(`${where} is in the crystal frame, which needs a structure periodic along all three axes (spec § 5.1)`);
+    }
+    const u = adp.aniso;
+    if (
+      Array.isArray(u) &&
+      u.length === 6 &&
+      u.every((x) => typeof x === "number" && Number.isFinite(x)) &&
+      !positiveDefinite(u as number[])
+    ) {
+      errors.push(`${where}.aniso ${show(u)} is not positive definite (spec § 5.1)`);
+    }
+  });
+  return errors;
+}
+
+/**
  * The sum of the `atomic_number` values of a `structure` payload's atoms, or
  * null when the payload has no `atoms` array or an atomic number is missing or
  * not a non-negative integer (spec § 5.1, Chemical identity).
@@ -2923,6 +2969,7 @@ async function checkPayload(c: PayloadContext): Promise<void> {
     if (parsed) {
       if (rank >= AT_SEMANTICS && kind === "structure" && role === "structure") {
         for (const msg of structurePayloadErrors(sid, doc)) out.error("E_STRUCTURE_PERIODICITY", mwhere, msg);
+        for (const msg of adpErrors(sid, doc)) out.error("E_MEMBER_MALFORMED", mwhere, msg);
       }
       // The member's payload definition (spec § 5, § 6).
       const def = payloadDefinition(kind, role);

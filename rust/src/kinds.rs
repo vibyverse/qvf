@@ -96,6 +96,21 @@ pub struct StructureFields {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AtomDisplacement {
+    #[serde(rename = "type")]
+    pub type_: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iso: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aniso: Option<[f64; 6]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame: Option<String>,
+    /// Fields the schema leaves open, kept for the round trip.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StructureAtom {
     pub symbol: String,
     pub position: [f64; 3],
@@ -110,6 +125,12 @@ pub struct StructureAtom {
     pub occupancy: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hetero: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adp: Option<AtomDisplacement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disorder_assembly: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disorder_group: Option<String>,
     /// Fields the schema leaves open, kept for the round trip.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,

@@ -108,7 +108,8 @@ def test_listed_operations_build_the_unit_cell(tmp_path):
     ti = [x for x in geometry['atoms'] if x['symbol'] == 'Ti']
     assert ti[0] == {'symbol': 'Ti', 'atomic_number': 22, 'position': [0, 0, 0],
                      'atom_name': 'Ti1', 'occupancy': 1,
-                     'b_factor': pytest.approx(8 * math.pi ** 2 * 0.005)}
+                     'b_factor': pytest.approx(8 * math.pi ** 2 * 0.005),
+                     'adp': {'type': 'Uiso', 'iso': 0.005}}
     assert fractional(geometry) == [
         ('O', 0.19522, 0.80478, 0.5), ('O', 0.30478, 0.30478, 0.0),
         ('O', 0.69522, 0.69522, 0.0), ('O', 0.80478, 0.19522, 0.5),
@@ -208,7 +209,7 @@ def test_export_writes_a_p1_cif_that_imports_back(tmp_path):
     assert report['omitted_sections'] == ['symmetry']
     text = out.read_text()
     assert "_space_group_symop_operation_xyz\nx,y,z\n" in text
-    assert "\nTi1 Ti 0.00000000 0.00000000 0.00000000 1.0000 0.3948\n" in text
+    assert "\nTi1 Ti 0.00000000 0.00000000 0.00000000 1.0000 0.3948 0.005000 Uiso\n" in text
     again_report, again, symmetry, _ = imported(tmp_path, text, name='again.cif')
     assert again_report['operator_source'] == 'listed' and again_report['atoms'] == 6
     assert symmetry == {'space_group_symbol': 'P 1', 'space_group_number': 1}

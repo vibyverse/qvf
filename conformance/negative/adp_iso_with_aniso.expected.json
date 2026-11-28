@@ -1,0 +1,10 @@
+{
+  "archive": "adp_iso_with_aniso.qvf",
+  "description": "An isotropic (Uiso) displacement that also carries anisotropic components; an isotropic type has `iso` only ($defs/AtomDisplacement, spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

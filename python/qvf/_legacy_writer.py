@@ -138,10 +138,14 @@ _GEOMETRY_COORDINATES = ("cartesian", "internal", "redundant")
 # Per-atom biomolecular fields a structure payload may carry (spec § 5.1,
 # $defs/StructureAtom). Passed through verbatim so a PDB-derived structure
 # keeps the identity a cartoon renderer needs; insertion_code, alt_loc,
-# occupancy and hetero complete the PDB/mmCIF atom-site identity.
+# occupancy and hetero complete the PDB/mmCIF atom-site identity; adp,
+# disorder_assembly and disorder_group carry a crystal-structure site's
+# displacement parameters and disorder grouping (spec § 5.1, *Crystallographic
+# atom sites*).
 _ATOM_BIOMOLECULE_FIELDS = (
     "atom_name", "residue_name", "residue_seq", "chain_id", "b_factor",
     "insertion_code", "alt_loc", "occupancy", "hetero",
+    "adp", "disorder_assembly", "disorder_group",
 )
 
 # The atom_properties member roles, in schema order ($defs/SectionAtomProperties,
@@ -1912,7 +1916,9 @@ class QvfWriter:
         cartoon rendering (spec § 5.1). The per-atom biomolecular fields
         ``atom_name`` / ``residue_name`` / ``residue_seq`` / ``chain_id`` /
         ``b_factor`` / ``insertion_code`` / ``alt_loc`` / ``occupancy`` /
-        ``hetero`` are passed through from each atom mapping when present.
+        ``hetero`` and the crystallographic ``adp`` / ``disorder_assembly`` /
+        ``disorder_group`` (spec § 5.1, *Crystallographic atom sites*) are
+        passed through from each atom mapping when present.
         A ``residues`` entry whose ``insertion_code`` disagrees with that of
         one of its atoms raises ``ValueError`` (spec § 5.1, *Biomolecular
         atom identity*).

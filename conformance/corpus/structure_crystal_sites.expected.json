@@ -1,0 +1,97 @@
+{
+  "archive": "structure_crystal_sites.qvf",
+  "description": "A monoclinic crystal structure with atomic displacement parameters of the four carried CIF types (Uani in the crystal and Cartesian frames, Uiso, Biso, Bani) and disorder groups: a methyl group in two orientations (assembly A, groups 1 and 2), a site shared by Mg and Mn (assembly B, one group per composition) and a water disordered about a special position (group -1, no assembly) (spec \u00a7 5.1, Crystallographic atom sites).",
+  "source_program": "qvf-conformance",
+  "kinds": [
+    "structure"
+  ],
+  "checks": [
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        0,
+        "adp",
+        "aniso",
+        5
+      ],
+      "equals": -0.0017
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        0,
+        "adp",
+        "frame"
+      ],
+      "equals": "crystal"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        1,
+        "adp",
+        "frame"
+      ],
+      "equals": "cartesian"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        4,
+        "disorder_group"
+      ],
+      "equals": "2"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        7,
+        "disorder_assembly"
+      ],
+      "equals": "B"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        7,
+        "adp",
+        "type"
+      ],
+      "equals": "Bani"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        8,
+        "disorder_group"
+      ],
+      "equals": "-1"
+    },
+    {
+      "section": "structure",
+      "member": "structure",
+      "json_pointer": [
+        "atoms",
+        6,
+        "adp",
+        "iso"
+      ],
+      "equals": 0.84,
+      "tol": 1e-12
+    }
+  ]
+}

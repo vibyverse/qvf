@@ -92,6 +92,64 @@ proposed here first and released before the program writes it.
 Governance decisions that affect the on-disk contract are recorded here, in the
 open. Recording a mistake is part of the process working, not evidence against it.
 
+### 2026-11-28: Displacement parameters and disorder groups of atom sites
+
+**Status.** Made at the maintainer's direction of 2026-11-28 to make the QVF
+changes that vibe-viewer's crystal-structure preparation waits for; it
+completes reading (c) of the site-map decision below. The consumer request
+came from vibe-viewer (CIF import keeping displacement tensors, ordering
+disorder as a chosen model). Readings (a) to (d) are proposed and open to the
+maintainer's review. It is additive.
+
+**Decision.**
+1. **Displacement parameters** (spec § 5.1, *Crystallographic atom sites*).
+   `$defs/StructureAtom` gains the optional `adp` (`$defs/AtomDisplacement`):
+   `type` (`Uiso`, `Uani`, `Biso`, `Bani`, after CIF core
+   `_atom_site.ADP_type`), `iso` (U_iso / B_iso, or U(equiv) of an
+   anisotropic atom), `aniso` (six components in the CIF order 11, 22, 33,
+   12, 13, 23) and `frame` (`crystal`, the CIF U^ij convention on the crystal
+   axes, or `cartesian`). All values in Å², B = 8π²U.
+2. **Disorder** (same section). `$defs/StructureAtom` gains the optional
+   strings `disorder_assembly` and `disorder_group` (CIF core
+   `_atom_site.disorder_assembly`, `_atom_site.disorder_group`), kept as
+   recorded. An assembly requires a group; a model picks one group per
+   assembly. Neither field filters atoms.
+3. Validators check, beyond the schema, that an anisotropic tensor is
+   positive definite and that the `crystal` frame has a structure periodic
+   along all three axes (`E_MEMBER_MALFORMED`). No finding code is added.
+4. **Symmetry-aware ordering needs no further field.** With the site map
+   (`atom_sites`: site, operation, translation of every atom) and
+   `operations`, a consumer can compute orbits, the action of the group on a
+   supercell's sites and so the number of symmetry-distinct arrangements;
+   that is computation, not data the format must carry.
+
+**Evidence.** A positive archive with all four types, both frames, a
+methyl group in two orientations (assembly A, groups 1 and 2), a Mg/Mn site
+(assembly B) and a water disordered about a special position (group `-1`);
+six negative archives (a tensor that is not positive definite, the crystal
+frame on a molecule, an anisotropic type without frame, an isotropic type
+with components, an assembly without group, the `.` placeholder). The
+Python CIF converter imports and exports the fields, rotating each copy's
+tensor with its operation.
+
+**Readings for the maintainer.**
+- (a) The fields are per atom, not per site of the site map: a consumer
+  needs each copy's own tensor (it differs by orientation) and grouping
+  without resolving the map, and the fields survive a structure that has no
+  map. A producer that writes the map writes the copies consistently.
+- (b) Disorder codes are strings, as in the CIF dictionary (type `Word`),
+  so `"-1"` keeps its minus prefix and non-numeric codes survive; a consumer
+  that needs numbers parses them.
+- (c) `Uovl`, `Umpe` and `Bovl` are not carried; `betaani` is converted to
+  `Uani` by the producer. Standard uncertainties of the components are not
+  carried.
+- (d) `b_factor` keeps its existing meaning; with `adp` present it is a
+  displacement value, and `adp` is authoritative.
+
+**Compatibility.** Additive: one new `$defs` entry and three new optional
+fields of `$defs/StructureAtom`. No `qvf_version` change; existing archives
+keep their meaning and validity.
+
 ### 2026-11-28: Periodic bond images and the symmetry site map
 
 **Status.** Made at the maintainer's direction of 2026-11-28, which asked

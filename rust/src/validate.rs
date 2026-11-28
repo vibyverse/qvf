@@ -2374,6 +2374,55 @@ fn structure_payload_errors(sid: &str, payload: &Value) -> Vec<String> {
     errors
 }
 
+/// Whether the symmetric 3 x 3 tensor with the unique components `u` in the
+/// CIF order [11, 22, 33, 12, 13, 23] is positive definite: its three leading
+/// principal minors are positive (Sylvester's criterion). Mirrors
+/// `_positive_definite()` in python/qvf/validate.py.
+fn positive_definite(u: &[f64; 6]) -> bool {
+    let [u11, u22, u33, u12, u13, u23] = *u;
+    let m2 = u11 * u22 - u12 * u12;
+    let det = u11 * (u22 * u33 - u23 * u23) - u12 * (u12 * u33 - u23 * u13) + u13 * (u12 * u23 - u22 * u13);
+    u11 > 0.0 && m2 > 0.0 && det > 0.0
+}
+
+/// Displacement parameters of a `structure` payload's atoms (spec § 5.1,
+/// *Crystallographic atom sites*), beyond the schema: the `crystal` frame
+/// needs a structure periodic along all three axes, and an anisotropic tensor
+/// is positive definite. Malformed members are the schema check's finding and
+/// are skipped here. Mirrors `_adp_errors()` in python/qvf/validate.py.
+fn adp_errors(sid: &str, payload: &Value) -> Vec<String> {
+    let mut errors = Vec::new();
+    let Some(p) = payload.as_object() else { return errors };
+    let Some(atoms) = p.get("atoms").and_then(Value::as_array) else { return errors };
+    let periodic3 = is_bool3(p.get("pbc")).is_some_and(|f| f.iter().all(|x| *x))
+        && p.get("lattice_vectors").is_some_and(Value::is_array);
+    for (k, atom) in atoms.iter().enumerate() {
+        let Some(adp) = atom.as_object().and_then(|a| a.get("adp")).and_then(Value::as_object) else { continue };
+        let place = format!("{}atoms[{k}].adp", sec(sid));
+        if adp.get("frame").and_then(Value::as_str) == Some("crystal") && !periodic3 {
+            errors.push(format!(
+                "{place} is in the crystal frame, which needs a structure periodic along all three axes (spec § 5.1)"
+            ));
+        }
+        let Some(u) = adp.get("aniso").and_then(Value::as_array) else { continue };
+        if u.len() != 6 {
+            continue;
+        }
+        let mut v = [0.0_f64; 6];
+        let mut finite = true;
+        for (c, x) in u.iter().enumerate() {
+            match x.as_f64().filter(|x| x.is_finite()) {
+                Some(x) => v[c] = x,
+                None => finite = false,
+            }
+        }
+        if finite && !positive_definite(&v) {
+            errors.push(format!("{place}.aniso {} is not positive definite (spec § 5.1)", show_vec(&v)));
+        }
+    }
+    errors
+}
+
 fn sum_atomic_numbers(payload: Option<&Value>) -> Option<f64> {
     let atoms = as_obj(payload)?.get("atoms")?.as_array()?;
     let mut sum = 0.0;
@@ -3523,6 +3572,9 @@ fn check_payload(c: &PayloadContext, docs: &mut Docs, binaries: &mut HashMap<Str
                 if c.level >= Level::Semantics && kind == "structure" && role == "structure" {
                     for msg in structure_payload_errors(c.sid, &doc) {
                         out.push(Code::E_STRUCTURE_PERIODICITY, mwhere, msg);
+                    }
+                    for msg in adp_errors(c.sid, &doc) {
+                        out.push(Code::E_MEMBER_MALFORMED, mwhere, msg);
                     }
                 }
                 if c.schema_check {

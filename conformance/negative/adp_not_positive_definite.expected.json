@@ -1,0 +1,10 @@
+{
+  "archive": "adp_not_positive_definite.qvf",
+  "description": "An anisotropic displacement tensor with U12 = 0.03 > sqrt(U11 U22) = 0.02 \u00c5\u00b2: its second leading minor is negative, so it is not positive definite and describes no ellipsoid (spec \u00a7 5.1, Crystallographic atom sites).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

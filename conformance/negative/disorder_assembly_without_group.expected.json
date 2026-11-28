@@ -1,0 +1,10 @@
+{
+  "archive": "disorder_assembly_without_group.qvf",
+  "description": "An atom in disorder assembly A without a disorder group: an assembly is made of groups, so `disorder_assembly` requires `disorder_group` ($defs/StructureAtom, spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

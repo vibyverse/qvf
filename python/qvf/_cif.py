@@ -26,7 +26,13 @@ _CELL = ("_cell_length_a", "_cell_length_b", "_cell_length_c",
          "_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma")
 _SITE = ("_atom_site_label", "_atom_site_type_symbol", "_atom_site_fract_x",
          "_atom_site_fract_y", "_atom_site_fract_z", "_atom_site_occupancy",
-         "_atom_site_u_iso_or_equiv", "_atom_site_b_iso_or_equiv")
+         "_atom_site_u_iso_or_equiv", "_atom_site_b_iso_or_equiv",
+         "_atom_site_adp_type", "_atom_site_thermal_displace_type",
+         "_atom_site_disorder_assembly", "_atom_site_disorder_group")
+# The anisotropic displacement loop (CIF core `_atom_site_aniso.U_11` ...,
+# `B_11` ...), components in the CIF order 11, 22, 33, 12, 13, 23.
+_ANISO_ORDER = ("11", "22", "33", "12", "13", "23")
+_ANISO_LABEL = "_atom_site_aniso_label"
 _LABEL = re.compile(r"[A-Za-z][A-Za-z0-9_+-]*")
 
 
@@ -120,6 +126,74 @@ def _blocks(text):
         else:
             raise ValueError(f"CIF value {value!r} has no tag")
     return blocks
+
+
+def _reciprocal_lengths(inverse):
+    """a*_j, the reciprocal-cell lengths, from the inverse of the lattice (rows
+    are cell vectors): the reciprocal vector b_j is column j of the inverse."""
+    return [math.sqrt(sum(inverse[k][j] ** 2 for k in range(3))) for j in range(3)]
+
+
+def _sym6(u):
+    """The symmetric 3 x 3 matrix of the components [11, 22, 33, 12, 13, 23]."""
+    return [[u[0], u[3], u[4]], [u[3], u[1], u[5]], [u[4], u[5], u[2]]]
+
+
+def _six(m):
+    return [m[0][0], m[1][1], m[2][2], m[0][1], m[0][2], m[1][2]]
+
+
+def _congruent(t, m):
+    """t m tᵀ for 3 x 3 matrices."""
+    tm = [[sum(t[i][k] * m[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+    return [[sum(tm[i][k] * t[j][k] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def _rotate_crystal_u(u, rotation, nstar):
+    """The crystal-frame tensor (CIF U^ij, spec § 5.1, Crystallographic atom
+    sites) of the copy that the operation with fractional rotation R makes:
+    N⁻¹ R N U N Rᵀ N⁻¹, N = diag(a*). The fractional-basis tensor N U N
+    transforms as R (N U N) Rᵀ, like x' = R x (Grosse-Kunstleve & Adams,
+    J. Appl. Cryst. 35, 477 (2002), doi:10.1107/S0021889802008580)."""
+    scaled = [[nstar[i] * v * nstar[j] for j, v in enumerate(row)]
+              for i, row in enumerate(_sym6(u))]
+    turned = _congruent(rotation, scaled)
+    return [round(v, 10) + 0.0 for v in
+            _six([[turned[i][j] / (nstar[i] * nstar[j]) for j in range(3)] for i in range(3)])]
+
+
+def _positive_definite(u):
+    m = _sym6(u)
+    minor = m[0][0] * m[1][1] - m[0][1] ** 2
+    det = (m[0][0] * (m[1][1] * m[2][2] - m[1][2] ** 2) - m[0][1] * (m[0][1] * m[2][2] - m[1][2] * m[0][2])
+           + m[0][2] * (m[0][1] * m[1][2] - m[1][1] * m[0][2]))
+    return m[0][0] > 0 and minor > 0 and det > 0
+
+
+def _code(token):
+    """A CIF code value (a disorder assembly or group), else None."""
+    return None if _missing(token) or not token[1].strip() else token[1].strip()
+
+
+def _aniso_rows(block):
+    """{site label: (type, [six components])} of the anisotropic loop, U
+    components preferred over B (CIF core `_atom_site_aniso.U_ij`, `B_ij`)."""
+    found = _column(block, _ANISO_LABEL)
+    if not found:
+        return {}
+    rows, at = found
+    tags = next(t for t, r in block[2] if r is rows)
+    out = {}
+    for letter in ("u", "b"):
+        names = [f"_atom_site_aniso_{letter}_{ij}" for ij in _ANISO_ORDER]
+        if not all(n in tags for n in names):
+            continue
+        for row in rows:
+            label = row[at][1]
+            values = [_cif_number(row[tags.index(n)], n) for n in names]
+            if label not in out and None not in values:
+                out[label] = ("Uani" if letter == "u" else "Bani", values)
+    return out
 
 
 def _missing(token):
@@ -271,6 +345,9 @@ def import_cif(source, destination, *, block=None):
     if not rows:
         raise ValueError("CIF has no atom sites")
     scale = _pdb_scale(lattice)
+    nstar = _reciprocal_lengths(_lattice_inverse(lattice))
+    aniso = _aniso_rows(chosen)
+    adp_dropped, anisotropic, disordered = 0, 0, 0
 
     def cartesian(f):
         return [sum(f[i] * lattice[i][k] for i in range(3)) for k in range(3)]
@@ -299,7 +376,38 @@ def import_cif(source, destination, *, block=None):
         b = _cif_number(get("_atom_site_b_iso_or_equiv"), "B_iso")
         if b is None and u is not None:
             b = 8 * math.pi ** 2 * u
+        # Displacement parameters and disorder grouping (spec § 5.1,
+        # Crystallographic atom sites; CIF core _atom_site.ADP_type,
+        # _atom_site_aniso.U_ij / B_ij, _atom_site.disorder_assembly and
+        # _atom_site.disorder_group).
+        declared = _code(get("_atom_site_adp_type") or get("_atom_site_thermal_displace_type"))
+        adp = None
+        if label[1] in aniso and (declared or "").lower() not in ("uiso", "biso"):
+            kind, components = aniso[label[1]]
+            if _positive_definite(components):
+                adp = {"type": kind, "frame": "crystal", "aniso": components}
+                if kind == "Bani":
+                    equiv = b                      # B(equiv), or 8π² U(equiv)
+                else:
+                    equiv = u if u is not None or b is None else b / (8 * math.pi ** 2)
+                if equiv is not None and equiv > 0:
+                    adp["iso"] = equiv
+            else:
+                adp_dropped += 1                   # keep the isotropic value below
+        if adp is None and (u is not None or b is not None):
+            recorded_b = _cif_number(get("_atom_site_b_iso_or_equiv"), "B_iso")
+            biso = recorded_b is not None and ((declared or "").lower() == "biso" or u is None)
+            value = recorded_b if biso else u
+            if value is not None and value > 0:
+                adp = {"type": "Biso" if biso else "Uiso", "iso": value}
+            else:
+                adp_dropped += 1
+        group = _code(get("_atom_site_disorder_group"))
+        assembly = _code(get("_atom_site_disorder_assembly")) if group else None
+        anisotropic += adp is not None and "aniso" in adp
+        disordered += group is not None
         images = []
+        rotations = []
         for r, t in float_ops:
             g = [round(sum(r[i][k] * f[k] for k in range(3)) + t[i], 10) % 1.0
                  for i in range(3)]
@@ -307,13 +415,22 @@ def import_cif(source, destination, *, block=None):
                 merged += 1
                 continue
             images.append(g)
-        for g in images:
+            rotations.append(r)
+        for g, r in zip(images, rotations):
             atom = _atom(symbol, [round(v, 6) + 0.0 for v in cartesian(g)])
             atom["atom_name"] = label[1]
             if occupancy is not None:
                 atom["occupancy"] = occupancy
             if b is not None:
                 atom["b_factor"] = b
+            if adp is not None:
+                atom["adp"] = dict(adp)
+                if "aniso" in adp:
+                    atom["adp"]["aniso"] = _rotate_crystal_u(adp["aniso"], r, nstar)
+            if group is not None:
+                if assembly is not None:
+                    atom["disorder_assembly"] = assembly
+                atom["disorder_group"] = group
             atoms.append(atom)
     symmetry = {}
     hm, number, hall = _item(chosen, _HM), _item(chosen, _NUMBER), _item(chosen, _HALL)
@@ -336,7 +453,8 @@ def import_cif(source, destination, *, block=None):
                                     "structure_ref": "structure"})
                 writer.add_json("symmetry", "data", symmetry)
         findings = _validated(temporary)
-    used = set(_CELL) | set(_SITE) | set(_OPERATIONS) | set(_HALL) | set(_HM) | set(_NUMBER)
+    used = (set(_CELL) | set(_SITE) | set(_OPERATIONS) | set(_HALL) | set(_HM) | set(_NUMBER)
+            | {_ANISO_LABEL} | {f"_atom_site_aniso_{x}_{ij}" for x in "ub" for ij in _ANISO_ORDER})
     present = set(chosen[1]) | {t for tags, _ in chosen[2] for t in tags}
     return {"format": "cif", "output": str(destination), "block": chosen[0],
             "blocks": [b[0] for b in blocks], "sections": ["structure"]
@@ -344,13 +462,40 @@ def import_cif(source, destination, *, block=None):
             "sites": len(rows), "operators": len(ops), "operator_source": source_kind,
             "atoms": len(atoms), "special_position_atoms_merged": merged,
             "partial_occupancy_sites": partial, "charges_omitted": charges,
+            "anisotropic_sites": anisotropic, "disordered_sites": disordered,
+            "displacement_parameters_dropped": adp_dropped,
             "space_group": symmetry.get("space_group_symbol"),
             "unused_tags": len(present - used),
             "scope": "Cell, fractional atom sites (label, element, occupancy, isotropic "
-                     "displacement) and the unit cell they generate under the space group, "
-                     "in the standard orientation (a along x, b in the xy-plane). No bonds, "
-                     "anisotropic displacement, disorder resolution, charge or job is "
-                     "inferred. Keep the original CIF."}
+                     "and anisotropic displacement parameters, disorder assembly and "
+                     "group) and the unit cell they generate under the space group, in "
+                     "the standard orientation (a along x, b in the xy-plane); each copy "
+                     "carries the displacement tensor of its own orientation. A tensor "
+                     "that is not positive definite falls back to the isotropic value, "
+                     "a value that is not positive is dropped; both are counted. No "
+                     "bonds, disorder resolution, charge or job is inferred. Keep the "
+                     "original CIF."}
+
+
+def _export_adp(adp, transpose, nstar):
+    """(CIF ADP_type, U_iso_or_equiv or None, crystal-frame U^ij or None) of an
+    atom's ``adp``, written as U as the IUCr recommends (B = 8π² U); a
+    Cartesian tensor is turned into the CIF frame, U = N⁻¹ A⁻¹ U_cart A⁻ᵀ N⁻¹
+    with A the lattice vectors as columns (spec § 5.1, Crystallographic atom
+    sites). None without ``adp``."""
+    if not isinstance(adp, dict):
+        return None
+    scale = 1 / (8 * math.pi ** 2) if adp.get("type") in ("Biso", "Bani") else 1.0
+    iso = adp.get("iso")
+    iso = None if iso is None else iso * scale
+    u = adp.get("aniso")
+    if u is None:
+        return ("Uiso", iso, None)
+    u = [v * scale for v in u]
+    if adp.get("frame") == "cartesian":
+        frac = _congruent(transpose, _sym6(u))
+        u = _six([[frac[i][j] / (nstar[i] * nstar[j]) for j in range(3)] for i in range(3)])
+    return ("Uani", iso, u)
 
 
 def export_cif(source, destination, *, section=None):
@@ -385,6 +530,12 @@ def export_cif(source, destination, *, section=None):
             labels = names
         has_occupancy = any(a.get("occupancy") is not None for a in atoms)
         has_b = any(a.get("b_factor") is not None for a in atoms)
+        nstar = _reciprocal_lengths(inverse)
+        transpose = [[inverse[k][i] for k in range(3)] for i in range(3)]
+        adps = [_export_adp(a.get("adp"), transpose, nstar) for a in atoms]
+        has_adp = any(x is not None for x in adps)
+        has_group = any(a.get("disorder_group") is not None for a in atoms)
+        has_assembly = any(a.get("disorder_assembly") is not None for a in atoms)
         name = re.sub(r"[^A-Za-z0-9_.-]", "_", selected.id)
         lines = [f"# CIF written by qvf.convert {__version__}: P 1 cell, no symmetry applied",
                  f"data_{name}"]
@@ -396,8 +547,11 @@ def export_cif(source, destination, *, section=None):
                   "_atom_site_type_symbol", "_atom_site_fract_x", "_atom_site_fract_y",
                   "_atom_site_fract_z"]
         lines += ["_atom_site_occupancy"] * has_occupancy + ["_atom_site_B_iso_or_equiv"] * has_b
+        lines += ["_atom_site_U_iso_or_equiv", "_atom_site_adp_type"] * has_adp
+        lines += ["_atom_site_disorder_assembly"] * has_assembly
+        lines += ["_atom_site_disorder_group"] * has_group
         error = 0.0
-        for label, atom in zip(labels, atoms):
+        for index, (label, atom) in enumerate(zip(labels, atoms)):
             x = [_number(v) for v in atom["position"]]
             f = [sum(x[k] * inverse[k][i] for k in range(3)) for i in range(3)]
             text = [f"{v:.8f}" for v in f]
@@ -408,7 +562,21 @@ def export_cif(source, destination, *, section=None):
                 fields.append("?" if atom.get("occupancy") is None else f"{atom['occupancy']:.4f}")
             if has_b:
                 fields.append("?" if atom.get("b_factor") is None else f"{atom['b_factor']:.4f}")
+            if has_adp:
+                adp = adps[index]
+                fields += (["?", "?"] if adp is None else
+                           ["?" if adp[1] is None else f"{adp[1]:.6f}", adp[0]])
+            if has_assembly:
+                fields.append(atom.get("disorder_assembly") or ".")
+            if has_group:
+                fields.append(atom.get("disorder_group") or ".")
             lines.append(" ".join(fields))
+        tensors = [(label, adp[2]) for label, adp in zip(labels, adps)
+                   if adp is not None and adp[2] is not None]
+        if tensors:
+            lines += ["loop_", "_atom_site_aniso_label"]
+            lines += [f"_atom_site_aniso_U_{ij}" for ij in _ANISO_ORDER]
+            lines += [" ".join([label] + [f"{v:.6f}" for v in u]) for label, u in tensors]
         with _new_output(destination) as temporary:
             temporary.write_text("\n".join(lines) + "\n", encoding="ascii")
         report = _export_report(reader, selected, {selected.id}, destination, "cif")

@@ -2629,6 +2629,86 @@ def _():
             _err("E_PAYLOAD_SCHEMA"), None)
 
 
+# Crystallographic atom sites: displacement parameters and disorder groups
+# (spec § 5.1, Crystallographic atom sites).
+
+_MONOCLINIC = [[5.0, 0.0, 0.0], [0.0, 6.0, 0.0], [-1.2, 0.0, 6.8]]
+
+
+def _crystal_atom(**extra: Any) -> dict:
+    """A one-atom monoclinic cell whose atom carries ``extra``."""
+    atom = {"symbol": "Fe", "position": [1.0, 1.5, 2.0], "atomic_number": 26}
+    atom.update(extra)
+    return {"atoms": [atom], "pbc": [True, True, True], "lattice_vectors": _MONOCLINIC}
+
+
+def _crystal_archive(payload: dict) -> bytes:
+    a = Archive("crystal-sites")
+    a.add_structure(payload=payload)
+    return a.to_bytes()
+
+
+@case("adp_not_positive_definite")
+def _():
+    return (_crystal_archive(_crystal_atom(adp={
+                "type": "Uani", "frame": "crystal",
+                "aniso": [0.02, 0.02, 0.02, 0.03, 0.0, 0.0]})),
+            "An anisotropic displacement tensor with U12 = 0.03 > sqrt(U11 U22) "
+            "= 0.02 Å²: its second leading minor is negative, so it is not "
+            "positive definite and describes no ellipsoid (spec § 5.1, "
+            "Crystallographic atom sites).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("adp_crystal_frame_molecule")
+def _():
+    water = json.loads(json.dumps(WATER))
+    water["atoms"][0]["adp"] = {"type": "Uani", "frame": "crystal",
+                                "aniso": [0.02, 0.03, 0.04, 0.0, 0.0, 0.0]}
+    return (_crystal_archive(water),
+            "Water, a molecule, whose oxygen carries an anisotropic tensor in the "
+            "crystal frame; the crystal frame needs reciprocal-cell lengths, so a "
+            "structure periodic along all three axes (spec § 5.1).",
+            _err("E_MEMBER_MALFORMED"), None)
+
+
+@case("adp_aniso_without_frame")
+def _():
+    return (_crystal_archive(_crystal_atom(adp={
+                "type": "Uani", "aniso": [0.02, 0.03, 0.04, 0.0, 0.0, 0.0]})),
+            "A Uani displacement without `frame`: the six components mean nothing "
+            "until the frame is stated ($defs/AtomDisplacement, spec § 5.1).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("adp_iso_with_aniso")
+def _():
+    return (_crystal_archive(_crystal_atom(adp={
+                "type": "Uiso", "iso": 0.02, "frame": "cartesian",
+                "aniso": [0.02, 0.03, 0.04, 0.0, 0.0, 0.0]})),
+            "An isotropic (Uiso) displacement that also carries anisotropic "
+            "components; an isotropic type has `iso` only "
+            "($defs/AtomDisplacement, spec § 5.1).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("disorder_assembly_without_group")
+def _():
+    return (_crystal_archive(_crystal_atom(occupancy=0.5, disorder_assembly="A")),
+            "An atom in disorder assembly A without a disorder group: an assembly "
+            "is made of groups, so `disorder_assembly` requires `disorder_group` "
+            "($defs/StructureAtom, spec § 5.1).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
+@case("disorder_group_placeholder")
+def _():
+    return (_crystal_archive(_crystal_atom(disorder_group=".")),
+            "A disorder group written as the CIF placeholder '.'; a producer omits "
+            "the field for an atom that is not disordered (spec § 5.1).",
+            _err("E_PAYLOAD_SCHEMA"), None)
+
+
 def build(out_dir: str = OUT) -> list[str]:
     os.makedirs(out_dir, exist_ok=True)
     written = []

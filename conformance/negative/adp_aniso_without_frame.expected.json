@@ -1,0 +1,10 @@
+{
+  "archive": "adp_aniso_without_frame.qvf",
+  "description": "A Uani displacement without `frame`: the six components mean nothing until the frame is stated ($defs/AtomDisplacement, spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

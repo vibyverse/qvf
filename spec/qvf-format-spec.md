@@ -1455,6 +1455,123 @@ single conformer, and residues are keyed by (`chain_id`, `residue_seq`) alone.
 These fields were added under **v1**: an optional member is the additive case
 and does not bump `qvf_version` (see `GOVERNANCE.md`).
 
+#### Crystallographic atom sites
+
+Three further **OPTIONAL** typed per-atom fields (`$defs/StructureAtom`)
+carry what a crystal-structure refinement records about an atom site beyond
+its position and `occupancy`: its displacement parameters and its disorder
+grouping. They follow the CIF core dictionary (version 3.4.0, with the
+attribute templates of `templ_attr.cif` 2.0.1); the dictionary names are given
+beside each field. Absent means "not recorded", and a producer omits the CIF
+`.` and `?` placeholders rather than writing them.
+
+| Field | Type | CIF core source | Meaning |
+|---|---|---|---|
+| `adp` | object (`$defs/AtomDisplacement`) | `_atom_site.ADP_type`, `_atom_site.U_iso_or_equiv` / `B_iso_or_equiv`, `_atom_site_aniso.U_11` … `U_23` / `B_11` … `B_23` | Atomic displacement parameters, Å². |
+| `disorder_assembly` | non-empty string, no whitespace | `_atom_site.disorder_assembly` | The disorder assembly the atom belongs to, `"A"`. |
+| `disorder_group` | non-empty string, no whitespace | `_atom_site.disorder_group` | The disorder group the atom belongs to, as recorded: `"1"`, `"2"`, `"-1"`. |
+
+##### Displacement parameters
+
+`adp` has the members:
+
+| Member | Type | Required | Meaning | Unit |
+|---|---|:--:|---|---|
+| `type` | `"Uiso"`, `"Uani"`, `"Biso"` or `"Bani"` | yes | Kind of parameter, `_atom_site.ADP_type`: isotropic or anisotropic, U or B. | — |
+| `iso` | number > 0 | for `Uiso`, `Biso` | U_iso or B_iso; for `Uani` / `Bani`, the equivalent isotropic value U(equiv) or B(equiv) as recorded (`_atom_site.U_iso_or_equiv`). | Å² |
+| `aniso` | number[6] | for `Uani`, `Bani` | The unique components of the symmetric tensor in the CIF order [11, 22, 33, 12, 13, 23], in the frame `frame` names; absent for an isotropic type. | Å² |
+| `frame` | `"crystal"` or `"cartesian"` | for `Uani`, `Bani` | Frame of `aniso`; absent for an isotropic type. | — |
+
+All values are in Å², and B = 8π²U for each component (`templ_attr.cif`,
+`aniso_Bij`). The CIF types `Uovl`, `Umpe` and `Bovl` are not carried. A
+producer converts `betaani` components to U^ij = β^ij / (2π² a\*_i a\*_j)
+and writes `Uani` (`templ_attr.cif`, `aniso_Uij`).
+
+* **`crystal` frame.** The CIF convention of `_atom_site_aniso.U_ij`: the
+  components U^ij that appear in the structure-factor term
+
+  ```text
+  T = exp( -2π² Σ_ij U^ij h_i h_j a*_i a*_j )
+  ```
+
+  with h the Miller indices and a\*_i the reciprocal-cell lengths of the
+  structure's `lattice_vectors` (`templ_attr.cif`, `aniso_Uij`; Trueblood
+  et al., *Acta Cryst.* A52, 770 (1996), doi:10.1107/S0108767396005697). It
+  needs a structure periodic along all three axes. The Cartesian tensor is
+
+  ```text
+  U_cart = A N U N Aᵀ,   A = [a_1 a_2 a_3] (lattice vectors as columns),
+                          N = diag(a*_1, a*_2, a*_3)
+  ```
+
+  (Grosse-Kunstleve & Adams, *J. Appl. Cryst.* 35, 477 (2002),
+  doi:10.1107/S0021889802008580). Because the tensor is tied to
+  the crystal axes, a writer that changes the cell keeps its meaning, and one
+  that only rotates the Cartesian frame need not touch it.
+* **`cartesian` frame.** U_cart itself, on the Cartesian axes of the atoms'
+  `position`. A writer that rotates the structure by Q **MUST** write
+  Q U_cart Qᵀ, or drop `adp`.
+* **Positive definite.** The 3 × 3 tensor built from `aniso` **MUST** be
+  positive definite: an ellipsoid with a non-positive axis is no displacement.
+  Definiteness does not depend on the frame, since U_cart is congruent to U.
+* **Symmetry copies.** The atoms of one orbit carry the tensor of their own
+  orientation. A producer that generates atom k from a site by the operation
+  (R, t) (the *Site map* of § 5.7) writes, in the `crystal` frame,
+  N⁻¹ R N U N Rᵀ N⁻¹, and in the `cartesian` frame
+  (A R A⁻¹) U_cart (A R A⁻¹)ᵀ.
+* **`b_factor`.** An atom with `adp` **MAY** also carry `b_factor` for
+  consumers that read only that field; it is then B_iso, or 8π² U(equiv) of
+  an anisotropic atom, and not a confidence score. `adp` is authoritative.
+
+A validator checks the member rules with the schema and the frame and
+definiteness rules beside it (`E_MEMBER_MALFORMED`, § 6).
+
+##### Disorder assemblies and groups
+
+The CIF core dictionary defines a disorder *assembly* as a cluster of atoms
+with long-range disorder but local order, and a disorder *group* as the sites
+of an assembly that are occupied simultaneously; sites of different groups of
+one assembly are not (`_atom_site.disorder_assembly`,
+`_atom_site.disorder_group`). A group may describe a positional alternative
+(the two orientations of a methyl group) or a compositional one (Mg and Mn
+sharing a site, each in its own group). A minus prefix, as in `"-1"`, marks
+sites disordered about a special position: the group overlaps its own
+symmetry copies.
+
+* An atom without `disorder_group` is not disordered and belongs to every
+  model.
+* `disorder_assembly` requires `disorder_group`. Atoms with a group but no
+  assembly belong to the structure's one unnamed assembly, as in a CIF that
+  needs no assembly codes because it has a single disordered cluster.
+* A **model** of the structure picks one group from every assembly: it is the
+  atoms without a group plus, for each assembly, the atoms of the picked group.
+  Different assemblies are independent of each other.
+* The codes are kept as recorded, as strings; they are compared as strings
+  within one structure, and `"-1"` and `"1"` are different groups.
+* Like `occupancy` and `alt_loc`, neither field filters atoms: a consumer
+  **MUST NOT** drop or select atoms by group unless its user asks, and a
+  chosen model is written as a new structure, not as a rewrite of the source.
+  An ordering that places alternatives in a supercell is a choice of model,
+  not the deposited structure.
+
+`alt_loc` remains the PDB/mmCIF conformer indicator (*Biomolecular atom
+identity*); a small-molecule or inorganic CIF writes its disorder as
+`disorder_assembly` and `disorder_group`, and a producer **MAY** write both
+when it converts between the two conventions.
+
+```json
+{"symbol": "C", "atomic_number": 6, "position": [1.204, 3.311, 0.872],
+ "atom_name": "C7A", "occupancy": 0.62,
+ "disorder_assembly": "A", "disorder_group": "1",
+ "adp": {"type": "Uani", "frame": "crystal", "iso": 0.0412,
+         "aniso": [0.0381, 0.0455, 0.0402, 0.0023, 0.0081, -0.0017]}}
+```
+
+A consumer that does not understand these fields **MUST** ignore them; an
+archive without them is read exactly as before. They were added under **v1**:
+an optional member is the additive case and does not bump `qvf_version` (see
+`GOVERNANCE.md`).
+
 #### Secondary-structure ranges
 
 A `secondary_structure` entry is one inclusive range of residues on one chain.

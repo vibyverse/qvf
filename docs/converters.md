@@ -415,6 +415,21 @@ becomes the atom's `atom_name`, `_atom_site_occupancy` its `occupancy` (in
 `_atom_site_B_iso_or_equiv`, or 8π² × `_atom_site_U_iso_or_equiv`, its
 `b_factor`. Every site is imported; disordered alternatives are not resolved.
 
+Displacement parameters and disorder groups become the atom's `adp`,
+`disorder_assembly` and `disorder_group` (spec § 5.1, *Crystallographic atom
+sites*). A site with a row in the `_atom_site_aniso_label` loop
+(`_atom_site_aniso_U_11` … `U_23`, else `B_11` … `B_23`) and no isotropic
+`_atom_site_adp_type` gets `Uani` (or `Bani`) in the CIF `crystal` frame,
+with `_atom_site_U_iso_or_equiv` as its `iso`; any other site with an
+isotropic value gets `Uiso`, or `Biso` when only `_atom_site_B_iso_or_equiv`
+is given or the type says so. Each symmetry copy carries the tensor of its
+own orientation, N⁻¹ R N U N Rᵀ N⁻¹. A tensor that is not positive definite
+falls back to the isotropic value, and a value that is not positive is
+dropped; both are counted in `displacement_parameters_dropped`.
+`_atom_site_disorder_group` and `_atom_site_disorder_assembly` are kept as
+written, `.` and `?` meaning none; an assembly without a group is not kept.
+The report counts `anisotropic_sites` and `disordered_sites`.
+
 The structure is the whole unit cell. The symmetry operations come from
 `_space_group_symop_operation_xyz` (or the older `_symmetry_equiv_pos_as_xyz`).
 They must be distinct, include `x,y,z` and form a group. Otherwise they come
@@ -430,14 +445,20 @@ xy-plane) with `pbc` `[true, true, true]`, and Cartesian positions are rounded
 to 1e-6 Å. A `structure.symmetry` section `symmetry` keeps the space-group
 symbol, number and Hall symbol the block gives. The report gives the block,
 the operator count and source (`listed`, `hall` or `p1`), the atom count and
-the number of other tags not read (`unused_tags`). Bonds, anisotropic
-displacement, geometry tables and experimental metadata are not kept.
+the number of other tags not read (`unused_tags`). Bonds, geometry tables
+and experimental metadata are not kept.
 
 Export writes one structure periodic on all three axes as a P 1 CIF: the
 cell lengths and angles (6 decimals), the identity operation and fractional
 coordinates (8 decimals) for every atom, with `_atom_site_occupancy` and
 `_atom_site_B_iso_or_equiv` columns when any atom has them (`?` where one
-does not). Labels are the atoms' `atom_name` values when they are unique and
+does not). Atoms with `adp` add `_atom_site_U_iso_or_equiv` and
+`_atom_site_adp_type` columns and, for anisotropic atoms, an
+`_atom_site_aniso_U_*` loop: everything is written as U, as the IUCr
+recommends, and a `cartesian` tensor is turned into the CIF frame,
+U = N⁻¹ A⁻¹ U_cart A⁻ᵀ N⁻¹. `_atom_site_disorder_assembly` and
+`_atom_site_disorder_group` columns follow when any atom has them (`.` where
+one does not). Labels are the atoms' `atom_name` values when they are unique and
 CIF-safe, else element plus a running number (`Ti1`, `O1`, …); the report
 says which. Any lattice orientation is accepted, but a reader places the cell
 in its own standard orientation, so Cartesian coordinates may come back

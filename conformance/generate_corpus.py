@@ -5429,6 +5429,94 @@ def build_periodic_identity():
        "translation of each of the six atoms (spec § 5.7, Site map).")
 
 
+# Crystallographic atom sites (spec § 5.1, Crystallographic atom sites).
+
+def build_crystal_sites():
+    """structure_crystal_sites: displacement parameters and disorder groups."""
+    import math
+    # A monoclinic cell (beta = 100 degrees) so that the crystal frame of the
+    # CIF U^ij differs from the Cartesian one. Synthetic values.
+    lattice = [[7.12, 0.0, 0.0], [0.0, 9.48, 0.0],
+               [10.31 * math.cos(math.radians(100.0)), 0.0,
+                10.31 * math.sin(math.radians(100.0))]]
+
+    def cart(f):
+        return [round(sum(f[c] * lattice[c][r] for c in range(3)), 6) + 0.0
+                for r in range(3)]
+
+    def atom(symbol, frac, label, **extra):
+        out = {"symbol": symbol, "position": cart(frac), "atom_name": label}
+        out.update(extra)
+        return out
+
+    u_eq = 0.0412
+    atoms = [
+        # An ordered iron with an anisotropic tensor in the CIF crystal frame,
+        # its recorded U(equiv), and b_factor = 8 pi^2 U(equiv) for readers
+        # that only know b_factor.
+        atom("Fe", [0.25, 0.25, 0.25], "Fe1",
+             b_factor=round(8 * math.pi ** 2 * u_eq, 4),
+             adp={"type": "Uani", "frame": "crystal", "iso": u_eq,
+                  "aniso": [0.0381, 0.0455, 0.0402, 0.0023, 0.0081, -0.0017]}),
+        # A methyl group in two orientations: the carbon is ordered, the
+        # hydrogens are groups 1 (occupancy 0.62) and 2 (0.38) of assembly A.
+        atom("C", [0.40, 0.10, 0.30], "C7",
+             adp={"type": "Uani", "frame": "cartesian",
+                  "aniso": [0.051, 0.062, 0.058, 0.004, -0.006, 0.003]}),
+        atom("H", [0.46, 0.17, 0.33], "H7A", occupancy=0.62,
+             disorder_assembly="A", disorder_group="1",
+             adp={"type": "Uiso", "iso": 0.072}),
+        atom("H", [0.45, 0.03, 0.35], "H7B", occupancy=0.62,
+             disorder_assembly="A", disorder_group="1",
+             adp={"type": "Uiso", "iso": 0.072}),
+        atom("H", [0.47, 0.08, 0.24], "H7D", occupancy=0.38,
+             disorder_assembly="A", disorder_group="2",
+             adp={"type": "Uiso", "iso": 0.072}),
+        atom("H", [0.34, 0.15, 0.37], "H7E", occupancy=0.38,
+             disorder_assembly="A", disorder_group="2",
+             adp={"type": "Uiso", "iso": 0.072}),
+        # A site shared by Mg (0.7) and Mn (0.3): compositional disorder, one
+        # group per composition, in assembly B; independent of assembly A.
+        atom("Mg", [0.75, 0.50, 0.75], "Mg1", occupancy=0.7,
+             disorder_assembly="B", disorder_group="1",
+             adp={"type": "Biso", "iso": 0.84}),
+        atom("Mn", [0.75, 0.50, 0.75], "Mn1", occupancy=0.3,
+             disorder_assembly="B", disorder_group="2",
+             adp={"type": "Bani", "frame": "crystal",
+                  "aniso": [0.79, 0.88, 0.83, 0.05, 0.12, -0.02]}),
+        # A water disordered about a special position (minus prefix), with no
+        # assembly code: the structure's unnamed assembly.
+        atom("O", [0.0, 0.52, 0.5], "O1W", occupancy=0.5, disorder_group="-1",
+             adp={"type": "Uiso", "iso": 0.095}),
+    ]
+    w = QvfWriter(_PROGRAM, _VERSION,
+                  "displacement parameters and disorder groups of a crystal structure")
+    w.add_structure(atoms, pbc=[True, True, True], lattice_vectors=lattice)
+    _write("structure_crystal_sites", w, [
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 0, "adp", "aniso", 5], "equals": -0.0017},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 0, "adp", "frame"], "equals": "crystal"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 1, "adp", "frame"], "equals": "cartesian"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 4, "disorder_group"], "equals": "2"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 7, "disorder_assembly"], "equals": "B"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 7, "adp", "type"], "equals": "Bani"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 8, "disorder_group"], "equals": "-1"},
+        {"section": "structure", "member": "structure",
+         "json_pointer": ["atoms", 6, "adp", "iso"], "equals": 0.84, "tol": 1e-12},
+    ], "A monoclinic crystal structure with atomic displacement parameters of "
+       "the four carried CIF types (Uani in the crystal and Cartesian frames, "
+       "Uiso, Biso, Bani) and disorder groups: a methyl group in two "
+       "orientations (assembly A, groups 1 and 2), a site shared by Mg and Mn "
+       "(assembly B, one group per composition) and a water disordered about "
+       "a special position (group -1, no assembly) (spec § 5.1, "
+       "Crystallographic atom sites).")
+
 if __name__ == "__main__":
     build()
     build_zero_spin()
@@ -5441,3 +5529,4 @@ if __name__ == "__main__":
     build_xray_mossbauer()
     build_eda()
     build_periodic_identity()
+    build_crystal_sites()

@@ -227,6 +227,61 @@ inline std::vector<std::string> structure_payload_errors(const std::string& sid,
     return errs;
 }
 
+// Whether the symmetric 3 x 3 tensor with the unique components u in the CIF
+// order [11, 22, 33, 12, 13, 23] is positive definite: its three leading
+// principal minors are positive (Sylvester's criterion). Mirrors
+// _positive_definite() in python/qvf/validate.py.
+inline bool positive_definite(const std::array<double, 6>& u) {
+    const double u11 = u[0], u22 = u[1], u33 = u[2], u12 = u[3], u13 = u[4], u23 = u[5];
+    const double m2 = u11 * u22 - u12 * u12;
+    const double det = u11 * (u22 * u33 - u23 * u23) - u12 * (u12 * u33 - u23 * u13) +
+                       u13 * (u12 * u23 - u22 * u13);
+    return u11 > 0 && m2 > 0 && det > 0;
+}
+
+// Displacement parameters of a `structure` payload's atoms (spec § 5.1,
+// *Crystallographic atom sites*), beyond the schema: the `crystal` frame needs
+// a structure periodic along all three axes, and an anisotropic tensor is
+// positive definite. Malformed members are the schema check's finding and are
+// skipped here. Mirrors _adp_errors() in python/qvf/validate.py.
+inline std::vector<std::string> adp_errors(const std::string& sid, const Json& payload) {
+    std::vector<std::string> errs;
+    if (!payload.is_object()) return errs;
+    const Json* atoms = get(payload, "atoms");
+    if (!atoms || !atoms->is_array()) return errs;
+    bool periodic3 = false;
+    const Json* pbc = get(payload, "pbc");
+    const Json* lattice = get(payload, "lattice_vectors");
+    if (pbc && pbc->is_array() && pbc->size() == 3 && lattice && lattice->is_array()) {
+        periodic3 = true;
+        for (const Json& x : pbc->elements())
+            if (!x.is_bool() || !x.as_bool()) periodic3 = false;
+    }
+    for (size_t k = 0; k < atoms->size(); ++k) {
+        const Json& atom = atoms->at(k);
+        const Json* adp = atom.is_object() ? get(atom, "adp") : nullptr;
+        if (!adp || !adp->is_object()) continue;
+        const std::string where =
+            "section " + quote_str(sid) + ": atoms[" + std::to_string(k) + "].adp";
+        const Json* frame = get(*adp, "frame");
+        if (frame && frame->is_string() && frame->as_string() == "crystal" && !periodic3)
+            errs.push_back(where + " is in the crystal frame, which needs a structure "
+                                   "periodic along all three axes (spec § 5.1)");
+        const Json* u = get(*adp, "aniso");
+        if (!u || !u->is_array() || u->size() != 6) continue;
+        std::array<double, 6> v{};
+        bool finite = true;
+        for (size_t c = 0; c < 6 && finite; ++c) {
+            if (!u->at(c).is_number() || !std::isfinite(u->at(c).as_double())) finite = false;
+            else v[c] = u->at(c).as_double();
+        }
+        if (finite && !positive_definite(v))
+            errs.push_back(where + ".aniso " + show(*u) +
+                           " is not positive definite (spec § 5.1)");
+    }
+    return errs;
+}
+
 // Every declared unit of a member payload (spec § 4.3, "Declared units"),
 // as (location inside the payload, value): each value of its `units` object,
 // for a one-dimensional spectrum x_units, y_units and broadening.units, the
@@ -3508,6 +3563,8 @@ inline void run_validation(const ZipReader& zip, const Limits& lim,
                         if (semantics && kind == "structure" && role == "structure") {
                             for (const auto& msg : structure_payload_errors(sid, doc))
                                 f.error("E_STRUCTURE_PERIODICITY", mwhere, msg);
+                            for (const auto& msg : adp_errors(sid, doc))
+                                f.error("E_MEMBER_MALFORMED", mwhere, msg);
                             const Json* atoms = get(doc, "atoms");
                             if (atoms && atoms->is_array()) {
                                 n_atoms_of.emplace(sid,

@@ -1,0 +1,10 @@
+{
+  "archive": "adp_crystal_frame_molecule.qvf",
+  "description": "Water, a molecule, whose oxygen carries an anisotropic tensor in the crystal frame; the crystal frame needs reciprocal-cell lengths, so a structure periodic along all three axes (spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_MEMBER_MALFORMED",
+      "severity": "error"
+    }
+  ]
+}

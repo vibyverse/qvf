@@ -131,6 +131,11 @@ const ATOM_EXTRA_FIELDS = [
   "alt_loc",
   "occupancy",
   "hetero",
+  // Crystallographic atom sites (spec § 5.1): displacement parameters and
+  // the CIF disorder assembly and group.
+  "adp",
+  "disorder_assembly",
+  "disorder_group",
 ];
 
 export interface StructureOptions {

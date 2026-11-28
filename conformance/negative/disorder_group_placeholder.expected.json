@@ -1,0 +1,10 @@
+{
+  "archive": "disorder_group_placeholder.qvf",
+  "description": "A disorder group written as the CIF placeholder '.'; a producer omits the field for an atom that is not disordered (spec \u00a7 5.1).",
+  "expect": [
+    {
+      "code": "E_PAYLOAD_SCHEMA",
+      "severity": "error"
+    }
+  ]
+}

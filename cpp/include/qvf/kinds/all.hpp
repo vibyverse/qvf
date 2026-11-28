@@ -160,6 +160,36 @@ struct StructureFields {
     }
 };
 
+struct AtomDisplacement {
+    std::string type{};
+    std::optional<double> iso{};
+    std::optional<std::array<double, 6>> aniso{};
+    std::optional<std::string> frame{};
+    std::map<std::string, Json> extra;
+    Json to_json() const {
+        Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
+        if (out.has("type")) throw std::invalid_argument("use the typed field, not extra: type");
+        codec::put(out, "type", type);
+        if (out.has("iso")) throw std::invalid_argument("use the typed field, not extra: iso");
+        if (iso) codec::put(out, "iso", *iso);
+        if (out.has("aniso")) throw std::invalid_argument("use the typed field, not extra: aniso");
+        if (aniso) codec::put(out, "aniso", *aniso);
+        if (out.has("frame")) throw std::invalid_argument("use the typed field, not extra: frame");
+        if (frame) codec::put(out, "frame", *frame);
+        return out;
+    }
+    static AtomDisplacement from_json(const Json& j) {
+        codec::require(j.is_object(), "expected typed payload object");
+        AtomDisplacement out;
+        out.type = codec::get<std::string>(j, "type");
+        if (j.has("iso")) out.iso.emplace(codec::get<double>(j, "iso"));
+        if (j.has("aniso")) out.aniso.emplace(codec::get<std::array<double, 6>>(j, "aniso"));
+        if (j.has("frame")) out.frame.emplace(codec::get<std::string>(j, "frame"));
+        for (const auto& kv : j.items()) if (kv.first != "type" && kv.first != "iso" && kv.first != "aniso" && kv.first != "frame") out.extra[kv.first] = kv.second;
+        return out;
+    }
+};
+
 struct StructureAtom {
     std::string symbol{};
     std::array<double, 3> position{};
@@ -169,6 +199,9 @@ struct StructureAtom {
     std::optional<std::string> alt_loc{};
     std::optional<double> occupancy{};
     std::optional<bool> hetero{};
+    std::optional<AtomDisplacement> adp{};
+    std::optional<std::string> disorder_assembly{};
+    std::optional<std::string> disorder_group{};
     std::map<std::string, Json> extra;
     Json to_json() const {
         Json out = codec::Value<std::map<std::string, Json>>::encode(extra);
@@ -188,6 +221,12 @@ struct StructureAtom {
         if (occupancy) codec::put(out, "occupancy", *occupancy);
         if (out.has("hetero")) throw std::invalid_argument("use the typed field, not extra: hetero");
         if (hetero) codec::put(out, "hetero", *hetero);
+        if (out.has("adp")) throw std::invalid_argument("use the typed field, not extra: adp");
+        if (adp) codec::put(out, "adp", *adp);
+        if (out.has("disorder_assembly")) throw std::invalid_argument("use the typed field, not extra: disorder_assembly");
+        if (disorder_assembly) codec::put(out, "disorder_assembly", *disorder_assembly);
+        if (out.has("disorder_group")) throw std::invalid_argument("use the typed field, not extra: disorder_group");
+        if (disorder_group) codec::put(out, "disorder_group", *disorder_group);
         return out;
     }
     static StructureAtom from_json(const Json& j) {
@@ -201,7 +240,10 @@ struct StructureAtom {
         if (j.has("alt_loc")) out.alt_loc.emplace(codec::get<std::string>(j, "alt_loc"));
         if (j.has("occupancy")) out.occupancy.emplace(codec::get<double>(j, "occupancy"));
         if (j.has("hetero")) out.hetero.emplace(codec::get<bool>(j, "hetero"));
-        for (const auto& kv : j.items()) if (kv.first != "symbol" && kv.first != "position" && kv.first != "atomic_number" && kv.first != "b_factor" && kv.first != "insertion_code" && kv.first != "alt_loc" && kv.first != "occupancy" && kv.first != "hetero") out.extra[kv.first] = kv.second;
+        if (j.has("adp")) out.adp.emplace(codec::get<AtomDisplacement>(j, "adp"));
+        if (j.has("disorder_assembly")) out.disorder_assembly.emplace(codec::get<std::string>(j, "disorder_assembly"));
+        if (j.has("disorder_group")) out.disorder_group.emplace(codec::get<std::string>(j, "disorder_group"));
+        for (const auto& kv : j.items()) if (kv.first != "symbol" && kv.first != "position" && kv.first != "atomic_number" && kv.first != "b_factor" && kv.first != "insertion_code" && kv.first != "alt_loc" && kv.first != "occupancy" && kv.first != "hetero" && kv.first != "adp" && kv.first != "disorder_assembly" && kv.first != "disorder_group") out.extra[kv.first] = kv.second;
         return out;
     }
 };

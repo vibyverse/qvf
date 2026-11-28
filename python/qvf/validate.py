@@ -641,6 +641,45 @@ def _structure_payload_errors(sid: str, payload: Any) -> list[str]:
     return errors
 
 
+def _positive_definite(u: list[float]) -> bool:
+    """Whether the symmetric 3 x 3 tensor with the unique components ``u`` in
+    the CIF order [11, 22, 33, 12, 13, 23] is positive definite: its three
+    leading principal minors are positive (Sylvester's criterion)."""
+    u11, u22, u33, u12, u13, u23 = u
+    m2 = u11 * u22 - u12 * u12
+    det = (u11 * (u22 * u33 - u23 * u23) - u12 * (u12 * u33 - u23 * u13)
+           + u13 * (u12 * u23 - u22 * u13))
+    return u11 > 0 and m2 > 0 and det > 0
+
+
+def _adp_errors(sid: str, payload: dict, pbc: Any) -> list[str]:
+    """Displacement parameters of a ``structure`` payload's atoms (spec § 5.1,
+    *Crystallographic atom sites*), beyond the schema: the ``crystal`` frame
+    needs a structure periodic along all three axes, and an anisotropic
+    tensor is positive definite. Malformed members are the schema check's
+    finding and are skipped here."""
+    atoms = payload.get("atoms")
+    if not isinstance(atoms, list):
+        return []
+    periodic3 = (isinstance(pbc, list) and len(pbc) == 3 and all(x is True for x in pbc)
+                 and isinstance(payload.get("lattice_vectors"), list))
+    errors: list[str] = []
+    for k, atom in enumerate(atoms):
+        adp = atom.get("adp") if isinstance(atom, dict) else None
+        if not isinstance(adp, dict):
+            continue
+        where = f"section {sid!r}: atoms[{k}].adp"
+        if adp.get("frame") == "crystal" and not periodic3:
+            errors.append(f"{where} is in the crystal frame, which needs a structure "
+                          f"periodic along all three axes (spec § 5.1)")
+        u = adp.get("aniso")
+        if (isinstance(u, list) and len(u) == 6
+                and all(_is_number(x) and math.isfinite(x) for x in u)
+                and not _positive_definite([float(x) for x in u])):
+            errors.append(f"{where}.aniso {u} is not positive definite (spec § 5.1)")
+    return errors
+
+
 def _spectrum_payload_errors(sid: str, payload: Any) -> list[str]:
     """The equal-length rule of a 1-D ``spectrum`` payload (QVF spec § 5.4).
 
@@ -2978,6 +3017,9 @@ def _validate_open_zip(zf: zipfile.ZipFile, lim: Limits, out: _Findings,
                     if semantics and kind == "structure" and role == "structure":
                         for msg in _structure_payload_errors(sid, doc):
                             out.error("E_STRUCTURE_PERIODICITY", mwhere, msg)
+                        if isinstance(doc, dict):
+                            for msg in _adp_errors(sid, doc, doc.get("pbc")):
+                                out.error("E_MEMBER_MALFORMED", mwhere, msg)
                         if (isinstance(doc, dict)
                                 and isinstance(doc.get("atoms"), list)):
                             n_atoms_of.setdefault(sid, len(doc["atoms"]))
